@@ -30,6 +30,7 @@ INPUT_NUM_PER_NTWK = 1
 N_INNER_LOOP_RANGE = (150, 300) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 L1_PENALTY = args.l1_pen
+MCP_GAMMA = 2e-4
 
 T = 0.1
 dt = 1e-4
@@ -214,6 +215,11 @@ def simulate_single_network(args, plasticity_coefs, gamma=0.98):
 
 	return r, w, w_initial, cumulative_loss / (1 / np.log(1/gamma))
 
+def mcp_penalty(plasticity_coefs):
+	coefs_abs = np.abs(plasticity_coefs)
+	mcp_thresh = L1_PENALTY * MCP_GAMMA
+	return L1_PENALTY * np.sum(np.where(coefs_abs >= mcp_thresh, mcp_thresh / 2, coefs_abs - np.square(coefs_abs) / (2 * mcp_thresh)))
+
 # Function to minimize (including simulation)
 
 def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
@@ -229,7 +235,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	results = pool.map(f, args)
 	pool.close()
 
-	loss = np.sum([res[3] for k, res in enumerate(results)]) + L1_PENALTY * BATCH_SIZE * INPUT_NUM_PER_NTWK * np.sum(np.abs(plasticity_coefs))
+	loss = np.sum([res[3] for k, res in enumerate(results)]) + BATCH_SIZE * mcp_penalty(plasticity_coefs)
 
 	if eval_tracker is not None:
 		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
