@@ -53,27 +53,27 @@ os.mkdir(os.path.join(out_dir, 'outcmaes'))
 layer_colors = get_ordered_colors('winter', 15)
 
 rule_names = [ # Define labels for all rules to be run during simulations
-	r'',
-	r'$y$',
-	r'$x$',
-	r'$y^2$',
+	# r'',
+	# r'$y$',
+	# r'$x$',
+	# r'$y^2$',
 	# r'$x^2$',
-	r'$x \, y$',
-	r'$x \, y^2$',
+	# r'$x \, y$',
+	# r'$x \, y^2$',
 	# r'$x^2 \, y$',
 	# r'$x^2 \, y^2$',
 	# r'$y_{int}$',
 	# r'$x \, y_{int}$',
 	# r'$x_{int}$',
-	r'$x_{int} \, y$',
+	# r'$x_{int} \, y$',
 
 	r'$w$',
-	r'$w \, y$',
-	r'$w \, x$',
+	# r'$w \, y$',
+	# r'$w \, x$',
 	r'$w \, y^2$',
 	# r'$w \, x^2$',
-	r'$w \, x \, y$',
-	r'$w \, x \, y^2$',
+	# r'$w \, x \, y$',
+	# r'$w \, x \, y^2$',
 	# r'$w \, x^2 \, y$',
 	# r'$w \, x^2 \, y^2$',
 	# r'$w y_{int}$',
@@ -98,8 +98,8 @@ rule_names = [ # Define labels for all rules to be run during simulations
 
 rule_names = [
 	[r'$E \rightarrow E$ ' + r_name for r_name in rule_names],
-	[r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
-	[r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
+	# [r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
+	# [r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
 ]
 rule_names = np.array(rule_names).flatten()
 
@@ -107,18 +107,31 @@ w_e_e = 0.8e-3 / dt
 w_e_i = 0.5e-4 / dt
 w_i_e = -0.3e-4 / dt
 
-# Define r_target, the target dynamics for the network to produce. 
+# Define r_target, the target dynamics for the network to produce.
 
-r_target = np.zeros((len(t), n_e))
-delay = 3.75e-3
-period = 10e-3
-offset = 2e-3
+amp_range = np.linspace(0.05, 0.25, 5)
+delay_range = np.linspace(3e-3, 5e-3, 10)
+period_range = np.linspace(7e-3, 15e-3, 7)
+offset_range = np.linspace(2e-3, 10e-3, 10)
 
-for i in range(n_e):
-	active_range = (delay * i + offset, delay * i + period + offset)
-	n_t_steps = int(period / dt)
-	t_step_start = int(active_range[0] / dt)
-	r_target[t_step_start:(t_step_start + n_t_steps), i] = 0.25 * np.sin(np.pi/period * dt * np.arange(n_t_steps))
+all_r_targets = []
+
+
+for amp in amp_range:
+	for delay in delay_range:
+		for period in period_range:
+			for offset in offset_range:
+				r_target = np.zeros((len(t), n_e))
+				for i in range(1, n_e):
+					active_range = (delay * i + offset, delay * i + period + offset)
+					n_t_steps = int(period / dt)
+					t_step_start = int(active_range[0] / dt)
+					r_target[t_step_start:(t_step_start + n_t_steps), i] = amp * np.sin(np.pi/period * dt * np.arange(n_t_steps))
+				all_r_targets.append(r_target)
+
+all_r_targets = np.stack(all_r_targets)
+all_r_target_sums = np.sum(all_r_targets, axis=(1, 2))
+print(all_r_targets.shape)
 
 def make_network():
 	'''
@@ -142,15 +155,19 @@ def make_network():
 
 	return w_initial
 
-def l2_loss(r : np.ndarray, r_target : np.ndarray):
+def l2_loss(r : np.ndarray, r_targets : np.ndarray):
 	'''
 	Calculates SSE between r, network activity, and r_target, target network activity
 	'''
 	if np.isnan(r).any():
 		return 1e8
-	return np.sum(np.square(r[:, :n_e] - r_target))
 
-def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs):
+	repeated_r = np.stack([r for i in range(r_targets.shape[0])])
+	prospective_losses = np.sum(np.square((repeated_r[:, :, 1:n_e] - r_targets[:, :, 1:n_e]) ), axis=(1, 2)) / np.power(all_r_target_sums, 2)
+
+	return prospective_losses
+
+def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs, loss_min_idx):
 	scale = 3
 	n_res_to_show = BATCH_SIZE
 
@@ -173,7 +190,7 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs):
 			if l_idx < n_e:
 				if l_idx % 1 == 0:
 					axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
-					axs[2 * i][0].plot(t, r_target[:, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
+					axs[2 * i][0].plot(t, all_r_targets[loss_min_idx, :, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
 
 					# axs[2 * i][0].plot(t, 4 * r_exp_filtered[:, l_idx], '-.', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
 			else:
@@ -202,22 +219,22 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs):
 	# axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(plasticity_coefs)))
 	# axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[plasticity_coefs_argsort], rotation=60, ha='right')
 	# axs[2 * n_res_to_show + 1].set_xlim(-1, len(plasticity_coefs))
-	partial_rules_len = int(len(plasticity_coefs) / 3)
+	partial_rules_len = int(len(plasticity_coefs))
 
-	effects = np.mean(np.array(all_effects), axis=0)
+	# effects = np.mean(np.array(all_effects), axis=0)
 
-	axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
-	effects_argsort = []
-	for l in range(3):
-		effects_partial = effects[l * partial_rules_len: (l+1) * partial_rules_len]
-		effects_argsort_partial = np.flip(np.argsort(effects_partial))
-		effects_argsort.append(effects_argsort_partial + l * partial_rules_len)
-		axs[2 * n_res_to_show + 1].bar(np.arange(len(effects_argsort_partial)) + l * 16, effects_partial[effects_argsort_partial] / np.max(np.abs(effects_partial)))
-	axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
-	axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
+	# axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
+	# effects_argsort = []
+	# for l in range(3):
+	# 	effects_partial = effects[l * partial_rules_len: (l+1) * partial_rules_len]
+	# 	effects_argsort_partial = np.flip(np.argsort(effects_partial))
+	# 	effects_argsort.append(effects_argsort_partial + l * partial_rules_len)
+	# 	axs[2 * n_res_to_show + 1].bar(np.arange(len(effects_argsort_partial)) + l * 16, effects_partial[effects_argsort_partial] / np.max(np.abs(effects_partial)))
+	# axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
+	# axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
 
 	# plot the coefficients assigned to each plasticity rule (unsorted by size)
-	for l in range(3):
+	for l in range(1):
 		axs[2 * n_res_to_show].bar(np.arange(partial_rules_len) + l * partial_rules_len, plasticity_coefs[l * partial_rules_len: (l+1) * partial_rules_len])
 	axs[2 * n_res_to_show].set_xticks(np.arange(len(plasticity_coefs)))
 	axs[2 * n_res_to_show].set_xticklabels(rule_names, rotation=60, ha='right')
@@ -253,7 +270,7 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
 
-	cumulative_loss = 0
+	cumulative_losses = np.zeros((all_r_targets.shape[0]))
 
 	all_effects = np.zeros(plasticity_coefs.shape)
 
@@ -271,10 +288,12 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
-		loss = l2_loss(r, r_target)
-		cumulative_loss = cumulative_loss * gamma + loss
+		if i >= n_inner_loop_iters - 5:
+			prospective_losses = l2_loss(r, all_r_targets)
+			cumulative_losses += prospective_losses
 
 		if np.isnan(r).any(): # if simulation turns up nans in firing rate matrix, end the simulation
+			cumulative_losses += 1e8
 			break
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -296,9 +315,9 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 
 	print(f'penalty_wc {index}:', penalty_wc)
 
-	normed_loss = cumulative_loss / (1 / np.log(1/gamma)) + penalty_wc
+	normed_losses = cumulative_losses / 5 + penalty_wc
 
-	return r, w, w_initial, normed_loss, all_effects, all_weight_deltas, r_exp_filtered
+	return r, w, w_initial, normed_losses, all_effects, all_weight_deltas, r_exp_filtered
 
 # Function to minimize (including simulation)
 
@@ -310,13 +329,15 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 	results = pool.map(f, np.arange(BATCH_SIZE))
 	pool.close()
 
-	loss = np.sum([res[3] for res in results]) + L1_PENALTY * BATCH_SIZE * np.sum(np.abs(plasticity_coefs))
+	prospective_losses = np.sum(np.stack([res[3] for res in results]), axis=0)
+	loss_min_idx = np.argmin(prospective_losses)
+	loss = prospective_losses[loss_min_idx]
 
 	if eval_tracker is not None:
 		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
 			if eval_tracker['evals'] > 0:
 				eval_tracker['best_loss'] = loss
-			plot_results(results, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs)
+		plot_results(results, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs, loss_min_idx)
 		eval_tracker['evals'] += 1
 
 	dur = time.time() - start
@@ -327,7 +348,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 
 	return loss
 
-x0 = np.zeros(42)
+x0 = np.zeros(3)
 
 eval_tracker = {
 	'evals': 0,
@@ -364,7 +385,7 @@ eval_tracker = {
 # simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
 # simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
 
-simulate_plasticity_rules(x0, eval_tracker=eval_tracker)
+simulate_plasticity_rules(np.array([0.02, -0.12, 0.005]), eval_tracker=eval_tracker)
 
 options = {
 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),

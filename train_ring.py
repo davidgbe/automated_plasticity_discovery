@@ -95,8 +95,8 @@ rule_names = [ # Define labels for all rules to be run during simulations
 
 rule_names = [
 	[r'$E \rightarrow E$ ' + r_name for r_name in rule_names],
-	[r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
-	[r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
+	# [r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
+	# [r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
 ]
 rule_names = np.array(rule_names).flatten()
 
