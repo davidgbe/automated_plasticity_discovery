@@ -22,10 +22,11 @@ cd /mmfs1/gscratch/labfairhall/davidgbe
 source davidgbe-env/bin/activate
 cd $CURRDIR
 
-python train_sequence.py --std_expl 0.025 --l1_pen 10 --dw_pen 500 --pool_size 10 --batch 10
-python train_sequence.py --std_expl 0.025 --l1_pen 100 --dw_pen 500 --pool_size 10 --batch 10
-python train_sequence.py --std_expl 0.025 --l1_pen 200 --dw_pen 500 --pool_size 10 --batch 10
-python train_sequence.py --std_expl 0.025 --l1_pen 1000 --dw_pen 500 --pool_size 10 --batch 10
+python train_sequence.py --std_expl 0.05 --mcp_t 1e-4 --mcp_s 0.1  --dw_pen 0 --pool_size 10 --batch 10
+python train_sequence.py --std_expl 0.05 --mcp_t 1e-5 --mcp_s 0.1  --dw_pen 0 --pool_size 10 --batch 10
+python train_sequence.py --std_expl 0.05 --mcp_t 1e-6 --mcp_s 0.1  --dw_pen 0 --pool_size 10 --batch 10
+python train_sequence.py --std_expl 0.05 --mcp_t 1e-4 --mcp_s 0.05 --dw_pen 0 --pool_size 10 --batch 10
+python train_sequence.py --std_expl 0.05 --mcp_t 1e-5 --mcp_s 0.05 --dw_pen 0 --pool_size 10 --batch 10
 
 deactivate
 

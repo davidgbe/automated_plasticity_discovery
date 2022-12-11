@@ -18,7 +18,9 @@ from rate_network import simulate, tanh, generate_gaussian_pulse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--std_expl', metavar='std', type=float, help='Initial standard deviation for parameter search via CMA-ES')
-parser.add_argument('--l1_pen', metavar='l1', type=float, help='Prefactor for L1 penalty on loss function')
+# parser.add_argument('--l1_pen', metavar='l1', type=float, help='Prefactor for L1 penalty on loss function')
+parser.add_argument('--mcp_t', metavar='t', type=float, help='Height of MCP penalty plateau')
+parser.add_argument('--mcp_s', metavar='s', type=float, help='Value at which MCP penalty plateau starts')
 parser.add_argument('--dw_pen', metavar='dwp', type=float, help='Penalty for fraction of plasticity-induced weight change that occurs late in simulation')
 parser.add_argument('--pool_size', metavar='ps', type=int, help='Number of processes to start for each loss function evaluation')
 parser.add_argument('--batch', metavar='b', type=int, help='Number of simulations that should be batched per loss function evaluation')
@@ -30,9 +32,11 @@ POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
 N_INNER_LOOP_RANGE = (190, 200) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
-L1_PENALTY = args.l1_pen
+MCP_T = args.mcp_t
+MCP_S = args.mcp_s
 DW_PENALTY = args.dw_pen
 DW_LAG = 5
+MCP_GAMMA = 2e-4
 
 T = 0.1 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -46,34 +50,34 @@ if not os.path.exists('sims_out'):
 
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
-out_dir = f'sims_out/seq_mcp_penalty_STD_EXPL_{STD_EXPL}_L1_PENALTY_{L1_PENALTY}_DW_PENALTY_{DW_PENALTY}_{time_stamp}'
+out_dir = f'sims_out/seq_loose_target_STD_EXPL_{STD_EXPL}_MCP_T_{MCP_T}_MCP_S_{MCP_S}_DW_PENALTY_{DW_PENALTY}_{time_stamp}'
 os.mkdir(out_dir)
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
 layer_colors = get_ordered_colors('winter', 15)
 
 rule_names = [ # Define labels for all rules to be run during simulations
-	# r'',
-	# r'$y$',
-	# r'$x$',
-	# r'$y^2$',
+	r'',
+	r'$y$',
+	r'$x$',
+	r'$y^2$',
 	# r'$x^2$',
-	# r'$x \, y$',
-	# r'$x \, y^2$',
+	r'$x \, y$',
+	r'$x \, y^2$',
 	# r'$x^2 \, y$',
 	# r'$x^2 \, y^2$',
 	# r'$y_{int}$',
 	# r'$x \, y_{int}$',
 	# r'$x_{int}$',
-	# r'$x_{int} \, y$',
+	r'$x_{int} \, y$',
 
 	r'$w$',
-	# r'$w \, y$',
-	# r'$w \, x$',
+	r'$w \, y$',
+	r'$w \, x$',
 	r'$w \, y^2$',
 	# r'$w \, x^2$',
-	# r'$w \, x \, y$',
-	# r'$w \, x \, y^2$',
+	r'$w \, x \, y$',
+	r'$w \, x \, y^2$',
 	# r'$w \, x^2 \, y$',
 	# r'$w \, x^2 \, y^2$',
 	# r'$w y_{int}$',
@@ -98,8 +102,8 @@ rule_names = [ # Define labels for all rules to be run during simulations
 
 rule_names = [
 	[r'$E \rightarrow E$ ' + r_name for r_name in rule_names],
-	# [r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
-	# [r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
+	[r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
+	[r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
 ]
 rule_names = np.array(rule_names).flatten()
 
@@ -131,7 +135,6 @@ for amp in amp_range:
 
 all_r_targets = np.stack(all_r_targets)
 all_r_target_sums = np.sum(all_r_targets, axis=(1, 2))
-print(all_r_targets.shape)
 
 def make_network():
 	'''
@@ -219,7 +222,7 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs, loss_m
 	# axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(plasticity_coefs)))
 	# axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[plasticity_coefs_argsort], rotation=60, ha='right')
 	# axs[2 * n_res_to_show + 1].set_xlim(-1, len(plasticity_coefs))
-	partial_rules_len = int(len(plasticity_coefs))
+	partial_rules_len = int(len(plasticity_coefs) / 3)
 
 	# effects = np.mean(np.array(all_effects), axis=0)
 
@@ -234,7 +237,7 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs, loss_m
 	# axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
 
 	# plot the coefficients assigned to each plasticity rule (unsorted by size)
-	for l in range(1):
+	for l in range(3):
 		axs[2 * n_res_to_show].bar(np.arange(partial_rules_len) + l * partial_rules_len, plasticity_coefs[l * partial_rules_len: (l+1) * partial_rules_len])
 	axs[2 * n_res_to_show].set_xticks(np.arange(len(plasticity_coefs)))
 	axs[2 * n_res_to_show].set_xticklabels(rule_names, rotation=60, ha='right')
@@ -257,6 +260,10 @@ def weight_change_penalty(weight_deltas, s=30):
 	b = np.exp(1/s)
 	a = (1 - b) / (b * (1 - np.power(b, n))) # this normalizes total weight change penalty to 1
 	return a * np.power(b, np.arange(1, n + 1))
+
+def mcp_penalty(plasticity_coefs):
+	coefs_abs = np.abs(plasticity_coefs)
+	return MCP_T * np.sum(np.where(coefs_abs >= MCP_S, 1, (2 * coefs_abs / MCP_S) - np.square(coefs_abs / MCP_S)))
 
 def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=False):
 	'''
@@ -307,7 +314,6 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
-
 	penalty_wc = DW_PENALTY / np.sum(all_weight_deltas) * np.dot(weight_change_penalty(all_weight_deltas), all_weight_deltas)
 
 	if np.isnan(penalty_wc):
@@ -331,13 +337,13 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 
 	prospective_losses = np.sum(np.stack([res[3] for res in results]), axis=0)
 	loss_min_idx = np.argmin(prospective_losses)
-	loss = prospective_losses[loss_min_idx]
+	loss = prospective_losses[loss_min_idx] + mcp_penalty(plasticity_coefs)
 
 	if eval_tracker is not None:
 		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
 			if eval_tracker['evals'] > 0:
 				eval_tracker['best_loss'] = loss
-		plot_results(results, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs, loss_min_idx)
+			plot_results(results, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs, loss_min_idx)
 		eval_tracker['evals'] += 1
 
 	dur = time.time() - start
@@ -348,7 +354,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 
 	return loss
 
-x0 = np.zeros(3)
+x0 = np.zeros(42)
 
 eval_tracker = {
 	'evals': 0,
@@ -385,7 +391,9 @@ eval_tracker = {
 # simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
 # simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
 
-simulate_plasticity_rules(np.array([0.02, -0.12, 0.005]), eval_tracker=eval_tracker)
+# [0.02, -0.12, 0.005]
+
+simulate_plasticity_rules(x0, eval_tracker=eval_tracker)
 
 options = {
 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
