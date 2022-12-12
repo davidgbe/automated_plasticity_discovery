@@ -11,6 +11,8 @@ from datetime import datetime
 import multiprocessing as mp
 import argparse
 import cma
+from numba import njit
+from scipy.sparse import csc_matrix
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
@@ -36,7 +38,6 @@ MCP_T = args.mcp_t
 MCP_S = args.mcp_s
 DW_PENALTY = args.dw_pen
 DW_LAG = 5
-MCP_GAMMA = 2e-4
 
 T = 0.1 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -133,8 +134,13 @@ for amp in amp_range:
 					r_target[t_step_start:(t_step_start + n_t_steps), i] = amp * np.sin(np.pi/period * dt * np.arange(n_t_steps))
 				all_r_targets.append(r_target)
 
+
+sparse_r_targets = csc_matrix([r[:, 1:n_e].flatten() for r in all_r_targets])
+
 all_r_targets = np.stack(all_r_targets)
 all_r_target_sums = np.sum(all_r_targets, axis=(1, 2))
+all_r_target_sums_squared = np.square(all_r_target_sums)
+
 
 def make_network():
 	'''
@@ -158,15 +164,16 @@ def make_network():
 
 	return w_initial
 
-def l2_loss(r : np.ndarray, r_targets : np.ndarray):
+def l2_loss(r : np.ndarray, r_targets : csc_matrix):
 	'''
 	Calculates SSE between r, network activity, and r_target, target network activity
 	'''
 	if np.isnan(r).any():
 		return 1e8
 
-	repeated_r = np.stack([r for i in range(r_targets.shape[0])])
-	prospective_losses = np.sum(np.square((repeated_r[:, :, 1:n_e] - r_targets[:, :, 1:n_e]) ), axis=(1, 2)) / np.power(all_r_target_sums, 2)
+	flattened_r = r[:, 1:n_e].flatten()
+	repeated_r = csc_matrix([flattened_r for i in range(r_targets.shape[0])])
+	prospective_losses = np.asarray((repeated_r - r_targets).power(2).sum(axis=1)).flatten() / all_r_target_sums_squared
 
 	return prospective_losses
 
@@ -296,7 +303,9 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
 		if i >= n_inner_loop_iters - 5:
-			prospective_losses = l2_loss(r, all_r_targets)
+			# loss_start = time.time()
+			prospective_losses = l2_loss(r, sparse_r_targets)
+			# print(time.time() - loss_start)
 			cumulative_losses += prospective_losses
 
 		if np.isnan(r).any(): # if simulation turns up nans in firing rate matrix, end the simulation
@@ -319,7 +328,7 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 	if np.isnan(penalty_wc):
 		penalty_wc = 0
 
-	print(f'penalty_wc {index}:', penalty_wc)
+	# print(f'penalty_wc {index}:', penalty_wc)
 
 	normed_losses = cumulative_losses / 5 + penalty_wc
 
