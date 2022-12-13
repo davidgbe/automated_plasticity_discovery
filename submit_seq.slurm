@@ -25,9 +25,12 @@ cd $CURRDIR
 python train_sequence.py --std_expl 0.015 --mcp_t 2e-4 --mcp_s 0.3 --dw_pen 0 --pool_size 10 --batch 10
 python train_sequence.py --std_expl 0.015 --mcp_t 4e-4 --mcp_s 0.3 --dw_pen 0 --pool_size 10 --batch 10
 python train_sequence.py --std_expl 0.015 --mcp_t 6e-4 --mcp_s 0.3 --dw_pen 0 --pool_size 10 --batch 10
-python train_sequence.py --std_expl 0.015 --mcp_t 8e-4 --mcp_s 0.3 --dw_pen 0 --pool_size 10 --batch 10
 python train_sequence.py --std_expl 0.015 --mcp_t 1e-3 --mcp_s 0.3 --dw_pen 0 --pool_size 10 --batch 10
-python train_sequence.py --std_expl 0.015 --mcp_t 2e-3 --mcp_s 0.3 --dw_pen 0 --pool_size 10 --batch 10
+
+python train_sequence.py --std_expl 0.005 --mcp_t 2e-4 --mcp_s 0.3 --dw_pen 0 --pool_size 10 --batch 10
+python train_sequence.py --std_expl 0.005 --mcp_t 4e-4 --mcp_s 0.3 --dw_pen 0 --pool_size 10 --batch 10
+python train_sequence.py --std_expl 0.005 --mcp_t 6e-4 --mcp_s 0.3 --dw_pen 0 --pool_size 10 --batch 10
+python train_sequence.py --std_expl 0.005 --mcp_t 1e-3 --mcp_s 0.3 --dw_pen 0 --pool_size 10 --batch 10
 
 deactivate
 
