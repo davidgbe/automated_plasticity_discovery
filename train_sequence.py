@@ -54,7 +54,7 @@ if not os.path.exists('sims_out'):
 
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
-out_dir = f'sims_out/seq_near_origin_STD_EXPL_{STD_EXPL}_MCP_T_{MCP_T}_MCP_S_{MCP_S}_DW_PENALTY_{DW_PENALTY}_{time_stamp}'
+out_dir = f'sims_out/seq_near_origin_STD_EXPL_{STD_EXPL}_MCP_T_{MCP_T}_MCP_S_{MCP_S}_DW_PENALTY_{DW_PENALTY}_FIXED_{FIXED_DATA}_{time_stamp}'
 os.mkdir(out_dir)
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
