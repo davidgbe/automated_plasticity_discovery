@@ -26,6 +26,7 @@ parser.add_argument('--mcp_s', metavar='s', type=float, help='Value at which MCP
 parser.add_argument('--dw_pen', metavar='dwp', type=float, help='Penalty for fraction of plasticity-induced weight change that occurs late in simulation')
 parser.add_argument('--pool_size', metavar='ps', type=int, help='Number of processes to start for each loss function evaluation')
 parser.add_argument('--batch', metavar='b', type=int, help='Number of simulations that should be batched per loss function evaluation')
+parser.add_argument('--fixed_data', metavar='fd', type=int, help='')
 
 args = parser.parse_args()
 print(args)
@@ -38,6 +39,7 @@ MCP_T = args.mcp_t
 MCP_S = args.mcp_s
 DW_PENALTY = args.dw_pen
 DW_LAG = 5
+FIXED_DATA = bool(args.fixed_data)
 
 T = 0.1 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -277,7 +279,10 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
-	np.random.seed(seeds[index])
+	if FIXED_DATA:
+		np.random.seed(seeds[index])
+	else:
+		np.random.seed()
 
 	w_initial = make_network() # make a new, distorted sequence
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
