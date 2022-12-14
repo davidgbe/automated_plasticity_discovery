@@ -44,6 +44,7 @@ dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 15 # Number excitatory cells in sequence (also length of sequence)
 n_i = 20 # Number inhibitory cells
+seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 
 # Make directory for outputting simulations
 if not os.path.exists('sims_out'):
@@ -276,7 +277,7 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
-	np.random.seed()
+	np.random.seed(seeds[index])
 
 	w_initial = make_network() # make a new, distorted sequence
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
