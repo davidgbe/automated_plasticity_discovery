@@ -20,10 +20,7 @@ from rate_network import simulate, tanh, generate_gaussian_pulse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--std_expl', metavar='std', type=float, help='Initial standard deviation for parameter search via CMA-ES')
-# parser.add_argument('--l1_pen', metavar='l1', type=float, help='Prefactor for L1 penalty on loss function')
-parser.add_argument('--mcp_t', metavar='t', type=float, help='Height of MCP penalty plateau')
-parser.add_argument('--mcp_s', metavar='s', type=float, help='Value at which MCP penalty plateau starts')
-parser.add_argument('--dw_pen', metavar='dwp', type=float, help='Penalty for fraction of plasticity-induced weight change that occurs late in simulation')
+parser.add_argument('--l1_pen', metavar='l1', type=float, nargs=3, help='Prefactor for L1 penalties on loss function')
 parser.add_argument('--pool_size', metavar='ps', type=int, help='Number of processes to start for each loss function evaluation')
 parser.add_argument('--batch', metavar='b', type=int, help='Number of simulations that should be batched per loss function evaluation')
 parser.add_argument('--fixed_data', metavar='fd', type=int, help='')
@@ -35,11 +32,9 @@ POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
 N_INNER_LOOP_RANGE = (190, 200) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
-MCP_T = args.mcp_t
-MCP_S = args.mcp_s
-DW_PENALTY = args.dw_pen
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
+L1_PENALTIES = args.l1_pen
 
 T = 0.1 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -54,7 +49,8 @@ if not os.path.exists('sims_out'):
 
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
-out_dir = f'sims_out/seq_near_origin_STD_EXPL_{STD_EXPL}_MCP_T_{MCP_T}_MCP_S_{MCP_S}_DW_PENALTY_{DW_PENALTY}_FIXED_{FIXED_DATA}_{time_stamp}'
+joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
+out_dir = f'sims_out/seq_syn_penalty_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_{time_stamp}'
 os.mkdir(out_dir)
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
@@ -329,14 +325,7 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
-	penalty_wc = DW_PENALTY / np.sum(all_weight_deltas) * np.dot(weight_change_penalty(all_weight_deltas), all_weight_deltas)
-
-	if np.isnan(penalty_wc):
-		penalty_wc = 0
-
-	# print(f'penalty_wc {index}:', penalty_wc)
-
-	normed_losses = cumulative_losses / 5 + penalty_wc
+	normed_losses = cumulative_losses / 5
 
 	return r, w, w_initial, normed_losses, all_effects, all_weight_deltas, r_exp_filtered
 
@@ -352,7 +341,19 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 
 	prospective_losses = np.sum(np.stack([res[3] for res in results]), axis=0)
 	loss_min_idx = np.argmin(prospective_losses)
-	loss = prospective_losses[loss_min_idx] + mcp_penalty(plasticity_coefs)
+	syn_effects = np.sum(np.stack([res[4] for res in results]), axis=0)
+	syn_effects_penalty = 0
+	one_third_len = int(len(syn_effects) / 3)
+	for i in range(3):
+		summed = np.sum(np.abs(syn_effects[i * one_third_len:(i+1) * one_third_len]))
+		print(i, L1_PENALTIES[i] * summed)
+		syn_effects_penalty += L1_PENALTIES[i] * summed
+	print('total', syn_effects_penalty)
+
+	if np.isinf(syn_effects_penalty):
+		syn_effects_penalty = 1e8
+
+	loss = prospective_losses[loss_min_idx] + syn_effects_penalty
 
 	if eval_tracker is not None:
 		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
@@ -376,28 +377,28 @@ eval_tracker = {
 	'best_loss': np.nan,
 }
 
-x1_raw = """-5.84210857e-04 -4.69984373e-03 -6.08563810e-04 -3.08770570e-04
- -7.19536798e-03 -9.03718062e-04  3.66424025e-03  5.86134222e-04
- -2.55110661e-04 -1.71748437e-05 -1.24012459e-02  5.62621779e-04
-  8.55613804e-05 -2.88098171e-03  2.44078611e-03 -5.69617436e-03
- -1.60676535e-03  4.46757587e-03  3.98040267e-03 -3.96185703e-03
-  6.79852165e-03 -1.16123852e-02 -3.05628732e-03  5.21102809e-05
- -9.66995733e-04  1.07233794e-03 -4.07275810e-03 -7.99966672e-03
- -8.27453987e-05  3.62844186e-03 -8.45913615e-04 -3.11724800e-03
- -4.12525783e-04  1.21710706e-03 -1.00590113e-02 -3.26697217e-03
- -5.96226820e-04 -1.26543603e-02 -2.44419615e-03 -2.63702685e-04
- -1.42714617e-03  9.07480854e-03"""
-print(x1_raw)
+# x1_raw = """-5.84210857e-04 -4.69984373e-03 -6.08563810e-04 -3.08770570e-04
+#  -7.19536798e-03 -9.03718062e-04  3.66424025e-03  5.86134222e-04
+#  -2.55110661e-04 -1.71748437e-05 -1.24012459e-02  5.62621779e-04
+#   8.55613804e-05 -2.88098171e-03  2.44078611e-03 -5.69617436e-03
+#  -1.60676535e-03  4.46757587e-03  3.98040267e-03 -3.96185703e-03
+#   6.79852165e-03 -1.16123852e-02 -3.05628732e-03  5.21102809e-05
+#  -9.66995733e-04  1.07233794e-03 -4.07275810e-03 -7.99966672e-03
+#  -8.27453987e-05  3.62844186e-03 -8.45913615e-04 -3.11724800e-03
+#  -4.12525783e-04  1.21710706e-03 -1.00590113e-02 -3.26697217e-03
+#  -5.96226820e-04 -1.26543603e-02 -2.44419615e-03 -2.63702685e-04
+#  -1.42714617e-03  9.07480854e-03"""
+# print(x1_raw)
 
-def process_params_str(s):
-	params = []
-	for x in s.split(' '):
-		x = x.replace('\n', '')
-		if x is not '':
-			params.append(float(x))
-	return np.array(params)
+# def process_params_str(s):
+# 	params = []
+# 	for x in s.split(' '):
+# 		x = x.replace('\n', '')
+# 		if x is not '':
+# 			params.append(float(x))
+# 	return np.array(params)
 
-x1 = process_params_str(x1_raw)
+# x1 = process_params_str(x1_raw)
 
 # effect_sizes = np.array([5.27751763e+05, 6.18235136e+04, 5.21351071e+04, 1.34717956e+04,
 #  1.05863156e+03, 3.63087241e+05, 4.24716499e+05, 7.99887936e+04,
@@ -421,26 +422,25 @@ x1 = process_params_str(x1_raw)
 # x1 = copy(x0)
 # x1[0] = 1e-2
 
-simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
 
-# [0.02, -0.12, 0.005]
 
-# simulate_plasticity_rules(x0, eval_tracker=eval_tracker)
+simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
 
-# options = {
-# 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-# }
+options = {
+	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+}
 
-# x, es = cma.fmin2(
-# 	partial(simulate_plasticity_rules, eval_tracker=eval_tracker),
-# 	x0,
-# 	STD_EXPL,
-# 	restarts=10,
-# 	bipop=True,
-# 	options=options)
+x, es = cma.fmin2(
+	partial(simulate_plasticity_rules, eval_tracker=eval_tracker, track_params=True),
+	x0,
+	STD_EXPL,
+	restarts=10,
+	bipop=True,
+	options=options)
 
-# print(x)
-# print(es.result_pretty())
+print(x)
+print(es.result_pretty())
