@@ -234,17 +234,17 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs, loss_m
 	# axs[2 * n_res_to_show + 1].set_xlim(-1, len(plasticity_coefs))
 	partial_rules_len = int(len(plasticity_coefs) / 3)
 
-	# effects = np.mean(np.array(all_effects), axis=0)
+	effects = np.mean(np.array(all_effects), axis=0)
 
-	# axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
-	# effects_argsort = []
-	# for l in range(3):
-	# 	effects_partial = effects[l * partial_rules_len: (l+1) * partial_rules_len]
-	# 	effects_argsort_partial = np.flip(np.argsort(effects_partial))
-	# 	effects_argsort.append(effects_argsort_partial + l * partial_rules_len)
-	# 	axs[2 * n_res_to_show + 1].bar(np.arange(len(effects_argsort_partial)) + l * 16, effects_partial[effects_argsort_partial] / np.max(np.abs(effects_partial)))
-	# axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
-	# axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
+	axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
+	effects_argsort = []
+	for l in range(3):
+		effects_partial = effects[l * partial_rules_len: (l+1) * partial_rules_len]
+		effects_argsort_partial = np.flip(np.argsort(effects_partial))
+		effects_argsort.append(effects_argsort_partial + l * partial_rules_len)
+		axs[2 * n_res_to_show + 1].bar(np.arange(len(effects_argsort_partial)) + l * partial_rules_len, effects_partial[effects_argsort_partial] / np.max(np.abs(effects_partial)))
+	axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
+	axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
 
 	# plot the coefficients assigned to each plasticity rule (unsorted by size)
 	for l in range(3):
@@ -376,8 +376,28 @@ eval_tracker = {
 	'best_loss': np.nan,
 }
 
-# x1 = str('-0.042675534574574 0.045667863538663554 -0.0032566369453279915 -0.021760623829948554 -0.0316262366696267 0.008487938383185479 0.01525657974915425 -0.040748715544448526 0.003668857752011703 0.0017639736570192075 -0.1261775365134765 0.0005719669605593644 -0.09928902724686574 0.04177783269087883 0.03922795281258521 0.04692560258128908 0.14005369346007215 0.029061393343938525 0.026756916540571142 0.09112069169181806 0.014988751547553733 -0.006162983250250737 -0.06923320669856024 -0.11124603376422622 -0.055497344482981006 0.07991472509490581 -0.061254014490439754 0.024867039757639983 -0.03524855229124467 -0.0854257454335782 -0.025670356196084237 0.02368938869812294 0.08349483533849754 0.08591215870912053 -0.04885635580697583 -0.010377378071371193 -0.048681314105448056 -0.09184509860992232 -0.011944454149853852 -0.05579997946941964 -0.07881160137662353 0.09846128014074103 0.010440697875208927 0.005767655640333167 0.012307184510331429 0.06522394933997167 -0.004980934109576987 0.07030881881006139').split(' ')
-# x1 = np.array([float(n) for n in x1])
+x1_raw = """-5.84210857e-04 -4.69984373e-03 -6.08563810e-04 -3.08770570e-04
+ -7.19536798e-03 -9.03718062e-04  3.66424025e-03  5.86134222e-04
+ -2.55110661e-04 -1.71748437e-05 -1.24012459e-02  5.62621779e-04
+  8.55613804e-05 -2.88098171e-03  2.44078611e-03 -5.69617436e-03
+ -1.60676535e-03  4.46757587e-03  3.98040267e-03 -3.96185703e-03
+  6.79852165e-03 -1.16123852e-02 -3.05628732e-03  5.21102809e-05
+ -9.66995733e-04  1.07233794e-03 -4.07275810e-03 -7.99966672e-03
+ -8.27453987e-05  3.62844186e-03 -8.45913615e-04 -3.11724800e-03
+ -4.12525783e-04  1.21710706e-03 -1.00590113e-02 -3.26697217e-03
+ -5.96226820e-04 -1.26543603e-02 -2.44419615e-03 -2.63702685e-04
+ -1.42714617e-03  9.07480854e-03"""
+print(x1_raw)
+
+def process_params_str(s):
+	params = []
+	for x in s.split(' '):
+		x = x.replace('\n', '')
+		if x is not '':
+			params.append(float(x))
+	return np.array(params)
+
+x1 = process_params_str(x1_raw)
 
 # effect_sizes = np.array([5.27751763e+05, 6.18235136e+04, 5.21351071e+04, 1.34717956e+04,
 #  1.05863156e+03, 3.63087241e+05, 4.24716499e+05, 7.99887936e+04,
@@ -401,26 +421,26 @@ eval_tracker = {
 # x1 = copy(x0)
 # x1[0] = 1e-2
 
-# simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
-# simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
-# simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
-# simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
+simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
 
 # [0.02, -0.12, 0.005]
 
-simulate_plasticity_rules(x0, eval_tracker=eval_tracker)
+# simulate_plasticity_rules(x0, eval_tracker=eval_tracker)
 
-options = {
-	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-}
+# options = {
+# 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+# }
 
-x, es = cma.fmin2(
-	partial(simulate_plasticity_rules, eval_tracker=eval_tracker),
-	x0,
-	STD_EXPL,
-	restarts=10,
-	bipop=True,
-	options=options)
+# x, es = cma.fmin2(
+# 	partial(simulate_plasticity_rules, eval_tracker=eval_tracker),
+# 	x0,
+# 	STD_EXPL,
+# 	restarts=10,
+# 	bipop=True,
+# 	options=options)
 
-print(x)
-print(es.result_pretty())
+# print(x)
+# print(es.result_pretty())
