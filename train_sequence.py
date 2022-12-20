@@ -176,7 +176,40 @@ def l2_loss(r : np.ndarray, r_targets : csc_matrix):
 
 	return prospective_losses
 
-def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs, loss_min_idx):
+def calc_loss(r : np.ndarray):
+
+	if np.isnan(r).any():
+		return 1e8
+
+	r_exc = r[:, :n_e]
+
+	r_summed = np.sum(r_exc, axis=0)
+	r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
+	r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
+
+	r_normed = r_exc / r_summed_safe_divide
+	t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
+	t_vars = np.sum(np.power(t.reshape(t.shape[0], 1), 2) * r_normed, axis=0) - np.power(t_means, 2)
+
+	# print('r_summed', r_summed)
+	# print('t_means:', t_means)
+	# print('t_vars:', t_vars)
+
+	loss = 0
+	for i in np.arange(r_exc.shape[1]):
+		if r_active_mask[i]:
+			if i != 0:
+				loss += 0.1 * np.power((t_vars[i] - 4e-6) / 4e-6, 2)
+				loss += 0.1 * np.power((r_summed[i] - 15) / 15, 2)
+			if i < (r_exc.shape[1] - 1) and r_active_mask[i+1]:
+				loss += 1 / (1 + np.exp((t_means[i+1] - t_means[i] - 5e-4) / 1e-4))
+		else:
+			loss += 100
+
+	return loss
+
+
+def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties):
 	scale = 3
 	n_res_to_show = BATCH_SIZE
 
@@ -214,7 +247,7 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs, loss_m
 		mappable = axs[2 * i + 1][1].matshow(w, vmin=vmin, vmax=vmax) # plot final weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][1])
 
-		axs[2 * i][0].set_title(title)
+		axs[2 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
 		for i_axs in range(2):
 			axs[2 * i][i_axs].set_xlabel('Time (s)')
 			axs[2 * i][i_axs].set_ylabel('Firing rate')
@@ -238,9 +271,13 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs, loss_m
 		effects_partial = effects[l * partial_rules_len: (l+1) * partial_rules_len]
 		effects_argsort_partial = np.flip(np.argsort(effects_partial))
 		effects_argsort.append(effects_argsort_partial + l * partial_rules_len)
-		axs[2 * n_res_to_show + 1].bar(np.arange(len(effects_argsort_partial)) + l * partial_rules_len, effects_partial[effects_argsort_partial] / np.max(np.abs(effects_partial)))
+		axs[2 * n_res_to_show + 1].bar(np.arange(len(effects_argsort_partial)) + l * partial_rules_len, effects_partial[effects_argsort_partial])
 	axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
 	axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
+
+	true_loss = np.sum(true_losses)
+	syn_effect_penalty = np.sum(syn_effect_penalties)
+	axs[2 * n_res_to_show].set_title(f'Loss: {true_loss + syn_effect_penalty}, {true_loss}, {syn_effect_penalty}')
 
 	# plot the coefficients assigned to each plasticity rule (unsorted by size)
 	for l in range(1):
@@ -286,7 +323,7 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
 
-	cumulative_losses = np.zeros((all_r_targets.shape[0]))
+	cumulative_loss = 0
 
 	all_effects = np.zeros(plasticity_coefs.shape)
 
@@ -306,12 +343,12 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 
 		if i >= n_inner_loop_iters - 5:
 			# loss_start = time.time()
-			prospective_losses = l2_loss(r, sparse_r_targets)
+			loss = calc_loss(r)
 			# print(time.time() - loss_start)
-			cumulative_losses += prospective_losses
+			cumulative_loss += loss
 
 		if np.isnan(r).any(): # if simulation turns up nans in firing rate matrix, end the simulation
-			cumulative_losses += 1e8
+			cumulative_loss += 1e8
 			break
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -325,9 +362,9 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
-	normed_losses = cumulative_losses / 5
+	normed_loss = cumulative_loss / 5
 
-	return r, w, w_initial, normed_losses, all_effects, all_weight_deltas, r_exp_filtered
+	return r, w, w_initial, normed_loss, all_effects, all_weight_deltas, r_exp_filtered
 
 # Function to minimize (including simulation)
 
@@ -339,27 +376,22 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 	results = pool.map(f, np.arange(BATCH_SIZE))
 	pool.close()
 
-	prospective_losses = np.sum(np.stack([res[3] for res in results]), axis=0)
-	loss_min_idx = np.argmin(prospective_losses)
-	syn_effects = np.sum(np.stack([res[4] for res in results]), axis=0)
-	syn_effects_penalty = 0
-	one_third_len = int(len(syn_effects) / 3)
+	true_losses = np.array([res[3] for res in results])
+	syn_effects = np.stack([res[4] for res in results])
+	syn_effect_penalties = np.zeros(syn_effects.shape[0])
+	one_third_len = int(syn_effects.shape[1] / 3)
+
 	for i in range(3):
-		summed = np.sum(np.abs(syn_effects[i * one_third_len:(i+1) * one_third_len]))
-		print(i, L1_PENALTIES[i] * summed)
-		syn_effects_penalty += L1_PENALTIES[i] * summed
-	print('total', syn_effects_penalty)
+		syn_effect_penalties += L1_PENALTIES[i] * np.sum(np.abs(syn_effects[:, i * one_third_len:(i+1) * one_third_len]), axis=1)
 
-	if np.isinf(syn_effects_penalty):
-		syn_effects_penalty = 1e8
-
-	loss = prospective_losses[loss_min_idx] + syn_effects_penalty
+	losses = true_losses + syn_effect_penalties
+	loss = np.sum(losses)
 
 	if eval_tracker is not None:
 		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
 			if eval_tracker['evals'] > 0:
 				eval_tracker['best_loss'] = loss
-			plot_results(results, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs, loss_min_idx)
+			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties)
 		eval_tracker['evals'] += 1
 
 	dur = time.time() - start
@@ -419,31 +451,31 @@ eval_tracker = {
 # 	en = 16 * (j + 1)
 # 	set_smallest_n_zero(x1[st:en], num_to_silence[j], arr_set=x1[st:en])
 
-x1 = copy(x0)
-x1[13] = 2 * 2e-3
-x1[10] = 2 * -5e-2
-x1[7] = 2 * 1e-2
+# x1 = copy(x0)
+# x1[13] = 2 * 2e-3
+# x1[10] = 2 * -5e-2
+# x1[7] = 2 * 1e-2
 
-simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
 
 
-# simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
+simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
 
-# options = {
-# 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-# }
+options = {
+	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+}
 
-# x, es = cma.fmin2(
-# 	partial(simulate_plasticity_rules, eval_tracker=eval_tracker, track_params=True),
-# 	x0,
-# 	STD_EXPL,
-# 	restarts=10,
-# 	bipop=True,
-# 	options=options)
+x, es = cma.fmin2(
+	partial(simulate_plasticity_rules, eval_tracker=eval_tracker, track_params=True),
+	x0,
+	STD_EXPL,
+	restarts=10,
+	bipop=True,
+	options=options)
 
-# print(x)
-# print(es.result_pretty())
+print(x)
+print(es.result_pretty())
