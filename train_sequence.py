@@ -13,6 +13,7 @@ import argparse
 import cma
 from numba import njit
 from scipy.sparse import csc_matrix
+from csv_reader import read_csv
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
@@ -21,9 +22,11 @@ from rate_network import simulate, tanh, generate_gaussian_pulse
 parser = argparse.ArgumentParser()
 parser.add_argument('--std_expl', metavar='std', type=float, help='Initial standard deviation for parameter search via CMA-ES')
 parser.add_argument('--l1_pen', metavar='l1', type=float, nargs=3, help='Prefactor for L1 penalties on loss function')
+parser.add_argument('--q', metavar='q', type=float, help='Power to which to raise penalty e.g. Lq ')
 parser.add_argument('--pool_size', metavar='ps', type=int, help='Number of processes to start for each loss function evaluation')
 parser.add_argument('--batch', metavar='b', type=int, help='Number of simulations that should be batched per loss function evaluation')
 parser.add_argument('--fixed_data', metavar='fd', type=int, help='')
+parser.add_argument('--load_initial', metavar='li', type=str, help='File from which to load the best params as an initial guess')
 
 args = parser.parse_args()
 print(args)
@@ -35,6 +38,8 @@ STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
+Q = args.q
+print(Q)
 
 T = 0.1 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -50,7 +55,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_syn_penalty_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_{time_stamp}'
+out_dir = f'sims_out/seq_very_loose_lq_0.8_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_{time_stamp}'
 os.mkdir(out_dir)
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
@@ -113,32 +118,32 @@ w_i_e = -0.3e-4 / dt
 
 # Define r_target, the target dynamics for the network to produce.
 
-amp_range = np.linspace(0.05, 0.35, 10)
-delay_range = np.linspace(1e-3, 5e-3, 10)
-period_range = np.linspace(4e-3, 15e-3, 10)
-offset_range = np.linspace(2e-3, 10e-3, 10)
+# amp_range = np.linspace(0.05, 0.35, 10)
+# delay_range = np.linspace(1e-3, 5e-3, 10)
+# period_range = np.linspace(4e-3, 15e-3, 10)
+# offset_range = np.linspace(2e-3, 10e-3, 10)
 
-all_r_targets = []
-
-
-for amp in amp_range:
-	for delay in delay_range:
-		for period in period_range:
-			for offset in offset_range:
-				r_target = np.zeros((len(t), n_e))
-				for i in range(1, n_e):
-					active_range = (delay * i + offset, delay * i + period + offset)
-					n_t_steps = int(period / dt)
-					t_step_start = int(active_range[0] / dt)
-					r_target[t_step_start:(t_step_start + n_t_steps), i] = amp * np.sin(np.pi/period * dt * np.arange(n_t_steps))
-				all_r_targets.append(r_target)
+# all_r_targets = []
 
 
-sparse_r_targets = csc_matrix([r[:, 1:n_e].flatten() for r in all_r_targets])
+# for amp in amp_range:
+# 	for delay in delay_range:
+# 		for period in period_range:
+# 			for offset in offset_range:
+# 				r_target = np.zeros((len(t), n_e))
+# 				for i in range(1, n_e):
+# 					active_range = (delay * i + offset, delay * i + period + offset)
+# 					n_t_steps = int(period / dt)
+# 					t_step_start = int(active_range[0] / dt)
+# 					r_target[t_step_start:(t_step_start + n_t_steps), i] = amp * np.sin(np.pi/period * dt * np.arange(n_t_steps))
+# 				all_r_targets.append(r_target)
 
-all_r_targets = np.stack(all_r_targets)
-all_r_target_sums = np.sum(all_r_targets, axis=(1, 2))
-all_r_target_sums_squared = np.square(all_r_target_sums)
+
+# sparse_r_targets = csc_matrix([r[:, 1:n_e].flatten() for r in all_r_targets])
+
+# all_r_targets = np.stack(all_r_targets)
+# all_r_target_sums = np.sum(all_r_targets, axis=(1, 2))
+# all_r_target_sums_squared = np.square(all_r_target_sums)
 
 
 def make_network():
@@ -382,7 +387,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 	one_third_len = int(syn_effects.shape[1] / 3)
 
 	for i in range(3):
-		syn_effect_penalties += L1_PENALTIES[i] * np.sum(np.abs(syn_effects[:, i * one_third_len:(i+1) * one_third_len]), axis=1)
+		syn_effect_penalties += L1_PENALTIES[i] * np.sum(np.power(np.abs(syn_effects[:, i * one_third_len:(i+1) * one_third_len]), Q), axis=1)
 
 	losses = true_losses + syn_effect_penalties
 	loss = np.sum(losses)
@@ -402,12 +407,18 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 
 	return loss
 
-x0 = np.zeros(14)
-
 eval_tracker = {
 	'evals': 0,
 	'best_loss': np.nan,
 }
+
+def load_best_params(file_name):
+	file_path = f'./sims_out/{file_name}/outcmaes/xrecentbest.dat'
+	df_params = read_csv(file_path, read_header=False)
+	x = np.arange(df_params.shape[0])
+	min_loss_idx = np.argmin([df_params.iloc[i][4] for i in x])
+	best_params = df_params.iloc[min_loss_idx][5:]
+	return np.array(best_params)
 
 # x1_raw = """-5.84210857e-04 -4.69984373e-03 -6.08563810e-04 -3.08770570e-04
 #  -7.19536798e-03 -9.03718062e-04  3.66424025e-03  5.86134222e-04
@@ -450,6 +461,13 @@ eval_tracker = {
 # 	st = 16 * j
 # 	en = 16 * (j + 1)
 # 	set_smallest_n_zero(x1[st:en], num_to_silence[j], arr_set=x1[st:en])
+
+if args.load_initial is not None:
+	x0 = load_best_params(args.load_initial)
+else:
+	x0 = np.zeros(14)
+
+print(x0)
 
 # x1 = copy(x0)
 # x1[13] = 2 * 2e-3
