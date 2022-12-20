@@ -102,8 +102,8 @@ rule_names = [ # Define labels for all rules to be run during simulations
 
 rule_names = [
 	[r'$E \rightarrow E$ ' + r_name for r_name in rule_names],
-	[r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
-	[r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
+	# [r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
+	# [r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
 ]
 rule_names = np.array(rule_names).flatten()
 
@@ -113,9 +113,9 @@ w_i_e = -0.3e-4 / dt
 
 # Define r_target, the target dynamics for the network to produce.
 
-amp_range = np.linspace(0.05, 0.25, 5)
-delay_range = np.linspace(3e-3, 5e-3, 10)
-period_range = np.linspace(7e-3, 15e-3, 7)
+amp_range = np.linspace(0.05, 0.35, 10)
+delay_range = np.linspace(1e-3, 5e-3, 10)
+period_range = np.linspace(4e-3, 15e-3, 10)
 offset_range = np.linspace(2e-3, 10e-3, 10)
 
 all_r_targets = []
@@ -199,7 +199,7 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs, loss_m
 			if l_idx < n_e:
 				if l_idx % 1 == 0:
 					axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
-					axs[2 * i][0].plot(t, all_r_targets[loss_min_idx, :, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
+					# axs[2 * i][0].plot(t, all_r_targets[loss_min_idx, :, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
 
 					# axs[2 * i][0].plot(t, 4 * r_exp_filtered[:, l_idx], '-.', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
 			else:
@@ -228,13 +228,13 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs, loss_m
 	# axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(plasticity_coefs)))
 	# axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[plasticity_coefs_argsort], rotation=60, ha='right')
 	# axs[2 * n_res_to_show + 1].set_xlim(-1, len(plasticity_coefs))
-	partial_rules_len = int(len(plasticity_coefs) / 3)
+	partial_rules_len = int(len(plasticity_coefs))
 
 	effects = np.mean(np.array(all_effects), axis=0)
 
 	axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
 	effects_argsort = []
-	for l in range(3):
+	for l in range(1):
 		effects_partial = effects[l * partial_rules_len: (l+1) * partial_rules_len]
 		effects_argsort_partial = np.flip(np.argsort(effects_partial))
 		effects_argsort.append(effects_argsort_partial + l * partial_rules_len)
@@ -243,7 +243,7 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs, loss_m
 	axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
 
 	# plot the coefficients assigned to each plasticity rule (unsorted by size)
-	for l in range(3):
+	for l in range(1):
 		axs[2 * n_res_to_show].bar(np.arange(partial_rules_len) + l * partial_rules_len, plasticity_coefs[l * partial_rules_len: (l+1) * partial_rules_len])
 	axs[2 * n_res_to_show].set_xticks(np.arange(len(plasticity_coefs)))
 	axs[2 * n_res_to_show].set_xticklabels(rule_names, rotation=60, ha='right')
@@ -370,7 +370,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 
 	return loss
 
-x0 = np.zeros(42)
+x0 = np.zeros(14)
 
 eval_tracker = {
 	'evals': 0,
@@ -419,28 +419,31 @@ eval_tracker = {
 # 	en = 16 * (j + 1)
 # 	set_smallest_n_zero(x1[st:en], num_to_silence[j], arr_set=x1[st:en])
 
-# x1 = copy(x0)
-# x1[0] = 1e-2
+x1 = copy(x0)
+x1[13] = 2 * 2e-3
+x1[10] = 2 * -5e-2
+x1[7] = 2 * 1e-2
 
-# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
 
 
-simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
+# simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
 
-options = {
-	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-}
+# options = {
+# 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+# }
 
-x, es = cma.fmin2(
-	partial(simulate_plasticity_rules, eval_tracker=eval_tracker, track_params=True),
-	x0,
-	STD_EXPL,
-	restarts=10,
-	bipop=True,
-	options=options)
+# x, es = cma.fmin2(
+# 	partial(simulate_plasticity_rules, eval_tracker=eval_tracker, track_params=True),
+# 	x0,
+# 	STD_EXPL,
+# 	restarts=10,
+# 	bipop=True,
+# 	options=options)
 
-print(x)
-print(es.result_pretty())
+# print(x)
+# print(es.result_pretty())

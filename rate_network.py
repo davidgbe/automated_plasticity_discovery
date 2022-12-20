@@ -44,10 +44,10 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_
 
     n_params = len(plasticity_coefs)
 
-    w_copy, effects_e_e, effects_e_i, effects_i_e = simulate_inner_loop(t, n_e, n_i, inp, plasticity_coefs, w, w_plastic, tau_stdp, dt, g, w_u, w_scale_factor, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
+    w_copy, effects_e_e = simulate_inner_loop(t, n_e, n_i, inp, plasticity_coefs, w, w_plastic, tau_stdp, dt, g, w_u, w_scale_factor, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
 
     if track_params:
-        return r, s, v, w_copy, np.concatenate([effects_e_e, effects_e_i, effects_i_e]), r_exp_filtered
+        return r, s, v, w_copy, effects_e_e, r_exp_filtered
     else:
         return r, s, v, w_copy, None, r_exp_filtered
 
@@ -77,7 +77,7 @@ def simulate_inner_loop(
     tau : np.ndarray,
     n_params : int):
 
-    one_third_n_params = int(n_params / 3)
+    one_third_n_params = int(n_params)
 
     w_copy = np.copy(w)
     effects_e_e = np.zeros((one_third_n_params))
@@ -147,32 +147,32 @@ def simulate_inner_loop(
             effects_e_e_delta = np.sum(effects_e_e_delta, axis=1)
             effects_e_e += effects_e_e_delta
 
-            dw_e_i_unsummed = plasticity_coefs[one_third_n_params:2*one_third_n_params].reshape(one_third_n_params, 1, 1) * (w_updates_unweighted[:, n_e:, :n_e] * w_plastic[n_e:, :n_e] * w_not_almost_zero[n_e:, :n_e])
-            effects_e_i_delta = np.sum(np.abs(dw_e_i_unsummed), axis=1)
-            effects_e_i_delta = np.sum(effects_e_i_delta, axis=1)
-            effects_e_i += effects_e_i_delta
+            # dw_e_i_unsummed = plasticity_coefs[one_third_n_params:2*one_third_n_params].reshape(one_third_n_params, 1, 1) * (w_updates_unweighted[:, n_e:, :n_e] * w_plastic[n_e:, :n_e] * w_not_almost_zero[n_e:, :n_e])
+            # effects_e_i_delta = np.sum(np.abs(dw_e_i_unsummed), axis=1)
+            # effects_e_i_delta = np.sum(effects_e_i_delta, axis=1)
+            # effects_e_i += effects_e_i_delta
 
-            dw_i_e_unsummed = plasticity_coefs[2 * one_third_n_params:].reshape(one_third_n_params, 1, 1) * (w_updates_unweighted[:, :n_e, n_e:] * w_plastic[:n_e, n_e:] * w_not_almost_zero[:n_e, n_e:])
-            effects_i_e_delta = np.sum(np.abs(dw_i_e_unsummed), axis=1)
-            effects_i_e_delta = np.sum(effects_i_e_delta, axis=1)
-            effects_i_e += effects_i_e_delta
+            # dw_i_e_unsummed = plasticity_coefs[2 * one_third_n_params:].reshape(one_third_n_params, 1, 1) * (w_updates_unweighted[:, :n_e, n_e:] * w_plastic[:n_e, n_e:] * w_not_almost_zero[:n_e, n_e:])
+            # effects_i_e_delta = np.sum(np.abs(dw_i_e_unsummed), axis=1)
+            # effects_i_e_delta = np.sum(effects_i_e_delta, axis=1)
+            # effects_i_e += effects_i_e_delta
 
             dw_e_e = np.sum(dw_e_e_unsummed, axis=0)
-            dw_e_i = np.sum(dw_e_i_unsummed, axis=0)
-            dw_i_e = np.sum(dw_i_e_unsummed, axis=0)
+            # dw_e_i = np.sum(dw_e_i_unsummed, axis=0)
+            # dw_i_e = np.sum(dw_i_e_unsummed, axis=0)
         else:
             # dot updates due to all rules with coefficients for these rules and compute total weight updates. Do not update non-plastic weights.
             dw_e_e = np.sum(plasticity_coefs[:one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, :n_e], axis=0) * w_plastic[:n_e, :n_e]
-            dw_e_i = np.sum(plasticity_coefs[one_third_n_params:2*one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, n_e:, :n_e], axis=0) * w_plastic[n_e:, :n_e]
-            dw_i_e = np.sum(plasticity_coefs[2 * one_third_n_params:].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, n_e:], axis=0) * w_plastic[:n_e, n_e:]
+            # dw_e_i = np.sum(plasticity_coefs[one_third_n_params:2*one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, n_e:, :n_e], axis=0) * w_plastic[n_e:, :n_e]
+            # dw_i_e = np.sum(plasticity_coefs[2 * one_third_n_params:].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, n_e:], axis=0) * w_plastic[:n_e, n_e:]
 
         w_copy[:n_e, :n_e] += (0.0005 * dw_e_e)
-        w_copy[n_e:, :n_e] += (0.0005 * dw_e_i)
-        w_copy[:n_e, n_e:] += (0.0005 * dw_i_e)
+        # w_copy[n_e:, :n_e] += (0.0005 * dw_e_i)
+        # w_copy[:n_e, n_e:] += (0.0005 * dw_i_e)
 
         # if sign of weight is flipped by update, set it to an infinitesimal amount with its initial polarity
         polarity_flip = sign_w * w_copy
         w_copy = np.where(polarity_flip >= 0, w_copy, inf_w)
 
-    return w_copy, effects_e_e, effects_e_i, effects_i_e
+    return w_copy, effects_e_e
 
