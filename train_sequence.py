@@ -55,7 +55,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_very_loose_batch_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_L1_PENALTY_{joined_l1}_{time_stamp}'
+out_dir = f'sims_out/seq_very_loose_batch_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_{time_stamp}'
 os.mkdir(out_dir)
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
@@ -268,7 +268,9 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	# axs[2 * n_res_to_show + 1].set_xlim(-1, len(plasticity_coefs))
 	partial_rules_len = int(len(plasticity_coefs))
 
-	effects = np.mean(np.array(all_effects), axis=0)
+	all_effects = np.array(all_effects)
+	print('effects shape', all_effects.shape)
+	effects = np.mean(all_effects, axis=0)
 
 	axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
 	effects_argsort = []
@@ -276,7 +278,10 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		effects_partial = effects[l * partial_rules_len: (l+1) * partial_rules_len]
 		effects_argsort_partial = np.flip(np.argsort(effects_partial))
 		effects_argsort.append(effects_argsort_partial + l * partial_rules_len)
-		axs[2 * n_res_to_show + 1].bar(np.arange(len(effects_argsort_partial)) + l * partial_rules_len, effects_partial[effects_argsort_partial])
+		x = np.arange(len(effects_argsort_partial)) + l * partial_rules_len
+		axs[2 * n_res_to_show + 1].bar(x, effects_partial[effects_argsort_partial], zorder=0)
+		for i_e in x:
+			axs[2 * n_res_to_show + 1].scatter(i_e * np.ones(all_effects.shape[0]), all_effects[:, effects_argsort_partial][:, i_e], c='black', zorder=1, s=3)
 	axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
 	axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
 
@@ -407,11 +412,6 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 
 	return loss
 
-eval_tracker = {
-	'evals': 0,
-	'best_loss': np.nan,
-}
-
 def load_best_params(file_name):
 	file_path = f'./sims_out/{file_name}/outcmaes/xrecentbest.dat'
 	df_params = read_csv(file_path, read_header=False)
@@ -420,17 +420,7 @@ def load_best_params(file_name):
 	best_params = df_params.iloc[min_loss_idx][5:]
 	return np.array(best_params)
 
-# x1_raw = """-5.84210857e-04 -4.69984373e-03 -6.08563810e-04 -3.08770570e-04
-#  -7.19536798e-03 -9.03718062e-04  3.66424025e-03  5.86134222e-04
-#  -2.55110661e-04 -1.71748437e-05 -1.24012459e-02  5.62621779e-04
-#   8.55613804e-05 -2.88098171e-03  2.44078611e-03 -5.69617436e-03
-#  -1.60676535e-03  4.46757587e-03  3.98040267e-03 -3.96185703e-03
-#   6.79852165e-03 -1.16123852e-02 -3.05628732e-03  5.21102809e-05
-#  -9.66995733e-04  1.07233794e-03 -4.07275810e-03 -7.99966672e-03
-#  -8.27453987e-05  3.62844186e-03 -8.45913615e-04 -3.11724800e-03
-#  -4.12525783e-04  1.21710706e-03 -1.00590113e-02 -3.26697217e-03
-#  -5.96226820e-04 -1.26543603e-02 -2.44419615e-03 -2.63702685e-04
-#  -1.42714617e-03  9.07480854e-03"""
+# x1_raw = """-0.02034539497387768 0.0026896953005440716 0.0021776020199483167 -0.023616172497276378 0.000414558849436069 0.010603651724839316 0.00649088568579818 0.018318881302132703 -0.015742885071624458 0.014302596984638722 -0.03228647349867191 -0.003885826990614104 -0.025788783075151915 -5.093986682840968e-05"""
 # print(x1_raw)
 
 # def process_params_str(s):
@@ -480,6 +470,10 @@ print(x0)
 # simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
 # simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
 
+eval_tracker = {
+	'evals': 0,
+	'best_loss': np.nan,
+}
 
 simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
 
