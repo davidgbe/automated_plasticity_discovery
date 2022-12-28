@@ -14,6 +14,7 @@ import cma
 from numba import njit
 from scipy.sparse import csc_matrix
 from csv_reader import read_csv
+from csv_writer import write_csv
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
@@ -39,25 +40,15 @@ DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
 Q = args.q
-print(Q)
+CALC_TEST_SET_LOSS_FREQ = 11
 
 T = 0.1 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 15 # Number excitatory cells in sequence (also length of sequence)
 n_i = 20 # Number inhibitory cells
-seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
-
-# Make directory for outputting simulations
-if not os.path.exists('sims_out'):
-	os.mkdir('sims_out')
-
-# Make subdirectory for this particular experiment
-time_stamp = str(datetime.now()).replace(' ', '_')
-joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_very_loose_batch_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_{time_stamp}'
-os.mkdir(out_dir)
-os.mkdir(os.path.join(out_dir, 'outcmaes'))
+train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
+test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 
 layer_colors = get_ordered_colors('winter', 15)
 
@@ -112,39 +103,36 @@ rule_names = [
 ]
 rule_names = np.array(rule_names).flatten()
 
+
+# Make directory for outputting simulations
+if not os.path.exists('sims_out'):
+	os.mkdir('sims_out')
+
+# Make subdirectory for this particular experiment
+time_stamp = str(datetime.now()).replace(' ', '_')
+joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
+out_dir = f'sims_out/seq_syn_effects_tracked_batch_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_{time_stamp}'
+os.mkdir(out_dir)
+
+# Make subdirectory for outputting CMAES info
+os.mkdir(os.path.join(out_dir, 'outcmaes'))
+
+# Made CSVs for outputting train & test data
+header = ['evals', 'loss'] + [f'true_loss_{i}' for i in np.arange(BATCH_SIZE)]
+header += list(rule_names)
+header += ['effect_means']
+header += ['effect_stds']
+
+train_data_path = os.path.join(out_dir, 'train_data.csv')
+write_csv(train_data_path, header)
+
+test_data_path = os.path.join(out_dir, 'test_data.csv')
+write_csv(test_data_path, header)
+
+
 w_e_e = 0.8e-3 / dt
 w_e_i = 0.5e-4 / dt
 w_i_e = -0.3e-4 / dt
-
-# Define r_target, the target dynamics for the network to produce.
-
-# amp_range = np.linspace(0.05, 0.35, 10)
-# delay_range = np.linspace(1e-3, 5e-3, 10)
-# period_range = np.linspace(4e-3, 15e-3, 10)
-# offset_range = np.linspace(2e-3, 10e-3, 10)
-
-# all_r_targets = []
-
-
-# for amp in amp_range:
-# 	for delay in delay_range:
-# 		for period in period_range:
-# 			for offset in offset_range:
-# 				r_target = np.zeros((len(t), n_e))
-# 				for i in range(1, n_e):
-# 					active_range = (delay * i + offset, delay * i + period + offset)
-# 					n_t_steps = int(period / dt)
-# 					t_step_start = int(active_range[0] / dt)
-# 					r_target[t_step_start:(t_step_start + n_t_steps), i] = amp * np.sin(np.pi/period * dt * np.arange(n_t_steps))
-# 				all_r_targets.append(r_target)
-
-
-# sparse_r_targets = csc_matrix([r[:, 1:n_e].flatten() for r in all_r_targets])
-
-# all_r_targets = np.stack(all_r_targets)
-# all_r_target_sums = np.sum(all_r_targets, axis=(1, 2))
-# all_r_target_sums_squared = np.square(all_r_target_sums)
-
 
 def make_network():
 	'''
@@ -165,21 +153,8 @@ def make_network():
 	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
 
 	np.fill_diagonal(w_initial, 0)
-
 	return w_initial
 
-def l2_loss(r : np.ndarray, r_targets : csc_matrix):
-	'''
-	Calculates SSE between r, network activity, and r_target, target network activity
-	'''
-	if np.isnan(r).any():
-		return 1e8
-
-	flattened_r = r[:, 1:n_e].flatten()
-	repeated_r = csc_matrix([flattened_r for i in range(r_targets.shape[0])])
-	prospective_losses = np.asarray((repeated_r - r_targets).power(2).sum(axis=1)).flatten() / all_r_target_sums_squared
-
-	return prospective_losses
 
 def calc_loss(r : np.ndarray):
 
@@ -210,11 +185,10 @@ def calc_loss(r : np.ndarray):
 				loss += 1 / (1 + np.exp((t_means[i+1] - t_means[i] - 5e-4) / 1e-4))
 		else:
 			loss += 100
-
 	return loss
 
 
-def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties):
+def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True):
 	scale = 3
 	n_res_to_show = BATCH_SIZE
 
@@ -305,25 +279,22 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	evals = eval_tracker['evals']
 
 	fig.tight_layout()
-	fig.savefig(f'{out_dir}/{zero_padding}{evals}.png')
+	if train:
+		fig.savefig(f'{out_dir}/{zero_padding}{evals}.png')
+	else:
+		fig.savefig(f'{out_dir}/{zero_padding}{evals}_test.png')
 	plt.close('all')
 
-def weight_change_penalty(weight_deltas, s=30):
-	n = len(weight_deltas)
-	b = np.exp(1/s)
-	a = (1 - b) / (b * (1 - np.power(b, n))) # this normalizes total weight change penalty to 1
-	return a * np.power(b, np.arange(1, n + 1))
 
-def mcp_penalty(plasticity_coefs):
-	coefs_abs = np.abs(plasticity_coefs)
-	return MCP_T * np.sum(np.where(coefs_abs >= MCP_S, 1, (2 * coefs_abs / MCP_S) - np.square(coefs_abs / MCP_S)))
-
-def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=False):
+def simulate_single_network(index, plasticity_coefs, track_params=False, train=True):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
 	if FIXED_DATA:
-		np.random.seed(seeds[index])
+		if train:
+			np.random.seed(train_seeds[index])
+		else:
+			np.random.seed(test_seeds[index])
 	else:
 		np.random.seed()
 
@@ -373,16 +344,24 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
 	normed_loss = cumulative_loss / 5
-
 	return r, w, w_initial, normed_loss, all_effects, all_weight_deltas, r_exp_filtered
 
-# Function to minimize (including simulation)
 
-def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=False):
+def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects):
+	# eval_num, loss, true_losses, plastic_coefs, syn_effects
+	syn_effect_means = np.mean(syn_effects, axis=0)
+	syn_effect_stds = np.std(syn_effects, axis=0)
+	to_save = np.concatenate([[eval_tracker['evals'], loss], true_losses, plasticity_coefs, syn_effect_means, syn_effect_stds]).flatten()
+	print(to_save)
+	write_csv(write_path, list(to_save))
+
+
+# Function to minimize (including simulation)
+def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=False, train=True):
 	start = time.time()
 
 	pool = mp.Pool(POOL_SIZE)
-	f = partial(simulate_single_network, plasticity_coefs=plasticity_coefs, track_params=track_params)
+	f = partial(simulate_single_network, plasticity_coefs=plasticity_coefs, track_params=track_params, train=train)
 	results = pool.map(f, np.arange(BATCH_SIZE))
 	pool.close()
 
@@ -398,19 +377,34 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 	loss = np.sum(losses)
 
 	if eval_tracker is not None:
-		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
-			if eval_tracker['evals'] > 0:
-				eval_tracker['best_loss'] = loss
-			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties)
-		eval_tracker['evals'] += 1
+		if train:
+			if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
+				if eval_tracker['evals'] > 0:
+					eval_tracker['best_loss'] = loss
+					eval_tracker['best_changed'] = True
+				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
+			eval_tracker['evals'] += 1
+		else:
+			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=False)
 
 	dur = time.time() - start
 	print('duration:', dur)
 	print('guess:', plasticity_coefs)
 	print('loss:', loss)
 	print('')
+	return loss, true_losses, syn_effects
 
+
+def plasticity_coefs_eval_wrapper(plasticity_coefs, eval_tracker=None, track_params=False):
+	if eval_tracker['evals'] > 0 and eval_tracker['evals'] % CALC_TEST_SET_LOSS_FREQ == 0 and eval_tracker['best_changed']:
+		loss, true_losses, syn_effects = simulate_plasticity_rules(plasticity_coefs, eval_tracker=eval_tracker, track_params=track_params, train=False)
+		eval_tracker['best_changed'] = False
+		log_sim_results(test_data_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects)
+
+	loss, true_losses, syn_effects = simulate_plasticity_rules(plasticity_coefs, eval_tracker=eval_tracker, track_params=track_params, train=True)
+	log_sim_results(train_data_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects)
 	return loss
+
 
 def load_best_params(file_name):
 	file_path = f'./sims_out/{file_name}/outcmaes/xrecentbest.dat'
@@ -420,7 +414,8 @@ def load_best_params(file_name):
 	best_params = df_params.iloc[min_loss_idx][5:]
 	return np.array(best_params)
 
-# x1_raw = """-0.02034539497387768 0.0026896953005440716 0.0021776020199483167 -0.023616172497276378 0.000414558849436069 0.010603651724839316 0.00649088568579818 0.018318881302132703 -0.015742885071624458 0.014302596984638722 -0.03228647349867191 -0.003885826990614104 -0.025788783075151915 -5.093986682840968e-05"""
+
+# x1_raw = """-0.00010793665215095119 -0.0077226235932765 -0.0007816865595492941 -0.03318025977609449 0.008092421601561416 -6.407613106235442e-05 8.610610693006271e-05 4.427703899099249e-05 -0.05225696475640676 0.10582698186377604 -0.05720473550010104 0.000190178600002215 -0.0016783840840024033 0.0028419457171027927"""
 # print(x1_raw)
 
 # def process_params_str(s):
@@ -432,25 +427,6 @@ def load_best_params(file_name):
 # 	return np.array(params)
 
 # x1 = process_params_str(x1_raw)
-
-# effect_sizes = np.array([5.27751763e+05, 6.18235136e+04, 5.21351071e+04, 1.34717956e+04,
-#  1.05863156e+03, 3.63087241e+05, 4.24716499e+05, 7.99887936e+04,
-#  1.68607385e+05, 2.99179664e+04, 3.35792818e+04, 3.28196266e+04,
-#  6.71993169e+04, 1.24480543e+05, 1.86945603e+05, 6.87652031e+04,
-#  3.56412481e+05, 1.68045926e+05, 3.30536029e+05, 3.10001561e+05,
-#  7.03971418e+04, 9.15983754e+05, 6.24189161e+05, 9.16165296e+04,
-#  6.88224954e+05, 1.49140300e+05, 8.99853529e+04, 9.69494421e+04,
-#  7.87418244e+04, 3.96323730e+05, 2.09012209e+05, 4.29591886e+03,
-#  3.54434827e+06, 8.62402443e+04, 1.63261431e+05, 1.61037923e+05,
-#  4.59451709e+03, 1.32908452e+06, 2.19338468e+06, 8.66411375e+04,
-#  8.67751299e+05, 3.82004006e+04, 5.59146540e+04, 4.17414558e+04,
-#  9.47268052e+04, 7.05007186e+04, 5.89641175e+05, 4.11536245e+04,])
-
-# num_to_silence = [0, 16, 16]
-# for j in range(3):
-# 	st = 16 * j
-# 	en = 16 * (j + 1)
-# 	set_smallest_n_zero(x1[st:en], num_to_silence[j], arr_set=x1[st:en])
 
 if args.load_initial is not None:
 	x0 = load_best_params(args.load_initial)
@@ -464,25 +440,22 @@ print(x0)
 # x1[10] = 2 * -5e-2
 # x1[7] = 2 * 1e-2
 
-# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-
 eval_tracker = {
 	'evals': 0,
 	'best_loss': np.nan,
+	'best_changed': False,
 }
 
-simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
+# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+
+plasticity_coefs_eval_wrapper(x0, eval_tracker=eval_tracker, track_params=True)
 
 options = {
 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
 }
 
 x, es = cma.fmin2(
-	partial(simulate_plasticity_rules, eval_tracker=eval_tracker, track_params=True),
+	partial(plasticity_coefs_eval_wrapper, eval_tracker=eval_tracker, track_params=True),
 	x0,
 	STD_EXPL,
 	restarts=10,
