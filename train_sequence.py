@@ -40,7 +40,7 @@ DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
 Q = args.q
-CALC_TEST_SET_LOSS_FREQ = 11
+CALC_TEST_SET_LOSS_FREQ = 15
 
 T = 0.1 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -98,8 +98,8 @@ rule_names = [ # Define labels for all rules to be run during simulations
 
 rule_names = [
 	[r'$E \rightarrow E$ ' + r_name for r_name in rule_names],
-	# [r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
-	# [r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
+	[r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
+	[r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
 ]
 rule_names = np.array(rule_names).flatten()
 
@@ -240,7 +240,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	# axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(plasticity_coefs)))
 	# axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[plasticity_coefs_argsort], rotation=60, ha='right')
 	# axs[2 * n_res_to_show + 1].set_xlim(-1, len(plasticity_coefs))
-	partial_rules_len = int(len(plasticity_coefs))
+	partial_rules_len = int(len(plasticity_coefs) / 3)
 
 	all_effects = np.array(all_effects)
 	print('effects shape', all_effects.shape)
@@ -248,14 +248,14 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 
 	axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
 	effects_argsort = []
-	for l in range(1):
+	for l in range(3):
 		effects_partial = effects[l * partial_rules_len: (l+1) * partial_rules_len]
 		effects_argsort_partial = np.flip(np.argsort(effects_partial))
 		effects_argsort.append(effects_argsort_partial + l * partial_rules_len)
 		x = np.arange(len(effects_argsort_partial)) + l * partial_rules_len
 		axs[2 * n_res_to_show + 1].bar(x, effects_partial[effects_argsort_partial], zorder=0)
 		for i_e in x:
-			axs[2 * n_res_to_show + 1].scatter(i_e * np.ones(all_effects.shape[0]), all_effects[:, effects_argsort_partial][:, i_e], c='black', zorder=1, s=3)
+			axs[2 * n_res_to_show + 1].scatter(i_e * np.ones(all_effects.shape[0]), all_effects[:, effects_argsort_partial][:, i_e % partial_rules_len], c='black', zorder=1, s=3)
 	axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
 	axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
 
@@ -264,7 +264,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	axs[2 * n_res_to_show].set_title(f'Loss: {true_loss + syn_effect_penalty}, {true_loss}, {syn_effect_penalty}')
 
 	# plot the coefficients assigned to each plasticity rule (unsorted by size)
-	for l in range(1):
+	for l in range(3):
 		axs[2 * n_res_to_show].bar(np.arange(partial_rules_len) + l * partial_rules_len, plasticity_coefs[l * partial_rules_len: (l+1) * partial_rules_len])
 	axs[2 * n_res_to_show].set_xticks(np.arange(len(plasticity_coefs)))
 	axs[2 * n_res_to_show].set_xticklabels(rule_names, rotation=60, ha='right')
@@ -432,7 +432,7 @@ def load_best_params(file_name):
 if args.load_initial is not None:
 	x0 = load_best_params(args.load_initial)
 else:
-	x0 = np.zeros(14)
+	x0 = np.zeros(42)
 
 print(x0)
 
