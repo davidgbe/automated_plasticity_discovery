@@ -427,6 +427,7 @@ def load_best_params(file_name):
 # 	return np.array(params)
 
 # x1 = process_params_str(x1_raw)
+# x1 = np.array([0, 0, 0, 0, 0, 0, 0, 0.00450943, 0, 0, -0.03998377, 0, -0.05242701, 0.0052274])
 
 if args.load_initial is not None:
 	x0 = load_best_params(args.load_initial)
@@ -435,18 +436,11 @@ else:
 
 print(x0)
 
-# x1 = copy(x0)
-# x1[13] = 2 * 2e-3
-# x1[10] = 2 * -5e-2
-# x1[7] = 2 * 1e-2
-
 eval_tracker = {
 	'evals': 0,
 	'best_loss': np.nan,
 	'best_changed': False,
 }
-
-# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
 
 plasticity_coefs_eval_wrapper(x0, eval_tracker=eval_tracker, track_params=True)
 
