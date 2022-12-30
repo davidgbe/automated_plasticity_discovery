@@ -22,7 +22,7 @@ cd /mmfs1/gscratch/labfairhall/davidgbe
 source davidgbe-env/bin/activate
 cd $CURRDIR
 
-python ring_attractor_test.py
+python train_ring.py --std_expl 0.025 --l1_pen 50 --pool_size 10 --batch 10
 
 deactivate
 

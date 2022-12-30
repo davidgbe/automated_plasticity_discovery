@@ -85,3 +85,21 @@ def dropout_on_mat(mat, percent, min_idx=0, max_idx=None):
     m = copy(mat)
     m[:, survival_indices == 0] = 0
     return m, survival_indices
+
+def rev_argsort(arr):
+    arr_argsort = np.flip(np.argsort(arr))
+    rev_argsorted = np.zeros(len(arr))
+    for i, ind in enumerate(arr_argsort):
+        rev_argsorted[ind] = i
+    return rev_argsorted
+
+def set_smallest_n_zero(arr_ref, n, arr_set=None):
+    if arr_set is None:
+        arr_set = copy(arr_ref)
+
+    sort_indices = rev_argsort(np.abs(arr_ref))
+
+    for i, sort_i in enumerate(sort_indices):
+        if sort_i >= (len(arr_ref) - n):
+            arr_set[i] = 0
+    return arr_set
