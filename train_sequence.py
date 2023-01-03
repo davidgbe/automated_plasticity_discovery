@@ -111,7 +111,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_syn_effects_tracked_batch_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_{time_stamp}'
+out_dir = f'sims_out/seq_syn_effects_tracked_2_batch_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -255,7 +255,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		x = np.arange(len(effects_argsort_partial)) + l * partial_rules_len
 		axs[2 * n_res_to_show + 1].bar(x, effects_partial[effects_argsort_partial], zorder=0)
 		for i_e in x:
-			axs[2 * n_res_to_show + 1].scatter(i_e * np.ones(all_effects.shape[0]), all_effects[:, effects_argsort_partial][:, i_e % partial_rules_len], c='black', zorder=1, s=3)
+			axs[2 * n_res_to_show + 1].scatter(i_e * np.ones(all_effects.shape[0]), all_effects[:, effects_argsort_partial + l * partial_rules_len][:, i_e % partial_rules_len], c='black', zorder=1, s=3)
 	axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
 	axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
 
@@ -328,7 +328,7 @@ def simulate_single_network(index, plasticity_coefs, track_params=False, train=T
 			# print(time.time() - loss_start)
 			cumulative_loss += loss
 
-		if np.isnan(r).any(): # if simulation turns up nans in firing rate matrix, end the simulation
+		if np.isnan(r).any() or (np.abs(w_out) > 100).any(): # if simulation turns up nans in firing rate matrix, end the simulation
 			cumulative_loss += 1e8
 			break
 
