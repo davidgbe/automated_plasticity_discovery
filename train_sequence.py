@@ -18,6 +18,8 @@ from csv_writer import write_csv
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
+np.random.seed(1000)
+
 ### Parse arguments 
 
 parser = argparse.ArgumentParser()
@@ -34,7 +36,7 @@ print(args)
 
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (190, 200) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (199, 200) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -382,7 +384,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 				if eval_tracker['evals'] > 0:
 					eval_tracker['best_loss'] = loss
 					eval_tracker['best_changed'] = True
-				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
+				# plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
 			eval_tracker['evals'] += 1
 		else:
 			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=False)
@@ -415,26 +417,28 @@ def load_best_params(file_name):
 	return np.array(best_params)
 
 
-# x1_raw = """-0.00010793665215095119 -0.0077226235932765 -0.0007816865595492941 -0.03318025977609449 0.008092421601561416 -6.407613106235442e-05 8.610610693006271e-05 4.427703899099249e-05 -0.05225696475640676 0.10582698186377604 -0.05720473550010104 0.000190178600002215 -0.0016783840840024033 0.0028419457171027927"""
-# print(x1_raw)
+x1_raw = """-2.33995094e-04 -2.77033353e-02 -1.90610918e-03 -3.77320599e-02
+  1.41528513e-02 -1.47862599e-03  2.43366170e-04  1.72672313e-03
+ -8.30256785e-05  3.39229640e-02 -1.60501454e-02  3.40249709e-04
+ -1.07423732e-01  6.99329604e-03"""
+print(x1_raw)
 
-# def process_params_str(s):
-# 	params = []
-# 	for x in s.split(' '):
-# 		x = x.replace('\n', '')
-# 		if x is not '':
-# 			params.append(float(x))
-# 	return np.array(params)
+def process_params_str(s):
+	params = []
+	for x in s.split(' '):
+		x = x.replace('\n', '')
+		if x is not '':
+			params.append(float(x))
+	return np.array(params)
 
-# x1 = process_params_str(x1_raw)
-# x1 = np.array([0, 0, 0, 0, 0, 0, 0, 0.00450943, 0, 0, -0.03998377, 0, -0.05242701, 0.0052274])
+x1 = process_params_str(x1_raw)
 
-if args.load_initial is not None:
-	x0 = load_best_params(args.load_initial)
-else:
-	x0 = np.zeros(14)
+# if args.load_initial is not None:
+# 	x0 = load_best_params(args.load_initial)
+# else:
+# 	x0 = np.zeros(42)
 
-print(x0)
+# print(x0)
 
 eval_tracker = {
 	'evals': 0,
@@ -442,19 +446,17 @@ eval_tracker = {
 	'best_changed': False,
 }
 
-plasticity_coefs_eval_wrapper(x0, eval_tracker=eval_tracker, track_params=True)
+plasticity_coefs_eval_wrapper(x1, eval_tracker=eval_tracker, track_params=True)
 
-options = {
-	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-}
+# for i in range(len(x1)):
 
-x, es = cma.fmin2(
-	partial(plasticity_coefs_eval_wrapper, eval_tracker=eval_tracker, track_params=True),
-	x0,
-	STD_EXPL,
-	restarts=10,
-	bipop=True,
-	options=options)
+# 	x1_drop = copy(x1)
+# 	x1_drop[i] = 0
 
-print(x)
-print(es.result_pretty())
+# 	eval_tracker = {
+# 		'evals': i + 1,
+# 		'best_loss': np.nan,
+# 		'best_changed': False,
+# 	}
+
+# 	plasticity_coefs_eval_wrapper(x1_drop, eval_tracker=eval_tracker, track_params=True)
