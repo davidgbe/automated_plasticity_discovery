@@ -182,7 +182,7 @@ def calc_loss(r : np.ndarray):
 
 	t_means_nan = copy(t_means)
 	t_means_nan[~r_active_mask] = np.nan
-	t_means_diffs = t_means_nan[1:] - t_means_nan[:-1]
+	t_means_diffs = t_means_nan[1:] - t_means_nan[0]
 
 	loss = 0
 	activity_loss = 0
@@ -373,7 +373,7 @@ def simulate_single_network(index, plasticity_coefs, track_params=False, train=T
 		mean_active_time_means = np.nanmean(all_mean_active_time_diffs, axis=0)
 
 		non_nan_non_zero = np.bitwise_and(~np.isnan(mean_active_time_means), mean_active_time_means != 0)
-		mean_active_time_normed_stds = np.where(non_nan_non_zero, mean_active_time_stds / mean_active_time_means, 0)
+		mean_active_time_normed_stds = np.where(non_nan_non_zero, mean_active_time_stds / np.abs(mean_active_time_means), 0)
 
 		print('jitter_penalty:', ACTIVITY_JITTER_COEF * np.sum(mean_active_time_normed_stds))
 		print('activity_loss:', total_activity_loss / 5)
