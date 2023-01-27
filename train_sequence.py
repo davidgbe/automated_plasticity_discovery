@@ -18,7 +18,7 @@ from csv_writer import write_csv
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
-np.random.seed(1000)
+np.random.seed(1002)
 
 ### Parse arguments 
 
@@ -36,7 +36,7 @@ print(args)
 
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (199, 200) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (999, 1000) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -68,6 +68,7 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	# r'$x \, y_{int}$',
 	# r'$x_{int}$',
 	r'$x_{int} \, y$',
+	r'$x_{int} \, y^2$',
 
 	r'$w$',
 	r'$w \, y$',
@@ -82,6 +83,7 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	# r'$w x \, y_{int}$',
 	# r'$w x_{int}$',
 	r'$w x_{int} \, y$',
+	r'$w x_{int} \, y^2$',
 
 	# r'$w^2$',
 	# r'$w^2 \, y$',
@@ -210,6 +212,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		all_effects.append(effects)
 
 		for l_idx in range(r.shape[1]):
+			axs[2 * i][0].set_ylim(0, 0.6)
 			if l_idx < n_e:
 				if l_idx % 1 == 0:
 					axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
@@ -288,7 +291,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	plt.close('all')
 
 
-def simulate_single_network(index, plasticity_coefs, track_params=False, train=True):
+def simulate_single_network(index, plasticity_coefs, r_in_amp, track_params=False, train=True):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
@@ -318,8 +321,7 @@ def simulate_single_network(index, plasticity_coefs, track_params=False, train=T
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
-		input_amp = np.random.rand() * 0.002 + 0.01
-		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=input_amp) # Drive first excitatory cell with Gaussian input
+		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=r_in_amp) # Drive first excitatory cell with Gaussian input
 
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
@@ -359,11 +361,11 @@ def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coef
 
 
 # Function to minimize (including simulation)
-def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=False, train=True):
+def simulate_plasticity_rules(plasticity_coefs, r_in_amp=None, eval_tracker=None, track_params=False, train=True):
 	start = time.time()
 
 	pool = mp.Pool(POOL_SIZE)
-	f = partial(simulate_single_network, plasticity_coefs=plasticity_coefs, track_params=track_params, train=train)
+	f = partial(simulate_single_network, plasticity_coefs=plasticity_coefs, r_in_amp=r_in_amp, track_params=track_params, train=train)
 	results = pool.map(f, np.arange(BATCH_SIZE))
 	pool.close()
 
@@ -384,7 +386,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 				if eval_tracker['evals'] > 0:
 					eval_tracker['best_loss'] = loss
 					eval_tracker['best_changed'] = True
-				# plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
+				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
 			eval_tracker['evals'] += 1
 		else:
 			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=False)
@@ -397,17 +399,6 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 	return loss, true_losses, syn_effects
 
 
-def plasticity_coefs_eval_wrapper(plasticity_coefs, eval_tracker=None, track_params=False):
-	if eval_tracker['evals'] > 0 and eval_tracker['evals'] % CALC_TEST_SET_LOSS_FREQ == 0 and eval_tracker['best_changed']:
-		loss, true_losses, syn_effects = simulate_plasticity_rules(plasticity_coefs, eval_tracker=eval_tracker, track_params=track_params, train=False)
-		eval_tracker['best_changed'] = False
-		log_sim_results(test_data_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects)
-
-	loss, true_losses, syn_effects = simulate_plasticity_rules(plasticity_coefs, eval_tracker=eval_tracker, track_params=track_params, train=True)
-	log_sim_results(train_data_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects)
-	return loss
-
-
 def load_best_params(file_name):
 	file_path = f'./sims_out/{file_name}/outcmaes/xrecentbest.dat'
 	df_params = read_csv(file_path, read_header=False)
@@ -418,9 +409,9 @@ def load_best_params(file_name):
 
 
 x1_raw = """-2.33995094e-04 -2.77033353e-02 -1.90610918e-03 -3.77320599e-02
-  1.41528513e-02 -1.47862599e-03  2.43366170e-04  1.72672313e-03
+  1.41528513e-02 -1.47862599e-03  2.43366170e-04  0 1.72672313e-03
  -8.30256785e-05  3.39229640e-02 -1.60501454e-02  3.40249709e-04
- -1.07423732e-01  6.99329604e-03"""
+ -1.07423732e-01  6.99329604e-03 0""" # -0.5e-02
 print(x1_raw)
 
 def process_params_str(s):
@@ -432,6 +423,9 @@ def process_params_str(s):
 	return np.array(params)
 
 x1 = process_params_str(x1_raw)
+# x1[:-3] = 0
+# x1[-1] = 0
+# x1[-4] = process_params_str(x1_raw)[-2] * 0.8
 
 # if args.load_initial is not None:
 # 	x0 = load_best_params(args.load_initial)
@@ -440,23 +434,10 @@ x1 = process_params_str(x1_raw)
 
 # print(x0)
 
-eval_tracker = {
-	'evals': 0,
-	'best_loss': np.nan,
-	'best_changed': False,
-}
-
-plasticity_coefs_eval_wrapper(x1, eval_tracker=eval_tracker, track_params=True)
-
-# for i in range(len(x1)):
-
-# 	x1_drop = copy(x1)
-# 	x1_drop[i] = 0
-
-# 	eval_tracker = {
-# 		'evals': i + 1,
-# 		'best_loss': np.nan,
-# 		'best_changed': False,
-# 	}
-
-# 	plasticity_coefs_eval_wrapper(x1_drop, eval_tracker=eval_tracker, track_params=True)
+for i, r_in_amp in enumerate(np.linspace(0.005, 0.02, 10)):
+	eval_tracker = {
+		'evals': i,
+		'best_loss': np.nan,
+		'best_changed': False,
+	}
+	simulate_plasticity_rules(x1, r_in_amp=r_in_amp, eval_tracker=eval_tracker, track_params=True, train=False)
