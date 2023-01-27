@@ -162,7 +162,7 @@ def make_network():
 def calc_loss(r : np.ndarray):
 
 	if np.isnan(r).any():
-		return 1e8
+		return 1e8, 0, 0
 
 	r_exc = r[:, :n_e]
 
@@ -422,7 +422,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
 			eval_tracker['evals'] += 1
 		else:
-			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=False)
+			plot_results(results, eval_tracker, out_dir, eval_tracker['plasticity_coefs'], true_losses, syn_effect_penalties, train=False)
 
 	dur = time.time() - start
 	print('duration:', dur)
