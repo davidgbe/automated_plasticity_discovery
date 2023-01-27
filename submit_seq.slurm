@@ -8,7 +8,7 @@
 
 #SBATCH --nodes=1
 #SBATCH --time=72:00:00
-#SBATCH --ntasks=11
+#SBATCH --ntasks=32
 #SBATCH --mem=20G
 
 #SBATCH --chdir=.
@@ -22,7 +22,7 @@ cd /mmfs1/gscratch/labfairhall/davidgbe
 source davidgbe-env/bin/activate
 cd $CURRDIR
 
-python train_sequence.py --std_expl 0.005 --pool_size 10 --batch 30 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --q 1
+python train_sequence.py --std_expl 0.005 --pool_size 30 --batch 30 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1
 # python train_sequence.py --std_expl 0.005 --pool_size 10 --batch 30 --fixed_data 1 --l1_pen 1e-7 1e-7 1e-7 --q 1
 # python train_sequence.py --std_expl 0.005 --pool_size 10 --batch 30 --fixed_data 1 --l1_pen 5e-8 5e-8 5e-8 --q 1
 

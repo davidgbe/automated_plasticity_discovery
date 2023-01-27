@@ -18,8 +18,6 @@ from csv_writer import write_csv
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
-np.random.seed(1001)
-
 ### Parse arguments 
 
 parser = argparse.ArgumentParser()
@@ -63,12 +61,13 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	# r'$x^2$',
 	r'$x \, y$',
 	r'$x \, y^2$',
-	# r'$x^2 \, y$',
+	r'$x^2 \, y$',
 	# r'$x^2 \, y^2$',
 	# r'$y_{int}$',
 	# r'$x \, y_{int}$',
 	# r'$x_{int}$',
 	r'$x_{int} \, y$',
+	r'$x_{int} \, y^2$',
 
 	r'$w$',
 	r'$w \, y$',
@@ -77,12 +76,13 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	# r'$w \, x^2$',
 	r'$w \, x \, y$',
 	r'$w \, x \, y^2$',
-	# r'$w \, x^2 \, y$',
+	r'$w \, x^2 \, y$',
 	# r'$w \, x^2 \, y^2$',
 	# r'$w y_{int}$',
 	# r'$w x \, y_{int}$',
 	# r'$w x_{int}$',
 	r'$w x_{int} \, y$',
+	r'$w x_{int} \, y^2$',
 
 	# r'$w^2$',
 	# r'$w^2 \, y$',
@@ -418,7 +418,8 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 				if eval_tracker['evals'] > 0:
 					eval_tracker['best_loss'] = loss
 					eval_tracker['best_changed'] = True
-			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
+					eval_tracker['plasticity_coefs'] = copy(plasticity_coefs)
+				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
 			eval_tracker['evals'] += 1
 		else:
 			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=False)
@@ -435,7 +436,7 @@ def plasticity_coefs_eval_wrapper(plasticity_coefs, eval_tracker=None, track_par
 	if eval_tracker['evals'] > 0 and eval_tracker['evals'] % CALC_TEST_SET_LOSS_FREQ == 0 and eval_tracker['best_changed']:
 		loss, true_losses, syn_effects = simulate_plasticity_rules(plasticity_coefs, eval_tracker=eval_tracker, track_params=track_params, train=False)
 		eval_tracker['best_changed'] = False
-		log_sim_results(test_data_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects)
+		log_sim_results(test_data_path, eval_tracker, loss, true_losses, eval_tracker['plasticity_coefs'], syn_effects)
 
 	loss, true_losses, syn_effects = simulate_plasticity_rules(plasticity_coefs, eval_tracker=eval_tracker, track_params=track_params, train=True)
 	log_sim_results(train_data_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects)
@@ -468,10 +469,10 @@ def load_best_params(file_name):
 if args.load_initial is not None:
 	x0 = load_best_params(args.load_initial)
 else:
-	x0 = np.zeros(14)
+	x0 = np.zeros(18)
 
-x0[-1] = 0.005
-x0[-4] = -0.06
+# x0[-1] = 0.005
+# x0[-4] = -0.06
 
 print(x0)
 
@@ -483,17 +484,17 @@ eval_tracker = {
 
 plasticity_coefs_eval_wrapper(x0, eval_tracker=eval_tracker, track_params=True)
 
-# options = {
-# 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-# }
+options = {
+	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+}
 
-# x, es = cma.fmin2(
-# 	partial(plasticity_coefs_eval_wrapper, eval_tracker=eval_tracker, track_params=True),
-# 	x0,
-# 	STD_EXPL,
-# 	restarts=10,
-# 	bipop=True,
-# 	options=options)
+x, es = cma.fmin2(
+	partial(plasticity_coefs_eval_wrapper, eval_tracker=eval_tracker, track_params=True),
+	x0,
+	STD_EXPL,
+	restarts=10,
+	bipop=True,
+	options=options)
 
-# print(x)
-# print(es.result_pretty())
+print(x)
+print(es.result_pretty())

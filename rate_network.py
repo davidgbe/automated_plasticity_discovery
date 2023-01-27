@@ -117,8 +117,10 @@ def simulate_inner_loop(
 
         r_0_r_exp = np.outer(r_exp_filtered[i+1, :], r_0_pow) / tau_stdp
         r_1_r_exp = np.outer(r_exp_filtered[i+1, :], r_1_pow) / tau_stdp
+        r_2_r_exp = np.outer(r_exp_filtered[i+1, :], r_2_pow) / tau_stdp
         r_exp_r_0 = r_0_r_exp.T
         r_exp_r_1 = r_1_r_exp.T
+        r_exp_r_2 = r_2_r_exp.T
 
         r_cross_products = np.stack((
             r_0_r_0,
@@ -128,12 +130,13 @@ def simulate_inner_loop(
             # r_2_r_0,
             r_1_r_1,
             r_1_r_2,
-            # r_2_r_1,
+            r_2_r_1,
             # r_2_r_2,
             # r_0_r_exp,
             # r_1_r_exp,
             # r_exp_r_0,
             r_exp_r_1,
+            r_exp_r_2,
         ))
 
         # multiply firing rate outer products by 1 and w to form rules that do and do not scale with synapse size to form all updates for all rules
