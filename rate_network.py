@@ -115,9 +115,9 @@ def simulate_inner_loop(
         r_2_r_1 = r_1_r_2.T
         r_2_r_2 = np.outer(r_2_pow, r_2_pow)
 
-        r_0_r_exp = np.outer(r_exp_filtered[i+1, :], r_0_pow) / 0.1
-        r_1_r_exp = np.outer(r_exp_filtered[i+1, :], r_1_pow) / 0.1
-        r_2_r_exp = np.outer(r_exp_filtered[i+1, :], r_2_pow) / 0.1
+        r_0_r_exp = np.outer(r_exp_filtered[i+1, :], r_0_pow) / tau_stdp
+        r_1_r_exp = np.outer(r_exp_filtered[i+1, :], r_1_pow) / tau_stdp
+        r_2_r_exp = np.outer(r_exp_filtered[i+1, :], r_2_pow) / tau_stdp
         r_exp_r_0 = r_0_r_exp.T
         r_exp_r_1 = r_1_r_exp.T
         r_exp_r_2 = r_2_r_exp.T

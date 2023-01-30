@@ -18,6 +18,8 @@ from csv_writer import write_csv
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
+np.random.seed(5)
+
 ### Parse arguments 
 
 parser = argparse.ArgumentParser()
@@ -114,7 +116,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_ee_jitter_pen_batch_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_{time_stamp}'
+out_dir = f'sims_out/seq_ee_jitter_pen_rescaled_batch_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -161,10 +163,11 @@ def make_network():
 
 def calc_loss(r : np.ndarray):
 
-	if np.isnan(r).any():
-		return 1e8, 0, 0
-
 	r_exc = r[:, :n_e]
+
+	if np.isnan(r).any():
+		print('happens')
+		return 1e8, np.nan * np.zeros(r_exc.shape[1] - 1), 0
 
 	r_summed = np.sum(r_exc, axis=0)
 	r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
@@ -221,7 +224,13 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 
 	for i in np.arange(BATCH_SIZE):
 		# for each network in the batch, graph its excitatory, inhibitory activity, as well as the target activity
-		r, w, w_initial, normed_loss, effects, all_weight_deltas, r_exp_filtered = results[i]
+		res = results[i]
+		r = res['r']
+		r_exp_filtered = res['r_exp_filtered']
+		w = res['w']
+		w_initial = res['w_initial']
+		effects = res['syn_effects']
+		all_weight_deltas = res['all_weight_deltas']
 
 		all_effects.append(effects)
 
@@ -261,7 +270,6 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	partial_rules_len = int(len(plasticity_coefs))
 
 	all_effects = np.array(all_effects)
-	print('effects shape', all_effects.shape)
 	effects = np.mean(all_effects, axis=0)
 
 	axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
@@ -332,6 +340,8 @@ def simulate_single_network(index, plasticity_coefs, track_params=False, train=T
 	all_weight_deltas = []
 	w_hist.append(w)
 
+	blew_up = False
+
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
@@ -341,6 +351,12 @@ def simulate_single_network(index, plasticity_coefs, track_params=False, train=T
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
+		if np.isnan(r).any() or (np.abs(w_out) > 100).any(): # if simulation turns up nans in firing rate matrix, end the simulation
+			return {
+				'blew_up': True,
+			}
+			
+
 		if i in [n_inner_loop_iters - 1 - 10 * k for k in range(5)]:
 			# loss_start = time.time()
 			loss, mean_active_time_diffs, activity_loss = calc_loss(r)
@@ -349,10 +365,6 @@ def simulate_single_network(index, plasticity_coefs, track_params=False, train=T
 
 			# print(time.time() - loss_start)
 			cumulative_loss += loss
-
-		if np.isnan(r).any(): # if simulation turns up nans in firing rate matrix, end the simulation
-			cumulative_loss += 1e8
-			break
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
 
@@ -379,8 +391,16 @@ def simulate_single_network(index, plasticity_coefs, track_params=False, train=T
 		print('activity_loss:', total_activity_loss / 5)
 		normed_loss += ACTIVITY_JITTER_COEF * np.sum(mean_active_time_normed_stds)
 
-
-	return r, w, w_initial, normed_loss, all_effects, all_weight_deltas, r_exp_filtered
+	return {
+		'loss': normed_loss,
+		'blew_up': False,
+		'r': r,
+		'r_exp_filtered': r_exp_filtered,
+		'w': w,
+		'w_initial': w_initial,
+		'syn_effects': all_effects,
+		'all_weight_deltas': all_weight_deltas,
+	}
 
 
 def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects):
@@ -401,8 +421,13 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 	results = pool.map(f, np.arange(BATCH_SIZE))
 	pool.close()
 
-	true_losses = np.array([res[3] for res in results])
-	syn_effects = np.stack([res[4] for res in results])
+	if np.any(np.array([res['blew_up'] for res in results])):
+		if eval_tracker is not None:
+			eval_tracker['evals'] += 1
+		return BATCH_SIZE * 1e8, 1e8 * np.ones((len(results),)), np.zeros((len(results), len(plasticity_coefs)))
+
+	true_losses = np.array([res['loss'] for res in results])
+	syn_effects = np.stack([res['syn_effects'] for res in results])
 	syn_effect_penalties = np.zeros(syn_effects.shape[0])
 	one_third_len = int(syn_effects.shape[1] / 3)
 
@@ -419,7 +444,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 					eval_tracker['best_loss'] = loss
 					eval_tracker['best_changed'] = True
 					eval_tracker['plasticity_coefs'] = copy(plasticity_coefs)
-				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
+			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
 			eval_tracker['evals'] += 1
 		else:
 			plot_results(results, eval_tracker, out_dir, eval_tracker['plasticity_coefs'], true_losses, syn_effect_penalties, train=False)
@@ -471,8 +496,8 @@ if args.load_initial is not None:
 else:
 	x0 = np.zeros(18)
 
-# x0[-1] = 0.005
-# x0[-4] = -0.06
+# x0[-2] = 0.01
+# x0[-1] = -0.03
 
 print(x0)
 
