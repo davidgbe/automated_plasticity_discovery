@@ -3,8 +3,8 @@
 ## Presets
 #SBATCH --job-name=seq_cmaes
 
-#SBATCH -p compute
-#SBATCH -A stf
+#SBATCH -p compute-bigmem
+#SBATCH -A labfairhall
 
 #SBATCH --nodes=1
 #SBATCH --time=72:00:00
@@ -18,9 +18,7 @@ module load foster/python/miniconda/3.8
 CURRDIR=$(pwd)
 echo $CURRDIR
 ## Commands to run
-cd /mmfs1/gscratch/labfairhall/davidgbe
-source davidgbe-env/bin/activate
-cd $CURRDIR
+source python-env/bin/activate
 
 python train_sequence.py --std_expl 0.005 --pool_size 30 --batch 30 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 -seed 2000
 
