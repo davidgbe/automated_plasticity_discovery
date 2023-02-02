@@ -18,8 +18,6 @@ from csv_writer import write_csv
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
-np.random.seed(5)
-
 ### Parse arguments 
 
 parser = argparse.ArgumentParser()
@@ -30,10 +28,14 @@ parser.add_argument('--pool_size', metavar='ps', type=int, help='Number of proce
 parser.add_argument('--batch', metavar='b', type=int, help='Number of simulations that should be batched per loss function evaluation')
 parser.add_argument('--fixed_data', metavar='fd', type=int, help='')
 parser.add_argument('--load_initial', metavar='li', type=str, help='File from which to load the best params as an initial guess')
+parser.add_argument('--seed', metavar='s', type=int)
 
 args = parser.parse_args()
 print(args)
 
+np.random.seed(args.seed)
+
+SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
 N_INNER_LOOP_RANGE = (190, 200) # Number of times to simulate network and plasticity rules per loss function evaluation
@@ -116,7 +118,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_ee_jitter_pen_rescaled_batch_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_{time_stamp}'
+out_dir = f'sims_out/seq_ee_jitter_pen_rescaled_batch_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -459,7 +461,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 
 def plasticity_coefs_eval_wrapper(plasticity_coefs, eval_tracker=None, track_params=False):
 	if eval_tracker['evals'] > 0 and eval_tracker['evals'] % CALC_TEST_SET_LOSS_FREQ == 0 and eval_tracker['best_changed']:
-		loss, true_losses, syn_effects = simulate_plasticity_rules(plasticity_coefs, eval_tracker=eval_tracker, track_params=track_params, train=False)
+		loss, true_losses, syn_effects = simulate_plasticity_rules(eval_tracker['plasticity_coefs'], eval_tracker=eval_tracker, track_params=track_params, train=False)
 		eval_tracker['best_changed'] = False
 		log_sim_results(test_data_path, eval_tracker, loss, true_losses, eval_tracker['plasticity_coefs'], syn_effects)
 
