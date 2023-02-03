@@ -38,7 +38,7 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (190, 200) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (399, 400) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -118,7 +118,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_ee_jitter_pen_rescaled_batch_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/seq_self_org_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -147,15 +147,8 @@ def make_network():
 
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
-	w_initial[:n_e, :n_e] = w_e_e * np.diag(0.8 * np.log10(np.arange(n_e - 1) + 10), k=-1)
-	w_initial[:n_e, :n_e] = w_initial[:n_e, :n_e] * (0.3 + 1.4  * np.random.rand(n_e, n_e))
 
-	w_initial[:n_e, :n_e] = np.where(
-		np.diag(np.ones(n_e - 1), k=-1) > 0,
-		w_initial[:n_e, :n_e],
-		exp_if_under_val(0.5, (n_e, n_e), 0.03 * w_e_e)
-	)
-
+	w_initial[:n_e, :n_e] = exp_if_under_val(0.5, (n_e, n_e), 0.03 * w_e_e)
 	w_initial[n_e:, :n_e] = gaussian_if_under_val(0.8, (n_i, n_e), w_e_i, 0.3 * w_e_i)
 	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
 
@@ -168,7 +161,6 @@ def calc_loss(r : np.ndarray):
 	r_exc = r[:, :n_e]
 
 	if np.isnan(r).any():
-		print('happens')
 		return 1e8, np.nan * np.zeros(r_exc.shape[1] - 1), 0
 
 	r_summed = np.sum(r_exc, axis=0)
@@ -203,8 +195,9 @@ def calc_loss(r : np.ndarray):
 				loss += loss_activity_zero_mom
 				activity_loss += loss_activity_zero_mom
 
-			if i < (r_exc.shape[1] - 1) and r_active_mask[i+1]:
-				loss += 1 / (1 + np.exp((t_means[i+1] - t_means[i] - 5e-4) / 1e-4))
+			for k in np.arange(r_exc.shape[1]):
+				if k != i and r_active_mask[k]:
+					loss += np.exp(-np.power((t_means[k] - t_means[i])/0.2e-3, 2))
 		else:
 			loss += 100
 
@@ -493,35 +486,38 @@ def load_best_params(file_name):
 # x1 = process_params_str(x1_raw)
 # x1 = np.array([0, 0, 0, 0, 0, 0, 0, 0.00450943, 0, 0, -0.03998377, 0, -0.05242701, 0.0052274])
 
-if args.load_initial is not None:
-	x0 = load_best_params(args.load_initial)
-else:
-	x0 = np.zeros(18)
+if __name__ == '__main__':
+	mp.set_start_method('fork')
 
-# x0[-2] = 0.01
-# x0[-1] = -0.03
+	if args.load_initial is not None:
+		x0 = load_best_params(args.load_initial)
+	else:
+		x0 = np.zeros(18)
 
-print(x0)
+	# x0[-2] = 0.01
+	# x0[-1] = -0.03
 
-eval_tracker = {
-	'evals': 0,
-	'best_loss': np.nan,
-	'best_changed': False,
-}
+	print(x0)
 
-plasticity_coefs_eval_wrapper(x0, eval_tracker=eval_tracker, track_params=True)
+	eval_tracker = {
+		'evals': 0,
+		'best_loss': np.nan,
+		'best_changed': False,
+	}
 
-options = {
-	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-}
+	plasticity_coefs_eval_wrapper(x0, eval_tracker=eval_tracker, track_params=True)
 
-x, es = cma.fmin2(
-	partial(plasticity_coefs_eval_wrapper, eval_tracker=eval_tracker, track_params=True),
-	x0,
-	STD_EXPL,
-	restarts=10,
-	bipop=True,
-	options=options)
+	options = {
+		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+	}
+
+	x, es = cma.fmin2(
+		partial(plasticity_coefs_eval_wrapper, eval_tracker=eval_tracker, track_params=True),
+		x0,
+		STD_EXPL,
+		restarts=10,
+		bipop=True,
+		options=options)
 
 print(x)
 print(es.result_pretty())
