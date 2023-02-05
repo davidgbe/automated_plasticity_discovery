@@ -118,7 +118,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_self_org_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/seq_pen_overlap_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -171,10 +171,6 @@ def calc_loss(r : np.ndarray):
 	t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
 	t_vars = np.sum(np.power(t.reshape(t.shape[0], 1), 2) * r_normed, axis=0) - np.power(t_means, 2)
 
-	# print('r_summed', r_summed)
-	# print('t_means:', t_means)
-	# print('t_vars:', t_vars)
-
 	# add measure of spike consistency
 
 	t_means_nan = copy(t_means)
@@ -183,6 +179,7 @@ def calc_loss(r : np.ndarray):
 
 	loss = 0
 	activity_loss = 0
+	activity_overlap_loss = 0
 
 	for i in np.arange(r_exc.shape[1]):
 		if r_active_mask[i]:
@@ -195,11 +192,17 @@ def calc_loss(r : np.ndarray):
 				loss += loss_activity_zero_mom
 				activity_loss += loss_activity_zero_mom
 
-			for k in np.arange(r_exc.shape[1]):
-				if k != i and r_active_mask[k]:
-					loss += np.exp(-np.power((t_means[k] - t_means[i])/0.2e-3, 2))
+			if i != 0 and i != n_e - 1:
+				for k in np.arange(i+1, r_exc.shape[1]):
+						activity_overlap_loss += np.dot(r_exc[:, i], r_exc[:, k])
 		else:
 			loss += 100
+
+	activity_overlap_loss *= 1e5 * 2 /  (r_exc.shape[0] * ((n_e - 1)**2 - (n_e - 1)))
+
+	print('activity_overlap_loss:', activity_overlap_loss)
+
+	loss += activity_overlap_loss
 
 	return loss, t_means_diffs, activity_loss
 
@@ -255,13 +258,6 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 
 		axs[2 * n_res_to_show + 2].plot(np.arange(len(all_weight_deltas)), np.log(all_weight_deltas), label=f'{i}')
 
-	### plot the coefficients assigned to each plasticity rule
-	# plasticity_coefs_abs = np.abs(plasticity_coefs)
-	# plasticity_coefs_argsort = np.flip(np.argsort(plasticity_coefs_abs))
-	# axs[2 * n_res_to_show + 1].bar(np.arange(len(plasticity_coefs)), plasticity_coefs[plasticity_coefs_argsort])
-	# axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(plasticity_coefs)))
-	# axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[plasticity_coefs_argsort], rotation=60, ha='right')
-	# axs[2 * n_res_to_show + 1].set_xlim(-1, len(plasticity_coefs))
 	partial_rules_len = int(len(plasticity_coefs))
 
 	all_effects = np.array(all_effects)
