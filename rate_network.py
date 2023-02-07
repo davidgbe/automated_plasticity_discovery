@@ -133,7 +133,7 @@ def simulate_inner_loop(
             r_2_r_1,
             # r_2_r_2,
             # r_0_r_exp,
-            # r_1_r_exp,
+            r_1_r_exp,
             # r_exp_r_0,
             r_exp_r_1,
             r_exp_r_2,

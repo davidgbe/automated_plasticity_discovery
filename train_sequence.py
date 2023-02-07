@@ -55,7 +55,8 @@ n_i = 20 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 
-layer_colors = get_ordered_colors('winter', 15)
+layer_colors = get_ordered_colors('gist_rainbow', 15)
+np.random.shuffle(layer_colors)
 
 rule_names = [ # Define labels for all rules to be run during simulations
 	r'',
@@ -68,7 +69,7 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$x^2 \, y$',
 	# r'$x^2 \, y^2$',
 	# r'$y_{int}$',
-	# r'$x \, y_{int}$',
+	r'$x \, y_{int}$',
 	# r'$x_{int}$',
 	r'$x_{int} \, y$',
 	r'$x_{int} \, y^2$',
@@ -83,7 +84,7 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$w \, x^2 \, y$',
 	# r'$w \, x^2 \, y^2$',
 	# r'$w y_{int}$',
-	# r'$w x \, y_{int}$',
+	r'$w x \, y_{int}$',
 	# r'$w x_{int}$',
 	r'$w x_{int} \, y$',
 	r'$w x_{int} \, y^2$',
@@ -148,7 +149,8 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 
-	w_initial[:n_e, :n_e] = exp_if_under_val(0.5, (n_e, n_e), 0.03 * w_e_e)
+	# w_initial[:n_e, :n_e] = exp_if_under_val(1, (n_e, n_e), 0.03 * w_e_e)
+	w_initial[:n_e, :n_e] = 0.06 * w_e_e * (0.2 + 0.8 * np.random.rand(n_e, n_e))
 	w_initial[n_e:, :n_e] = gaussian_if_under_val(0.8, (n_i, n_e), w_e_i, 0.3 * w_e_i)
 	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
 
@@ -331,13 +333,21 @@ def simulate_single_network(index, plasticity_coefs, track_params=False, train=T
 	all_weight_deltas = []
 	w_hist.append(w)
 
+
+	periodic_input_amp = 0.2
+	periodic_input_periods = (0.5 + 0.5 * np.random.rand(n_e - 1)) * T
+	periodic_input_phases = np.random.rand(n_e - 1) * 2 * np.pi
+	regular_inputs = periodic_input_amp * np.power(np.cos(np.outer(t, np.pi / periodic_input_periods) + periodic_input_phases), 2)
+	# regular_inputs[:int(5e-3/dt), :] = 0
+
 	blew_up = False
 
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
-		input_amp = np.random.rand() * 0.002 + 0.01
+		input_amp = np.random.rand() * 0.001 + 0.01
 		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=input_amp) # Drive first excitatory cell with Gaussian input
+		r_in[:, 1:n_e] += regular_inputs
 
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
@@ -488,12 +498,10 @@ if __name__ == '__main__':
 	if args.load_initial is not None:
 		x0 = load_best_params(args.load_initial)
 	else:
-		x0 = np.zeros(18)
+		x0 = np.zeros(20)
 
 	# x0[-2] = 0.01
 	# x0[-1] = -0.03
-
-	print(x0)
 
 	eval_tracker = {
 		'evals': 0,
@@ -501,19 +509,37 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	plasticity_coefs_eval_wrapper(x0, eval_tracker=eval_tracker, track_params=True)
 
-	options = {
-		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-	}
+	# x0[0] = 0.0015
+	x0[10] = 0.001
+	x0[13] = -0.065
+	x0[17] = -0.002
+	x0[18] = 0.005
+	# x0[7] = 0
 
-	x, es = cma.fmin2(
-		partial(plasticity_coefs_eval_wrapper, eval_tracker=eval_tracker, track_params=True),
-		x0,
-		STD_EXPL,
-		restarts=10,
-		bipop=True,
-		options=options)
+	for i in range(20, 100, 20):
+		x0_copy = i * copy(x0)
 
-print(x)
-print(es.result_pretty())
+		eval_tracker = {
+			'evals': i,
+			'best_loss': np.nan,
+			'best_changed': False,
+		}
+
+		print(x0_copy)
+		plasticity_coefs_eval_wrapper(x0_copy, eval_tracker=eval_tracker, track_params=True)
+
+# 	options = {
+# 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+# 	}
+
+# 	x, es = cma.fmin2(
+# 		partial(plasticity_coefs_eval_wrapper, eval_tracker=eval_tracker, track_params=True),
+# 		x0,
+# 		STD_EXPL,
+# 		restarts=10,
+# 		bipop=True,
+# 		options=options)
+
+# print(x)
+# print(es.result_pretty())
