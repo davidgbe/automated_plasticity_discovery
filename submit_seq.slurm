@@ -20,7 +20,8 @@ echo $CURRDIR
 ## Commands to run
 source python-env/bin/activate
 
-python train_sequence.py --std_expl 0.1 --pool_size 30 --batch 30 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --seed 2000
+python train_sequence.py --std_expl 0.01 --pool_size 30 --batch 30 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --seed 2000
+python train_sequence.py --std_expl 0.001 --pool_size 30 --batch 30 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --seed 2000
 
 deactivate
 
