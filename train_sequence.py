@@ -44,7 +44,7 @@ DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
 CALC_TEST_SET_LOSS_FREQ = 11
-ACTIVITY_LOSS_COEF = 0.1 if bool(args.asp) else 0
+ACTIVITY_LOSS_COEF = 3 if bool(args.asp) else 0
 ACTIVITY_JITTER_COEF = 3
 
 T = 0.1 # Total duration of one network simulation
@@ -165,6 +165,7 @@ def calc_loss(r : np.ndarray):
 	if np.isnan(r).any():
 		return 1e8, np.nan * np.zeros(r_exc.shape[1] - 1), 0
 
+	r_maxs = r_exc.max(axis=0)
 	r_summed = np.sum(r_exc, axis=0)
 	r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
 	r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
@@ -186,13 +187,17 @@ def calc_loss(r : np.ndarray):
 	for i in np.arange(r_exc.shape[1]):
 		if r_active_mask[i]:
 			if i != 0:
-				loss_activity_var = ACTIVITY_LOSS_COEF * np.power((t_vars[i] - 4e-6) / 4e-6, 2)
-				loss += loss_activity_var
-				activity_loss += loss_activity_var
+				# loss_activity_var = ACTIVITY_LOSS_COEF * np.power((t_vars[i] - 4e-6) / 4e-6, 2)
+				# loss += loss_activity_var
+				# activity_loss += loss_activity_var
 
-				loss_activity_zero_mom = ACTIVITY_LOSS_COEF * np.power((r_summed[i] - 15) / 15, 2)
-				loss += loss_activity_zero_mom
-				activity_loss += loss_activity_zero_mom
+				# loss_activity_zero_mom = ACTIVITY_LOSS_COEF * np.power((r_summed[i] - 15) / 15, 2)
+				# loss += loss_activity_zero_mom
+				# activity_loss += loss_activity_zero_mom
+
+				loss_activity_max = ACTIVITY_LOSS_COEF * np.power((r_maxs[i] - 0.2) / 0.2, 2)
+				loss += loss_activity_max
+				activity_loss += loss_activity_max
 
 			if i != 0 and i != n_e - 1:
 				for k in np.arange(i+1, r_exc.shape[1]):
@@ -332,7 +337,6 @@ def simulate_single_network(index, plasticity_coefs, track_params=False, train=T
 	w_hist = []
 	all_weight_deltas = []
 	w_hist.append(w)
-
 
 	periodic_input_amp = 0.2
 	periodic_input_periods = (0.5 + 0.5 * np.random.rand(n_e - 1)) * T
@@ -500,8 +504,24 @@ if __name__ == '__main__':
 	else:
 		x0 = np.zeros(20)
 
-	# x0[-2] = 0.01
-	# x0[-1] = -0.03
+	# x0[10] = 0.001 * 20
+	# x0[13] = -0.065 * 20
+	# x0[17] = -0.002 * 20
+	# x0[18] = 0.005 * 20
+
+	# for i in range(20, 100, 20):
+	# 	x0_copy = i * copy(x0)
+
+	# 	eval_tracker = {
+	# 		'evals': i,
+	# 		'best_loss': np.nan,
+	# 		'best_changed': False,
+	# 	}
+
+	# 	print(x0_copy)
+	# 	plasticity_coefs_eval_wrapper(x0_copy, eval_tracker=eval_tracker, track_params=True)
+
+	print(x0)
 
 	eval_tracker = {
 		'evals': 0,
@@ -509,37 +529,16 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
+	plasticity_coefs_eval_wrapper(x0, eval_tracker=eval_tracker, track_params=True)
 
-	# x0[0] = 0.0015
-	x0[10] = 0.001
-	x0[13] = -0.065
-	x0[17] = -0.002
-	x0[18] = 0.005
-	# x0[7] = 0
+	options = {
+		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+	}
 
-	for i in range(20, 100, 20):
-		x0_copy = i * copy(x0)
-
-		eval_tracker = {
-			'evals': i,
-			'best_loss': np.nan,
-			'best_changed': False,
-		}
-
-		print(x0_copy)
-		plasticity_coefs_eval_wrapper(x0_copy, eval_tracker=eval_tracker, track_params=True)
-
-# 	options = {
-# 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-# 	}
-
-# 	x, es = cma.fmin2(
-# 		partial(plasticity_coefs_eval_wrapper, eval_tracker=eval_tracker, track_params=True),
-# 		x0,
-# 		STD_EXPL,
-# 		restarts=10,
-# 		bipop=True,
-# 		options=options)
-
-# print(x)
-# print(es.result_pretty())
+	x, es = cma.fmin2(
+		partial(plasticity_coefs_eval_wrapper, eval_tracker=eval_tracker, track_params=True),
+		x0,
+		STD_EXPL,
+		restarts=10,
+		bipop=True,
+		options=options)
