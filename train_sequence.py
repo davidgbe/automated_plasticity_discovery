@@ -432,7 +432,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 	if np.any(np.array([res['blew_up'] for res in results])):
 		if eval_tracker is not None:
 			eval_tracker['evals'] += 1
-		return BATCH_SIZE * 1e8, 1e8 * np.ones((len(results),)), np.zeros((len(results), len(plasticity_coefs)))
+		return 1e8 * BATCH_SIZE + 1e5 * np.sum(np.abs(plasticity_coefs)), 1e8 * np.ones((len(results),)), np.zeros((len(results), len(plasticity_coefs)))
 
 	true_losses = np.array([res['loss'] for res in results])
 	syn_effects = np.stack([res['syn_effects'] for res in results])
