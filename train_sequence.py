@@ -45,7 +45,7 @@ FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
 CALC_TEST_SET_LOSS_FREQ = 11
 ACTIVITY_LOSS_COEF = 6 if bool(args.asp) else 0
-ACTIVITY_JITTER_COEF = 3
+ACTIVITY_JITTER_COEF = 60
 
 T = 0.1 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -119,7 +119,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_self_org_det_input_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/seq_self_org_ee_full_parallel_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -195,7 +195,7 @@ def calc_loss(r : np.ndarray):
 				# loss += loss_activity_zero_mom
 				# activity_loss += loss_activity_zero_mom
 
-				loss_activity_max = ACTIVITY_LOSS_COEF * np.power((r_maxs[i] - 0.2) / 0.2, 2)
+				loss_activity_max = ACTIVITY_LOSS_COEF * np.power(np.minimum(r_maxs[i] - 0.2, 0) / 0.2, 2)
 				loss += loss_activity_max
 				activity_loss += loss_activity_max
 
@@ -310,7 +310,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	plt.close('all')
 
 
-def simulate_single_network(index, plasticity_coefs, track_params=False, train=True):
+def simulate_single_network(index, plasticity_coefs, track_params=True, train=True):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
@@ -353,8 +353,7 @@ def simulate_single_network(index, plasticity_coefs, track_params=False, train=T
 		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=input_amp) # Drive first excitatory cell with Gaussian input
 		r_in[:, 1:n_e] += regular_inputs
 
-		# if i == 300:
-		# 	w[:n_e, :n_e] = np.where(np.random.rand(n_e, n_e) > 0.3, w[:n_e, :n_e], 0.05 * w[:n_e, :n_e])
+		# w[:n_e, :n_e] = np.where(np.random.rand(n_e, n_e) > 0.003, w[:n_e, :n_e], 0.05 * w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
@@ -420,15 +419,7 @@ def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coef
 	write_csv(write_path, list(to_save))
 
 
-# Function to minimize (including simulation)
-def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=False, train=True):
-	start = time.time()
-
-	pool = mp.Pool(POOL_SIZE)
-	f = partial(simulate_single_network, plasticity_coefs=plasticity_coefs, track_params=track_params, train=train)
-	results = pool.map(f, np.arange(BATCH_SIZE))
-	pool.close()
-
+def process_plasticity_rule_results(results, plasticity_coefs, eval_tracker=None, train=True):
 	if np.any(np.array([res['blew_up'] for res in results])):
 		if eval_tracker is not None:
 			eval_tracker['evals'] += 1
@@ -457,23 +448,21 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 		else:
 			plot_results(results, eval_tracker, out_dir, eval_tracker['plasticity_coefs'], true_losses, syn_effect_penalties, train=False)
 
-	dur = time.time() - start
-	print('duration:', dur)
 	print('guess:', plasticity_coefs)
 	print('loss:', loss)
 	print('')
 	return loss, true_losses, syn_effects
 
 
-def plasticity_coefs_eval_wrapper(plasticity_coefs, eval_tracker=None, track_params=False):
-	if eval_tracker['evals'] > 0 and eval_tracker['evals'] % CALC_TEST_SET_LOSS_FREQ == 0 and eval_tracker['best_changed']:
-		loss, true_losses, syn_effects = simulate_plasticity_rules(eval_tracker['plasticity_coefs'], eval_tracker=eval_tracker, track_params=track_params, train=False)
-		eval_tracker['best_changed'] = False
-		log_sim_results(test_data_path, eval_tracker, loss, true_losses, eval_tracker['plasticity_coefs'], syn_effects)
+# def plasticity_coefs_eval_wrapper(plasticity_coefs, eval_tracker=None, track_params=False):
+# 	if eval_tracker['evals'] > 0 and eval_tracker['evals'] % CALC_TEST_SET_LOSS_FREQ == 0 and eval_tracker['best_changed']:
+# 		loss, true_losses, syn_effects = simulate_plasticity_rules(eval_tracker['plasticity_coefs'], eval_tracker=eval_tracker, track_params=track_params, train=False)
+# 		eval_tracker['best_changed'] = False
+# 		log_sim_results(test_data_path, eval_tracker, loss, true_losses, eval_tracker['plasticity_coefs'], syn_effects)
 
-	loss, true_losses, syn_effects = simulate_plasticity_rules(plasticity_coefs, eval_tracker=eval_tracker, track_params=track_params, train=True)
-	log_sim_results(train_data_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects)
-	return loss
+# 	loss, true_losses, syn_effects = simulate_plasticity_rules(plasticity_coefs, eval_tracker=eval_tracker, track_params=track_params, train=True)
+# 	log_sim_results(train_data_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects)
+# 	return loss
 
 
 def load_best_params(file_name):
@@ -483,6 +472,37 @@ def load_best_params(file_name):
 	min_loss_idx = np.argmin([df_params.iloc[i][4] for i in x])
 	best_params = df_params.iloc[min_loss_idx][5:]
 	return np.array(best_params)
+
+
+def simulate_single_network_wrapper(tup):
+	return simulate_single_network(*tup)
+
+
+def eval_all(X, eval_tracker=None):
+	start = time.time()
+
+	indices = np.arange(BATCH_SIZE)
+	pool = mp.Pool(POOL_SIZE)
+
+	task_vars = []
+	for x in X:
+		for idx in indices:
+			task_vars.append((idx, x))
+	results = pool.map(simulate_single_network_wrapper, task_vars)
+
+	pool.close()
+	pool.join()
+
+	losses = []
+	for i in range(len(X)):
+		loss, true_losses, syn_effects = process_plasticity_rule_results(results[BATCH_SIZE * i: BATCH_SIZE * (i+1)], X[i], eval_tracker=eval_tracker)
+		losses.append(loss)
+		log_sim_results(train_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
+	
+	dur = time.time() - start
+	print('dur:', dur)
+
+	return losses
 
 
 # x1_raw = """-0.00010793665215095119 -0.0077226235932765 -0.0007816865595492941 -0.03318025977609449 0.008092421601561416 -6.407613106235442e-05 8.610610693006271e-05 4.427703899099249e-05 -0.05225696475640676 0.10582698186377604 -0.05720473550010104 0.000190178600002215 -0.0016783840840024033 0.0028419457171027927"""
@@ -532,16 +552,19 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	plasticity_coefs_eval_wrapper(x0, eval_tracker=eval_tracker, track_params=True)
+	eval_all([x0], eval_tracker=eval_tracker)
 
 	options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+		'popsize': 12,
 	}
 
-	x, es = cma.fmin2(
-		partial(plasticity_coefs_eval_wrapper, eval_tracker=eval_tracker, track_params=True),
-		x0,
-		STD_EXPL,
-		restarts=10,
-		bipop=True,
-		options=options)
+	for k in range(10):
+		es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
+
+		while not es.stop():
+			X = es.ask()
+			es.tell(X, eval_all(X, eval_tracker=eval_tracker))
+			es.disp()
+
+		options['popsize'] += 1
