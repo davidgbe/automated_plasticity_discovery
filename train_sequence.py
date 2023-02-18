@@ -119,7 +119,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_self_org_ee_dropped_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/seq_self_org_ee_parallel_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -353,7 +353,7 @@ def simulate_single_network(index, plasticity_coefs, track_params=True, train=Tr
 		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=input_amp) # Drive first excitatory cell with Gaussian input
 		r_in[:, 1:n_e] += regular_inputs
 
-		w[:n_e, :n_e] = np.where(np.random.rand(n_e, n_e) > 0.003, w[:n_e, :n_e], 0.05 * w[:n_e, :n_e])
+		# w[:n_e, :n_e] = np.where(np.random.rand(n_e, n_e) > 0.003, w[:n_e, :n_e], 0.05 * w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
