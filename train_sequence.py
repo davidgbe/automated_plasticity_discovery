@@ -68,7 +68,7 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$x^2 \, y$',
 	# r'$x^2 \, y^2$',
 	# r'$y_{int}$',
-	# r'$x \, y_{int}$',
+	r'$x \, y_{int}$',
 	# r'$x_{int}$',
 	r'$x_{int} \, y$',
 	r'$x_{int} \, y^2$',
@@ -83,7 +83,7 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$w \, x^2 \, y$',
 	# r'$w \, x^2 \, y^2$',
 	# r'$w y_{int}$',
-	# r'$w x \, y_{int}$',
+	r'$w x \, y_{int}$',
 	# r'$w x_{int}$',
 	r'$w x_{int} \, y$',
 	r'$w x_{int} \, y^2$',
@@ -313,6 +313,13 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		fig.savefig(f'{out_dir}/{zero_padding}{evals}_test.png')
 	plt.close('all')
 
+def alpha_func(t, tau_alpha):
+	pass
+
+
+def arrivals_to_inputs(arrivals):
+	pass
+
 
 def simulate_single_network(index, plasticity_coefs, track_params=False, train=True):
 	'''
@@ -344,11 +351,15 @@ def simulate_single_network(index, plasticity_coefs, track_params=False, train=T
 
 	blew_up = False
 
+	fixed_inputs = np.random.poisson(lam=1, size=(len(t), n_e + n_i))
+
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
 		input_amp = np.random.rand() * 0.002 + 0.01
 		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=input_amp) # Drive first excitatory cell with Gaussian input
+
+		random_inputs = np.random.poisson(lam=1, size=(len(t), n_e + n_i))
 
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
@@ -496,7 +507,7 @@ def load_best_params(file_name):
 if args.load_initial is not None:
 	x0 = load_best_params(args.load_initial)
 else:
-	x0 = np.zeros(18)
+	x0 = np.zeros(20)
 
 # x0[-2] = 0.01
 # x0[-1] = -0.03
