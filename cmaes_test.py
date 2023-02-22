@@ -34,7 +34,7 @@ for s in sigmas:
 		options = {
 			'verb_filenameprefix': os.path.join('./cmaes_test', 'outcmaes/'),
 			'verb_disp': 0,
-			'maxfevals': 5000,
+			'maxfevals': 50,
 		}
 
 		eval_tracker = {
@@ -48,6 +48,8 @@ for s in sigmas:
 			restarts=10,
 			bipop=True,
 			options=options)
+
+		print(es.opts)
 
 		# print(es)
 		# print(x, f(x) / prefactor)

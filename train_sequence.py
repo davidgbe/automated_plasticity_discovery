@@ -559,19 +559,21 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	eval_all([x0], eval_tracker=eval_tracker)
+	# eval_all([x0], eval_tracker=eval_tracker)
 
 	options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-		'popsize': 12,
+		'popsize': 15,
 	}
 
 	for k in range(10):
 		es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
+
+		print(es.opts)
 
 		while not es.stop():
 			X = es.ask()
 			es.tell(X, eval_all(X, eval_tracker=eval_tracker))
 			es.disp()
 
-		options['popsize'] += 1
+		options['popsize'] += 2
