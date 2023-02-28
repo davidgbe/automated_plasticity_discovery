@@ -46,7 +46,7 @@ L1_PENALTIES = args.l1_pen
 CALC_TEST_SET_LOSS_FREQ = 11
 ACTIVITY_LOSS_COEF = 6 if bool(args.asp) else 0
 ACTIVITY_JITTER_COEF = 60
-DROPOUT_PROB_PER_ITER = 0.001
+DROPOUT_PROB_PER_ITER = 0.0004
 
 T = 0.1 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -360,7 +360,7 @@ def simulate_single_network(index, plasticity_coefs, track_params=True, train=Tr
 		drop_mask_for_i = np.logical_and(~surviving_synapse_mask_for_i, surviving_synapse_mask)
 		surviving_synapse_mask[drop_mask_for_i] = False
 
-		w[:n_e, :n_e] = np.where(drop_mask_for_i, (0.1 + 0.9 * np.random.rand(n_e, n_e)) * w[:n_e, :n_e], w[:n_e, :n_e])
+		w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
