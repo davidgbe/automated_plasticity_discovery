@@ -311,6 +311,22 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	plt.close('all')
 
 
+def calc_alpha_func(tau_alpha):
+	alpha_func_n_steps = int(10 * tau_alpha / dt)
+	t_alpha = np.arange(0, alpha_func_n_steps) * dt
+	return t_alpha / tau_alpha * np.exp(-t_alpha/tau_alpha)
+
+
+def poisson_arrivals_to_inputs(arrivals, tau_alpha):
+	alpha_func = calc_alpha_func(tau_alpha)
+	input_current = np.zeros(arrivals.shape)
+
+	for i in range(arrivals.shape[1]):
+		input_current[:, i] = np.convolve(alpha_func, arrivals[:, i], mode='full')[:arrivals.shape[0]]
+
+	return input_current
+
+
 def simulate_single_network(index, plasticity_coefs, track_params=True, train=True):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
@@ -339,22 +355,24 @@ def simulate_single_network(index, plasticity_coefs, track_params=True, train=Tr
 	all_weight_deltas = []
 	w_hist.append(w)
 
-	periodic_input_amp = 0.2
-	periodic_input_periods = (0.5 + 0.5 * np.random.rand(n_e - 1)) * T
-	periodic_input_phases = np.random.rand(n_e - 1) * 2 * np.pi
-	regular_inputs = periodic_input_amp * np.power(np.cos(np.outer(t, np.pi / periodic_input_periods) + periodic_input_phases), 2)
-	# regular_inputs[:int(5e-3/dt), :] = 0
-
 	blew_up = False
 
 	surviving_synapse_mask = np.ones((n_e, n_e)).astype(bool)
+
+	fixed_inputs_poisson = np.random.poisson(lam=40 * dt, size=(len(t), n_e + n_i))
+	fixed_inputs = poisson_arrivals_to_inputs(fixed_inputs_poisson, 5e-3)
 
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
 		input_amp = np.random.rand() * 0.001 + 0.01
 		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=input_amp) # Drive first excitatory cell with Gaussian input
-		r_in[:, 1:n_e] += regular_inputs
+		random_inputs_poisson = np.random.poisson(lam=40 * dt, size=(len(t), n_e + n_i))
+		random_inputs = poisson_arrivals_to_inputs(random_inputs_poisson, 5e-3)
+		mixed_inputs = fixed_inputs  + random_inputs
+		mixed_inputs[:, :n_e] = 0.25 * mixed_inputs[:, :n_e]
+		mixed_inputs[:, n_e:] = 0.05 * mixed_inputs[:, n_e:]
+		r_in += mixed_inputs
 
 		surviving_synapse_mask_for_i = np.random.rand(n_e, n_e) > DROPOUT_PROB_PER_ITER
 		drop_mask_for_i = np.logical_and(~surviving_synapse_mask_for_i, surviving_synapse_mask)
@@ -363,7 +381,7 @@ def simulate_single_network(index, plasticity_coefs, track_params=True, train=Tr
 		w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
 		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e, :n_e]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
 			return {
@@ -450,7 +468,7 @@ def process_plasticity_rule_results(results, plasticity_coefs, eval_tracker=None
 					eval_tracker['best_loss'] = loss
 					eval_tracker['best_changed'] = True
 					eval_tracker['plasticity_coefs'] = copy(plasticity_coefs)
-				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
+			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
 			eval_tracker['evals'] += 1
 		else:
 			plot_results(results, eval_tracker, out_dir, eval_tracker['plasticity_coefs'], true_losses, syn_effect_penalties, train=False)
@@ -559,7 +577,8 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	# eval_all([x0], eval_tracker=eval_tracker)
+	for i in range(10):
+		eval_all([x0], eval_tracker=eval_tracker)
 
 	options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
