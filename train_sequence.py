@@ -120,7 +120,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_self_org_ee_lite_drop_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_DROPP_{DROPOUT_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/seq_self_org_ee_full_drop_poisson_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_DROPP_{DROPOUT_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -360,15 +360,15 @@ def simulate_single_network(index, plasticity_coefs, track_params=True, train=Tr
 	surviving_synapse_mask = np.ones((n_e, n_e)).astype(bool)
 
 	fixed_inputs_poisson = np.random.poisson(lam=40 * dt, size=(len(t), n_e + n_i))
-	fixed_inputs = poisson_arrivals_to_inputs(fixed_inputs_poisson, 5e-3)
+	fixed_inputs = poisson_arrivals_to_inputs(fixed_inputs_poisson, 3e-3)
 
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
 		input_amp = np.random.rand() * 0.001 + 0.01
-		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=input_amp) # Drive first excitatory cell with Gaussian input
+		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 3e-3, w=input_amp) # Drive first excitatory cell with Gaussian input
 		random_inputs_poisson = np.random.poisson(lam=40 * dt, size=(len(t), n_e + n_i))
-		random_inputs = poisson_arrivals_to_inputs(random_inputs_poisson, 5e-3)
+		random_inputs = poisson_arrivals_to_inputs(random_inputs_poisson, 3e-3)
 		mixed_inputs = fixed_inputs  + random_inputs
 		mixed_inputs[:, :n_e] = 0.25 * mixed_inputs[:, :n_e]
 		mixed_inputs[:, n_e:] = 0.05 * mixed_inputs[:, n_e:]
