@@ -359,20 +359,20 @@ def simulate_single_network(index, plasticity_coefs, track_params=True, train=Tr
 
 	surviving_synapse_mask = np.ones((n_e, n_e)).astype(bool)
 
-	fixed_inputs_poisson = np.random.poisson(lam=40 * dt, size=(len(t), n_e + n_i))
+	fixed_inputs_poisson = np.random.poisson(lam=60 * dt, size=(len(t), n_e - 1 + n_i))
 	fixed_inputs = poisson_arrivals_to_inputs(fixed_inputs_poisson, 3e-3)
 
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
-		input_amp = np.random.rand() * 0.001 + 0.01
+		input_amp = np.random.rand() * 0.001 + 0.008
 		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 3e-3, w=input_amp) # Drive first excitatory cell with Gaussian input
-		random_inputs_poisson = np.random.poisson(lam=40 * dt, size=(len(t), n_e + n_i))
+		random_inputs_poisson = np.random.poisson(lam=20 * dt, size=(len(t), n_e - 1 + n_i))
 		random_inputs = poisson_arrivals_to_inputs(random_inputs_poisson, 3e-3)
-		mixed_inputs = fixed_inputs  + random_inputs
-		mixed_inputs[:, :n_e] = 0.25 * mixed_inputs[:, :n_e]
-		mixed_inputs[:, n_e:] = 0.05 * mixed_inputs[:, n_e:]
-		r_in += mixed_inputs
+		mixed_inputs = fixed_inputs + random_inputs
+		mixed_inputs[:, :n_e - 1] = 0.25 * mixed_inputs[:, :n_e - 1]
+		mixed_inputs[:, -n_i:] = 0.05 * mixed_inputs[:, -n_i:]
+		r_in[:, 1:] += mixed_inputs
 
 		surviving_synapse_mask_for_i = np.random.rand(n_e, n_e) > DROPOUT_PROB_PER_ITER
 		drop_mask_for_i = np.logical_and(~surviving_synapse_mask_for_i, surviving_synapse_mask)
@@ -533,13 +533,13 @@ def eval_all(X, eval_tracker=None):
 # x1_raw = """-0.00010793665215095119 -0.0077226235932765 -0.0007816865595492941 -0.03318025977609449 0.008092421601561416 -6.407613106235442e-05 8.610610693006271e-05 4.427703899099249e-05 -0.05225696475640676 0.10582698186377604 -0.05720473550010104 0.000190178600002215 -0.0016783840840024033 0.0028419457171027927"""
 # print(x1_raw)
 
-# def process_params_str(s):
-# 	params = []
-# 	for x in s.split(' '):
-# 		x = x.replace('\n', '')
-# 		if x is not '':
-# 			params.append(float(x))
-# 	return np.array(params)
+def process_params_str(s):
+	params = []
+	for x in s.split(' '):
+		x = x.replace('\n', '')
+		if x is not '':
+			params.append(float(x))
+	return np.array(params)
 
 # x1 = process_params_str(x1_raw)
 # x1 = np.array([0, 0, 0, 0, 0, 0, 0, 0.00450943, 0, 0, -0.03998377, 0, -0.05242701, 0.0052274])
@@ -569,7 +569,10 @@ if __name__ == '__main__':
 	# 	print(x0_copy)
 	# 	plasticity_coefs_eval_wrapper(x0_copy, eval_tracker=eval_tracker, track_params=True)
 
-	print(x0)
+	# x0 = "0.02014768757866115 0.001926950494764986 -0.0026776537300129133 -0.16653410301147265 0.02085990073073039 0.05989115892318068 0.010573184015526042 -0.015283244652651235 0.010417498549974112 0.00010576769788771075 -0.009842117938570824 -0.05342696457271392 -0.0584167856177855 -0.09445863701979669 0.02915921035131775 0.02951755588343422 0.07121220609684561 0.002944105448214881 0.028950207149354968 -0.01674002547305451"
+	# x0 = process_params_str(x0)
+	# # x0[-2:] = x0[-2:]
+	# print(x0)
 
 	eval_tracker = {
 		'evals': 0,
@@ -577,8 +580,7 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	for i in range(10):
-		eval_all([x0], eval_tracker=eval_tracker)
+	eval_all([x0], eval_tracker=eval_tracker)
 
 	options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
