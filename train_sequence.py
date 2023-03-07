@@ -120,7 +120,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_self_org_ee_full_drop_poisson_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_DROPP_{DROPOUT_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/seq_self_org_ee_no_drop_poisson_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_DROPP_{DROPOUT_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -365,8 +365,8 @@ def simulate_single_network(index, plasticity_coefs, track_params=True, train=Tr
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
-		input_amp = np.random.rand() * 0.001 + 0.008
-		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 3e-3, w=input_amp) # Drive first excitatory cell with Gaussian input
+		input_amp = np.random.rand() * 0.001 + 0.005
+		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 2e-3, w=input_amp) # Drive first excitatory cell with Gaussian input
 		random_inputs_poisson = np.random.poisson(lam=20 * dt, size=(len(t), n_e - 1 + n_i))
 		random_inputs = poisson_arrivals_to_inputs(random_inputs_poisson, 3e-3)
 		mixed_inputs = fixed_inputs + random_inputs
@@ -374,11 +374,12 @@ def simulate_single_network(index, plasticity_coefs, track_params=True, train=Tr
 		mixed_inputs[:, -n_i:] = 0.05 * mixed_inputs[:, -n_i:]
 		r_in[:, 1:] += mixed_inputs
 
-		surviving_synapse_mask_for_i = np.random.rand(n_e, n_e) > DROPOUT_PROB_PER_ITER
-		drop_mask_for_i = np.logical_and(~surviving_synapse_mask_for_i, surviving_synapse_mask)
-		surviving_synapse_mask[drop_mask_for_i] = False
+		# if i < 400:
+		# 	surviving_synapse_mask_for_i = np.random.rand(n_e, n_e) > DROPOUT_PROB_PER_ITER
+		# 	drop_mask_for_i = np.logical_and(~surviving_synapse_mask_for_i, surviving_synapse_mask)
+		# 	surviving_synapse_mask[drop_mask_for_i] = False
 
-		w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
+		# 	w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
@@ -529,10 +530,6 @@ def eval_all(X, eval_tracker=None):
 
 	return losses
 
-
-# x1_raw = """-0.00010793665215095119 -0.0077226235932765 -0.0007816865595492941 -0.03318025977609449 0.008092421601561416 -6.407613106235442e-05 8.610610693006271e-05 4.427703899099249e-05 -0.05225696475640676 0.10582698186377604 -0.05720473550010104 0.000190178600002215 -0.0016783840840024033 0.0028419457171027927"""
-# print(x1_raw)
-
 def process_params_str(s):
 	params = []
 	for x in s.split(' '):
@@ -540,9 +537,6 @@ def process_params_str(s):
 		if x is not '':
 			params.append(float(x))
 	return np.array(params)
-
-# x1 = process_params_str(x1_raw)
-# x1 = np.array([0, 0, 0, 0, 0, 0, 0, 0.00450943, 0, 0, -0.03998377, 0, -0.05242701, 0.0052274])
 
 if __name__ == '__main__':
 	mp.set_start_method('fork')
@@ -552,27 +546,13 @@ if __name__ == '__main__':
 	else:
 		x0 = np.zeros(20)
 
-	# x0[10] = 0.0015 * 20
-	# x0[13] = -0.065 * 20
-	# x0[17] = -0.002 * 20
-	# x0[18] = 0.005 * 20
+# 	x0 = '''0.02000823 -0.12441293 -0.03365112 -0.12084871  0.00107426 -0.00182773
+ #  0.02428422 -0.00753884  0.05495447  0.00810028  0.00745455 -0.11756651
+ # -0.04842812 -0.09974678  0.00720619  0.00869501  0.02850774 -0.01940583
+ #  0.02648215 -0.03583781'''
+# 	x0 = process_params_str(x0)
 
-	# for i in range(20, 100, 20):
-	# 	x0_copy = i * copy(x0)
-
-	# 	eval_tracker = {
-	# 		'evals': i,
-	# 		'best_loss': np.nan,
-	# 		'best_changed': False,
-	# 	}
-
-	# 	print(x0_copy)
-	# 	plasticity_coefs_eval_wrapper(x0_copy, eval_tracker=eval_tracker, track_params=True)
-
-	# x0 = "0.02014768757866115 0.001926950494764986 -0.0026776537300129133 -0.16653410301147265 0.02085990073073039 0.05989115892318068 0.010573184015526042 -0.015283244652651235 0.010417498549974112 0.00010576769788771075 -0.009842117938570824 -0.05342696457271392 -0.0584167856177855 -0.09445863701979669 0.02915921035131775 0.02951755588343422 0.07121220609684561 0.002944105448214881 0.028950207149354968 -0.01674002547305451"
-	# x0 = process_params_str(x0)
-	# # x0[-2:] = x0[-2:]
-	# print(x0)
+	print(x0)
 
 	eval_tracker = {
 		'evals': 0,
