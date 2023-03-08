@@ -44,15 +44,15 @@ DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
 CALC_TEST_SET_LOSS_FREQ = 11
-ACTIVITY_LOSS_COEF = 6 if bool(args.asp) else 0
+ACTIVITY_LOSS_COEF = 2.5 if bool(args.asp) else 0
 ACTIVITY_JITTER_COEF = 60
-DROPOUT_PROB_PER_ITER = 0.0007
+DROPOUT_PROB_PER_ITER = 0.0004
 
-T = 0.1 # Total duration of one network simulation
+T = 0.05 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
-n_e = 15 # Number excitatory cells in sequence (also length of sequence)
-n_i = 20 # Number inhibitory cells
+n_e = 7 # Number excitatory cells in sequence (also length of sequence)
+n_i = 10 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 
@@ -168,7 +168,7 @@ def calc_loss(r : np.ndarray):
 
 	r_maxs = r_exc.max(axis=0)
 	r_summed = np.sum(r_exc, axis=0)
-	r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
+	r_active_mask =  np.where(r_summed > 0.001, 1, 0).astype(bool)
 	r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
 
 	r_normed = r_exc / r_summed_safe_divide
@@ -187,7 +187,7 @@ def calc_loss(r : np.ndarray):
 
 	for i in np.arange(r_exc.shape[1]):
 		if r_active_mask[i]:
-			if i != 0:
+			# if i != 0:
 				# loss_activity_var = ACTIVITY_LOSS_COEF * np.power((t_vars[i] - 4e-6) / 4e-6, 2)
 				# loss += loss_activity_var
 				# activity_loss += loss_activity_var
@@ -196,20 +196,17 @@ def calc_loss(r : np.ndarray):
 				# loss += loss_activity_zero_mom
 				# activity_loss += loss_activity_zero_mom
 
-				loss_activity_max = ACTIVITY_LOSS_COEF * np.power(np.minimum(r_maxs[i] - 0.2, 0) / 0.2, 2)
-				loss += loss_activity_max
-				activity_loss += loss_activity_max
+				# loss_activity_max = ACTIVITY_LOSS_COEF * int(r_maxs[i] - 0.15 > 0)
+				# loss += loss_activity_max
+				# activity_loss += loss_activity_max
 
-			if i != 0 and i != n_e - 1:
-				for k in np.arange(i+1, r_exc.shape[1]):
-						activity_overlap_loss += np.dot(r_exc[:, i], r_exc[:, k])
+			if i != 0:
+				for k in np.arange(1, r_exc.shape[1]):
+					activity_overlap_loss += (ACTIVITY_LOSS_COEF * np.dot(r_exc[:, i], r_exc[:, k]) / 2)
 		else:
 			loss += 100
 
-	activity_overlap_loss *= 1e5 * 2 /  (r_exc.shape[0] * ((n_e - 1)**2 - (n_e - 1)))
-
-	print('activity_overlap_loss:', activity_overlap_loss)
-
+	activity_loss += activity_overlap_loss
 	loss += activity_overlap_loss
 
 	return loss, t_means_diffs, activity_loss
@@ -374,12 +371,12 @@ def simulate_single_network(index, plasticity_coefs, track_params=True, train=Tr
 		mixed_inputs[:, -n_i:] = 0.05 * mixed_inputs[:, -n_i:]
 		r_in[:, 1:] += mixed_inputs
 
-		if i < 400:
-			surviving_synapse_mask_for_i = np.random.rand(n_e, n_e) > DROPOUT_PROB_PER_ITER
-			drop_mask_for_i = np.logical_and(~surviving_synapse_mask_for_i, surviving_synapse_mask)
-			surviving_synapse_mask[drop_mask_for_i] = False
+		# if i < 400:
+		# 	surviving_synapse_mask_for_i = np.random.rand(n_e, n_e) > DROPOUT_PROB_PER_ITER
+		# 	drop_mask_for_i = np.logical_and(~surviving_synapse_mask_for_i, surviving_synapse_mask)
+		# 	surviving_synapse_mask[drop_mask_for_i] = False
 
-			w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
+		# 	w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
@@ -534,7 +531,7 @@ def process_params_str(s):
 	params = []
 	for x in s.split(' '):
 		x = x.replace('\n', '')
-		if x is not '':
+		if x != '':
 			params.append(float(x))
 	return np.array(params)
 
