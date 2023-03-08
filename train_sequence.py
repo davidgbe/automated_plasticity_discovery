@@ -120,7 +120,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_self_org_ee_no_drop_poisson_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_DROPP_{DROPOUT_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/seq_self_org_ee_no_drop_small_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_DROPP_{DROPOUT_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -202,7 +202,7 @@ def calc_loss(r : np.ndarray):
 
 			if i != 0:
 				for k in np.arange(1, r_exc.shape[1]):
-					activity_overlap_loss += (ACTIVITY_LOSS_COEF * np.dot(r_exc[:, i], r_exc[:, k]) / 2)
+					activity_overlap_loss += (ACTIVITY_LOSS_COEF * np.sum((r_exc[:, i] * r_exc[:, k] > 0).astype(int)) * dt / 2)
 		else:
 			loss += 100
 
