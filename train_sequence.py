@@ -69,11 +69,12 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$x \, y^2$',
 	r'$x^2 \, y$',
 	# r'$x^2 \, y^2$',
-	# r'$y_{int}$',
+	r'$y_{int}$',
 	r'$x \, y_{int}$',
 	# r'$x_{int}$',
 	r'$x_{int} \, y$',
 	r'$x_{int} \, y^2$',
+	r'$y_{int} \, y$',
 
 	r'$w$',
 	r'$w \, y$',
@@ -84,11 +85,12 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$w \, x \, y^2$',
 	r'$w \, x^2 \, y$',
 	# r'$w \, x^2 \, y^2$',
-	# r'$w y_{int}$',
+	r'$w y_{int}$',
 	r'$w x \, y_{int}$',
 	# r'$w x_{int}$',
 	r'$w x_{int} \, y$',
 	r'$w x_{int} \, y^2$',
+	r'$w y_{int} \, y$',
 
 	# r'$w^2$',
 	# r'$w^2 \, y$',
@@ -314,7 +316,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 def calc_alpha_func(tau_alpha):
 	alpha_func_n_steps = int(10 * tau_alpha / dt)
 	t_alpha = np.arange(0, alpha_func_n_steps) * dt
-	return t_alpha / tau_alpha * np.exp(-t_alpha/tau_alpha)
+	return np.e * t_alpha / tau_alpha * np.exp(-t_alpha/tau_alpha)
 
 
 def poisson_arrivals_to_inputs(arrivals, tau_alpha):
@@ -323,14 +325,16 @@ def poisson_arrivals_to_inputs(arrivals, tau_alpha):
 
 	for i in range(arrivals.shape[1]):
 		input_current[:, i] = np.convolve(alpha_func, arrivals[:, i], mode='full')[:arrivals.shape[0]]
-
 	return input_current
 
 
-def simulate_single_network(index, plasticity_coefs, track_params=True, train=True):
+def simulate_single_network(index, x, track_params=True, train=True):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
+	plasticity_coefs = x[:24]
+	rule_time_constants = x[24:]
+
 	if FIXED_DATA:
 		if train:
 			np.random.seed(train_seeds[index])
@@ -365,24 +369,23 @@ def simulate_single_network(index, plasticity_coefs, track_params=True, train=Tr
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
-		input_amp = np.random.rand() * 0.001 + 0.005
+		input_amp = np.random.rand() * 0.2 + 1
 		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 2e-3, w=input_amp) # Drive first excitatory cell with Gaussian input
 		random_inputs_poisson = np.random.poisson(lam=20 * dt, size=(len(t), n_e - 1 + n_i))
-		random_inputs = poisson_arrivals_to_inputs(random_inputs_poisson, 3e-3)
-		mixed_inputs = fixed_inputs + random_inputs
-		mixed_inputs[:, :n_e - 1] = 0.25 * mixed_inputs[:, :n_e - 1]
-		mixed_inputs[:, -n_i:] = 0.05 * mixed_inputs[:, -n_i:]
+		mixed_inputs = poisson_arrivals_to_inputs(fixed_inputs_poisson + random_inputs_poisson, 3e-3)
+		mixed_inputs[:, :n_e - 1] = 0.09 * mixed_inputs[:, :n_e - 1]
+		mixed_inputs[:, -n_i:] = 0.02 * mixed_inputs[:, -n_i:]
 		r_in[:, 1:] += mixed_inputs
 
-		if i < 400:
-			surviving_synapse_mask_for_i = np.random.rand(n_e, n_e) > DROPOUT_PROB_PER_ITER
-			drop_mask_for_i = np.logical_and(~surviving_synapse_mask_for_i, surviving_synapse_mask)
-			surviving_synapse_mask[drop_mask_for_i] = False
+		# if i <= 400:
+		# 	surviving_synapse_mask_for_i = np.random.rand(n_e, n_e) > DROPOUT_PROB_PER_ITER
+		# 	drop_mask_for_i = np.logical_and(~surviving_synapse_mask_for_i, surviving_synapse_mask)
+		# 	surviving_synapse_mask[drop_mask_for_i] = False
 
-			w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
+		# 	w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
 		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e, :n_e]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
 			return {
@@ -445,7 +448,10 @@ def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coef
 	write_csv(write_path, list(to_save))
 
 
-def process_plasticity_rule_results(results, plasticity_coefs, eval_tracker=None, train=True):
+def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
+	plasticity_coefs = x[:24]
+	rule_time_constants = x[24:]
+
 	if np.any(np.array([res['blew_up'] for res in results])):
 		if eval_tracker is not None:
 			eval_tracker['evals'] += 1
@@ -534,7 +540,7 @@ def process_params_str(s):
 	params = []
 	for x in s.split(' '):
 		x = x.replace('\n', '')
-		if x is not '':
+		if x != '':
 			params.append(float(x))
 	return np.array(params)
 
@@ -544,7 +550,7 @@ if __name__ == '__main__':
 	if args.load_initial is not None:
 		x0 = load_best_params(args.load_initial)
 	else:
-		x0 = np.zeros(20)
+		x0 = np.concatenate([np.zeros(24), 5e-3 * np.ones(5)])
 
 # 	x0 = '''0.02000823 -0.12441293 -0.03365112 -0.12084871  0.00107426 -0.00182773
  #  0.02428422 -0.00753884  0.05495447  0.00810028  0.00745455 -0.11756651
@@ -565,6 +571,10 @@ if __name__ == '__main__':
 	options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
 		'popsize': 15,
+		'bounds': [
+			[-10] * 24 + [1e-3] * 5,
+			[10] * 24 + [25e-3] * 5,
+		],
 	}
 
 	for k in range(10):

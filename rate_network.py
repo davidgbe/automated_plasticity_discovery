@@ -5,7 +5,7 @@ from numba import njit
 ### For initiating activity
 
 def generate_gaussian_pulse(t, u, s, w=1):
-    return w / (np.sqrt(2 * np.pi) * s) * np.exp(-0.5 * np.square((t-u) / s))
+    return w * np.exp(-0.5 * np.square((t-u) / s))
 
 ### Related to activation functions
 
@@ -28,14 +28,14 @@ def threshold_power(s : np.ndarray, v_th : float, p : float):
     return np.power(threshold_linear(s, v_th), p)
 
 ### Simulate dynamics
-def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, tau_e=5e-3, tau_i=5e-3, tau_stdp=5e-3, dt=1e-6, g=1, w_u=1, w_scale_factor=1., track_params=False):    
+def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, rule_time_constants : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, tau_e=5e-3, tau_i=5e-3, dt=1e-6, g=1, w_u=1, w_scale_factor=1., track_params=False):    
     len_t = len(t)
 
     inh_activity = np.zeros((len_t))
     r = np.zeros((len_t, n_e + n_i))
     s = np.zeros((len_t, n_e + n_i))
     v = np.zeros((len_t, n_e + n_i))
-    r_exp_filtered = np.zeros((len_t, n_e + n_i))
+    r_exp_filtered = np.zeros((len(rule_time_constants), len_t, n_e + n_i))
 
     sign_w = np.where(w >= 0, 1, -1).astype(int)
     inf_w = np.where(sign_w >= 0, 1e-6, -1e-6)
@@ -44,7 +44,7 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_
 
     n_params = len(plasticity_coefs)
 
-    w_copy, effects_e_e = simulate_inner_loop(t, n_e, n_i, inp, plasticity_coefs, w, w_plastic, tau_stdp, dt, g, w_u, w_scale_factor, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
+    w_copy, effects_e_e = simulate_inner_loop(t, n_e, n_i, inp, plasticity_coefs, rule_time_constants, w, w_plastic, dt, g, w_u, w_scale_factor, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
 
     if track_params:
         return r, s, v, w_copy, effects_e_e, r_exp_filtered
@@ -58,9 +58,9 @@ def simulate_inner_loop(
     n_i : int,
     inp : np.ndarray,
     plasticity_coefs : np.ndarray,
+    rule_time_constants : np.ndarray,
     w : np.ndarray,
     w_plastic : np.ndarray,
-    tau_stdp : float,
     dt : float,
     g : float,
     w_u : float,
@@ -84,6 +84,8 @@ def simulate_inner_loop(
     effects_e_i = np.zeros((one_third_n_params))
     effects_i_e = np.zeros((one_third_n_params))
 
+    int_time_consts = rule_time_constants.reshape(rule_time_constants.shape[0], 1) * np.ones((rule_time_constants.shape[0], n_e + n_i))
+
     for i in range(0, len(t) - 1):
         v[i+1, :] = w_u * inp[i, :] + np.dot(w_copy, r[i, :].T) # calculate input to synaptic conductance equation
         s[i+1, :] = s[i, :] + (v[i+1, :] - s[i, :]) * dt / tau # update synaptic conductance as exponential filter of input
@@ -98,7 +100,7 @@ def simulate_inner_loop(
         r[i+1, n_e:] = g * np.tanh(shifted_s_i)
         
         # calculate exponential filtered of firing rate to use for STDP-like plasticity rules
-        r_exp_filtered[i+1, :] = r_exp_filtered[i, :] * (1 - dt / tau_stdp) + r[i, :] * (dt / tau_stdp)
+        r_exp_filtered[:, i+1, :] = r_exp_filtered[:, i, :] * (1 - dt / int_time_consts) + r[i, :] * (dt / int_time_consts)
 
         r_0_pow = np.ones(n_e + n_i)
         r_1_pow = r[i+1, :] / 0.1
@@ -115,12 +117,15 @@ def simulate_inner_loop(
         r_2_r_1 = r_1_r_2.T
         r_2_r_2 = np.outer(r_2_pow, r_2_pow)
 
-        r_0_r_exp = np.outer(r_exp_filtered[i+1, :], r_0_pow) / tau_stdp
-        r_1_r_exp = np.outer(r_exp_filtered[i+1, :], r_1_pow) / tau_stdp
-        r_2_r_exp = np.outer(r_exp_filtered[i+1, :], r_2_pow) / tau_stdp
+        r_0_r_exp = np.outer(r_exp_filtered[0, i+1, :], r_0_pow) / 5e-3
+        r_1_r_exp = np.outer(r_exp_filtered[1, i+1, :], r_1_pow) / 5e-3
+        r_exp_r_1 = np.outer(r_1_pow, r_exp_filtered[2, i+1, :]) / 5e-3
+        r_2_r_exp = np.outer(r_exp_filtered[3, i+1, :], r_2_pow) / 5e-3
         r_exp_r_0 = r_0_r_exp.T
-        r_exp_r_1 = r_1_r_exp.T
         r_exp_r_2 = r_2_r_exp.T
+
+        r_0_by_r_exp_r = np.outer(r_exp_filtered[4, i+1, :] * r_1_pow, r_0_pow) / 5e-3
+        r_exp_r_by_r_0 = r_0_by_r_exp_r.T
 
         r_cross_products = np.stack((
             r_0_r_0,
@@ -132,11 +137,12 @@ def simulate_inner_loop(
             r_1_r_2,
             r_2_r_1,
             # r_2_r_2,
-            # r_0_r_exp,
+            r_0_r_exp,
             r_1_r_exp,
             # r_exp_r_0,
             r_exp_r_1,
             r_exp_r_2,
+            r_0_by_r_exp_r,
         ))
 
         # multiply firing rate outer products by 1 and w to form rules that do and do not scale with synapse size to form all updates for all rules
