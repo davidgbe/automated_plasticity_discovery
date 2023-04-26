@@ -28,7 +28,7 @@ def threshold_power(s : np.ndarray, v_th : float, p : float):
     return np.power(threshold_linear(s, v_th), p)
 
 ### Simulate dynamics
-def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, rule_time_constants : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, tau_e=5e-3, tau_i=5e-3, dt=1e-6, g=1, w_u=1, w_scale_factor=1., track_params=False):    
+def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, rule_time_constants : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, tau_e=5e-3, tau_i=5e-3, dt=1e-6, g=1, w_u=1, track_params=False):    
     len_t = len(t)
 
     inh_activity = np.zeros((len_t))
@@ -44,7 +44,7 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_
 
     n_params = len(plasticity_coefs)
 
-    w_copy, effects_e_e = simulate_inner_loop(t, n_e, n_i, inp, plasticity_coefs, rule_time_constants, w, w_plastic, dt, g, w_u, w_scale_factor, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
+    w_copy, effects_e_e = simulate_inner_loop(t, n_e, n_i, inp, plasticity_coefs, rule_time_constants, w, w_plastic, dt, g, w_u, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
 
     if track_params:
         return r, s, v, w_copy, effects_e_e, r_exp_filtered
@@ -64,7 +64,6 @@ def simulate_inner_loop(
     dt : float,
     g : float,
     w_u : float,
-    w_scale_factor : float,
     track_params : bool,
     len_t : int,
     inh_activity : np.ndarray,
@@ -103,50 +102,70 @@ def simulate_inner_loop(
         r_exp_filtered[:, i+1, :] = r_exp_filtered[:, i, :] * (1 - dt / int_time_consts) + r[i, :] * (dt / int_time_consts)
 
         r_0_pow = np.ones(n_e + n_i)
-        r_1_pow = r[i+1, :] / 0.1
-        r_2_pow = np.square(r[i+1, :]) / 0.01
+        r_1_pow = r[i+1, :]
+        # r_2_pow = np.square(r[i+1, :])
 
-        # find outer products of zeroth, first, and second powers of firing rates to compute updates due to plasticity rules
+        # find outer products of zeroth, first powers of firing rates to compute updates due to plasticity rules
         r_0_r_0 = np.outer(r_0_pow, r_0_pow)
         r_0_r_1 = np.outer(r_1_pow, r_0_pow)
         r_1_r_0 = r_0_r_1.T
-        r_0_r_2 = np.outer(r_2_pow, r_0_pow)
-        r_2_r_0 = r_0_r_2.T
+        # r_0_r_2 = np.outer(r_2_pow, r_0_pow)
+        # r_2_r_0 = r_0_r_2.T
         r_1_r_1 = np.outer(r_1_pow, r_1_pow)
-        r_1_r_2 = np.outer(r_2_pow, r_1_pow)
-        r_2_r_1 = r_1_r_2.T
-        r_2_r_2 = np.outer(r_2_pow, r_2_pow)
+        # r_1_r_2 = np.outer(r_2_pow, r_1_pow)
+        # r_2_r_1 = r_1_r_2.T
+        # r_2_r_2 = np.outer(r_2_pow, r_2_pow)
 
-        r_0_r_exp = np.outer(r_exp_filtered[0, i+1, :], r_0_pow) / 5e-3
-        r_1_r_exp = np.outer(r_exp_filtered[1, i+1, :], r_1_pow) / 5e-3
-        r_exp_r_1 = np.outer(r_1_pow, r_exp_filtered[2, i+1, :]) / 5e-3
-        r_2_r_exp = np.outer(r_exp_filtered[3, i+1, :], r_2_pow) / 5e-3
-        r_exp_r_0 = r_0_r_exp.T
-        r_exp_r_2 = r_2_r_exp.T
+        r_0_r_exp = np.outer(r_exp_filtered[0, i+1, :], r_0_pow)
+        r_1_r_exp = np.outer(r_exp_filtered[1, i+1, :], r_1_pow)
+        r_exp_r_0 = np.outer(r_0_pow, r_exp_filtered[2, i+1, :])
+        r_exp_r_1 = np.outer(r_1_pow, r_exp_filtered[3, i+1, :])
+        # r_2_r_exp = np.outer(r_exp_filtered[3, i+1, :], r_2_pow)
+        # r_exp_r_2 = r_2_r_exp.T
 
-        r_0_by_r_exp_r = np.outer(r_exp_filtered[4, i+1, :] * r_1_pow, r_0_pow) / 5e-3
-        r_exp_r_by_r_0 = r_0_by_r_exp_r.T
+        r_0_r_exp_w = np.outer(r_exp_filtered[4, i+1, :], r_0_pow)
+        r_1_r_exp_w = np.outer(r_exp_filtered[5, i+1, :], r_1_pow)
+        r_exp_r_0_w = np.outer(r_0_pow, r_exp_filtered[6, i+1, :])
+        r_exp_r_1_w = np.outer(r_1_pow, r_exp_filtered[7, i+1, :])
+
+        # r_0_by_r_exp_r = np.outer(r_exp_filtered[4, i+1, :] * r_1_pow, r_0_pow)
+        # r_exp_r_by_r_0 = r_0_by_r_exp_r.T
 
         r_cross_products = np.stack((
             r_0_r_0,
             r_0_r_1,
             r_1_r_0,
-            r_0_r_2,
+            # r_0_r_2,
             # r_2_r_0,
             r_1_r_1,
-            r_1_r_2,
-            r_2_r_1,
+            # r_1_r_2,
+            # r_2_r_1,
             # r_2_r_2,
             r_0_r_exp,
             r_1_r_exp,
-            # r_exp_r_0,
+            r_exp_r_0,
             r_exp_r_1,
-            r_exp_r_2,
-            r_0_by_r_exp_r,
+            # r_exp_r_2,
+            # r_0_by_r_exp_r,
+
+            r_0_r_0,
+            r_0_r_1,
+            r_1_r_0,
+            # r_0_r_2,
+            # r_2_r_0,
+            r_1_r_1,
+            # r_1_r_2,
+            # r_2_r_1,
+            # r_2_r_2,
+            r_0_r_exp_w,
+            r_1_r_exp_w,
+            r_exp_r_0_w,
+            r_exp_r_1_w,
         ))
 
-        # multiply firing rate outer products by 1 and w to form rules that do and do not scale with synapse size to form all updates for all rules
-        w_updates_unweighted = np.concatenate((r_cross_products, w_copy / w_scale_factor * r_cross_products))
+        w_updates_unweighted = r_cross_products
+        num_rules = w_updates_unweighted.shape[0]
+        w_updates_unweighted[int(0.5 * num_rules):num_rules] = w_copy * w_updates_unweighted[int(0.5 * num_rules):num_rules]
 
         w_not_almost_zero = np.where(np.abs(w) > 2e-6, 1, 0)
 

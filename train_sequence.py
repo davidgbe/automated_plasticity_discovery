@@ -28,6 +28,8 @@ parser.add_argument('--pool_size', metavar='ps', type=int, help='Number of proce
 parser.add_argument('--batch', metavar='b', type=int, help='Number of simulations that should be batched per loss function evaluation')
 parser.add_argument('--fixed_data', metavar='fd', type=int, help='')
 parser.add_argument('--load_initial', metavar='li', type=str, help='File from which to load the best params as an initial guess')
+parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
+parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
 
 args = parser.parse_args()
@@ -46,8 +48,8 @@ L1_PENALTIES = args.l1_pen
 CALC_TEST_SET_LOSS_FREQ = 11
 ACTIVITY_LOSS_COEF = 6 if bool(args.asp) else 0
 ACTIVITY_JITTER_COEF = 60
-CHANGE_PROB_PER_ITER = 0.0007
-FRAC_INPUTS_FIXED = 0.75
+CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
+FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 
 T = 0.1 # Total duration of one network simulation
@@ -65,34 +67,34 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'',
 	r'$y$',
 	r'$x$',
-	r'$y^2$',
+	# r'$y^2$',
 	# r'$x^2$',
 	r'$x \, y$',
-	r'$x \, y^2$',
-	r'$x^2 \, y$',
+	# r'$x \, y^2$',
+	# r'$x^2 \, y$',
 	# r'$x^2 \, y^2$',
 	r'$y_{int}$',
 	r'$x \, y_{int}$',
-	# r'$x_{int}$',
+	r'$x_{int}$',
 	r'$x_{int} \, y$',
-	r'$x_{int} \, y^2$',
-	r'$y_{int} \, y$',
+	# r'$x_{int} \, y^2$',
+	# r'$y_{int} \, y$',
 
 	r'$w$',
 	r'$w \, y$',
 	r'$w \, x$',
-	r'$w \, y^2$',
+	# r'$w \, y^2$',
 	# r'$w \, x^2$',
 	r'$w \, x \, y$',
-	r'$w \, x \, y^2$',
-	r'$w \, x^2 \, y$',
+	# r'$w \, x \, y^2$',
+	# r'$w \, x^2 \, y$',
 	# r'$w \, x^2 \, y^2$',
 	r'$w y_{int}$',
 	r'$w x \, y_{int}$',
-	# r'$w x_{int}$',
+	r'$w x_{int}$',
 	r'$w x_{int} \, y$',
-	r'$w x_{int} \, y^2$',
-	r'$w y_{int} \, y$',
+	# r'$w x_{int} \, y^2$',
+	# r'$w y_{int} \, y$',
 
 	# r'$w^2$',
 	# r'$w^2 \, y$',
@@ -124,7 +126,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_self_org_ee_med_drop_ts_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/seq_self_org_ee_med_drop_ts_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -352,8 +354,8 @@ def simulate_single_network(index, x, track_params=True, train=True):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
-	plasticity_coefs = x[:24]
-	rule_time_constants = x[24:]
+	plasticity_coefs = x[:16]
+	rule_time_constants = x[16:]
 
 	if FIXED_DATA:
 		if train:
@@ -475,8 +477,8 @@ def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coef
 
 
 def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
-	plasticity_coefs = x[:24]
-	rule_time_constants = x[24:]
+	plasticity_coefs = x[:16]
+	rule_time_constants = x[16:]
 
 	if np.any(np.array([res['blew_up'] for res in results])):
 		if eval_tracker is not None:
@@ -576,7 +578,7 @@ if __name__ == '__main__':
 	if args.load_initial is not None:
 		x0 = load_best_params(args.load_initial)
 	else:
-		x0 = np.concatenate([np.zeros(24), 5e-3 * np.ones(5)])
+		x0 = np.concatenate([np.zeros(16), 5e-3 * np.ones(8)])
 
 # 	x0 = '''0.02000823 -0.12441293 -0.03365112 -0.12084871  0.00107426 -0.00182773
  #  0.02428422 -0.00753884  0.05495447  0.00810028  0.00745455 -0.11756651
@@ -598,8 +600,8 @@ if __name__ == '__main__':
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
 		'popsize': 15,
 		'bounds': [
-			[-10] * 24 + [1e-3] * 5,
-			[10] * 24 + [25e-3] * 5,
+			[-10] * 16 + [0.5e-3] * 8,
+			[10] * 16 + [40e-3] * 8,
 		],
 	}
 
