@@ -47,6 +47,8 @@ CALC_TEST_SET_LOSS_FREQ = 11
 ACTIVITY_LOSS_COEF = 6 if bool(args.asp) else 0
 ACTIVITY_JITTER_COEF = 60
 DROPOUT_PROB_PER_ITER = 0.0007
+FRAC_INPUTS_FIXED = 0.75
+INPUT_RATE_PER_CELL = 80
 
 T = 0.1 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -363,19 +365,20 @@ def simulate_single_network(index, x, track_params=True, train=True):
 
 	surviving_synapse_mask = np.ones((n_e, n_e)).astype(bool)
 
-	fixed_inputs_poisson = np.random.poisson(lam=60 * dt, size=(len(t), n_e - 1 + n_i))
-	fixed_inputs = poisson_arrivals_to_inputs(fixed_inputs_poisson, 3e-3)
+	fixed_inputs_spks = np.zeros((len(t), n_e + n_i))
+	fixed_inputs_spks[:10, 0] = 1
+	fixed_inputs_spks[:, 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(len(t), n_e - 1 + n_i))
 
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
-		input_amp = np.random.rand() * 0.2 + 1
-		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 2e-3, w=input_amp) # Drive first excitatory cell with Gaussian input
-		random_inputs_poisson = np.random.poisson(lam=20 * dt, size=(len(t), n_e - 1 + n_i))
-		mixed_inputs = poisson_arrivals_to_inputs(fixed_inputs_poisson + random_inputs_poisson, 3e-3)
-		mixed_inputs[:, :n_e - 1] = 0.09 * mixed_inputs[:, :n_e - 1]
-		mixed_inputs[:, -n_i:] = 0.02 * mixed_inputs[:, -n_i:]
-		r_in[:, 1:] += mixed_inputs
+
+		random_inputs_poisson = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(len(t), n_e + n_i))
+		random_inputs_poisson[:, 0] = 0
+
+		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
+		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
+		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
 		if i <= 400:
 			surviving_synapse_mask_for_i = np.random.rand(n_e, n_e) > DROPOUT_PROB_PER_ITER
