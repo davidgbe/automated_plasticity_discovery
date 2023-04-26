@@ -46,7 +46,7 @@ L1_PENALTIES = args.l1_pen
 CALC_TEST_SET_LOSS_FREQ = 11
 ACTIVITY_LOSS_COEF = 6 if bool(args.asp) else 0
 ACTIVITY_JITTER_COEF = 60
-DROPOUT_PROB_PER_ITER = 0.0007
+CHANGE_PROB_PER_ITER = 0.0007
 FRAC_INPUTS_FIXED = 0.75
 INPUT_RATE_PER_CELL = 80
 
@@ -124,7 +124,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_self_org_ee_med_drop_ts_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_DROPP_{DROPOUT_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/seq_self_org_ee_med_drop_ts_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -146,6 +146,7 @@ write_csv(test_data_path, header)
 w_e_e = 0.8e-3 / dt
 w_e_i = 0.5e-4 / dt
 w_i_e = -0.3e-4 / dt
+w_e_e_added = 0.05 * w_e_e * 0.2
 
 def make_network():
 	'''
@@ -155,7 +156,7 @@ def make_network():
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 
 	# w_initial[:n_e, :n_e] = exp_if_under_val(1, (n_e, n_e), 0.03 * w_e_e)
-	w_initial[:n_e, :n_e] = 0.06 * w_e_e * (0.2 + 0.8 * np.random.rand(n_e, n_e))
+	w_initial[:n_e, :n_e] = 0.05 * w_e_e * (0.2 + 0.8 * np.random.rand(n_e, n_e))
 	w_initial[n_e:, :n_e] = gaussian_if_under_val(0.8, (n_i, n_e), w_e_i, 0.3 * w_e_i)
 	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
 
@@ -254,13 +255,30 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 			else:
 				axs[2 * i][1].plot(t, r[:, l_idx], c='black') # graph inh activity
 
+		r_exc = r[:, :n_e]
+		r_summed = np.sum(r_exc, axis=0)
+		r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
+		r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
+		r_normed = r_exc / r_summed_safe_divide
+		t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
+		t_ordering = np.argsort(t_means)
+		t_ordering = np.concatenate([t_ordering, np.arange(n_e, n_e + n_i)])
+		# print(t_means)
+		# print(t_ordering)
+
+		sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
+		sorted_w = w[t_ordering, :][:, t_ordering]
+
 		vmin = np.min([w_initial.min(), w.min()])
 		vmax = np.max([w_initial.max(), w.max()])
 
-		mappable = axs[2 * i + 1][0].matshow(w_initial, vmin=vmin, vmax=vmax) # plot initial weight matrix
+		vbound = np.maximum(vmax, np.abs(vmin))
+		vbound = 5
+
+		mappable = axs[2 * i + 1][0].matshow(sorted_w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][0])
 
-		mappable = axs[2 * i + 1][1].matshow(w, vmin=vmin, vmax=vmax) # plot final weight matrix
+		mappable = axs[2 * i + 1][1].matshow(sorted_w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][1])
 
 		axs[2 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
@@ -381,11 +399,16 @@ def simulate_single_network(index, x, track_params=True, train=True):
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
 		if i <= 400:
-			surviving_synapse_mask_for_i = np.random.rand(n_e, n_e) > DROPOUT_PROB_PER_ITER
-			drop_mask_for_i = np.logical_and(~surviving_synapse_mask_for_i, surviving_synapse_mask)
-			surviving_synapse_mask[drop_mask_for_i] = False
+			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
+
+			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
+			birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
+
+			surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
+			surviving_synapse_mask[birth_mask_for_i] = False
 
 			w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
+			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
