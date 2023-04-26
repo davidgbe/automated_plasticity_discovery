@@ -38,7 +38,7 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (399, 400) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (799, 800) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -252,13 +252,30 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 			else:
 				axs[2 * i][1].plot(t, r[:, l_idx], c='black') # graph inh activity
 
+		r_exc = r[:, :n_e]
+		r_summed = np.sum(r_exc, axis=0)
+		r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
+		r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
+		r_normed = r_exc / r_summed_safe_divide
+		t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
+		t_ordering = np.argsort(t_means)
+		t_ordering = np.concatenate([t_ordering, np.arange(n_e, n_e + n_i)])
+		print(t_means)
+		print(t_ordering)
+
+		sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
+		sorted_w = w[t_ordering, :][:, t_ordering]
+
 		vmin = np.min([w_initial.min(), w.min()])
 		vmax = np.max([w_initial.max(), w.max()])
 
-		mappable = axs[2 * i + 1][0].matshow(w_initial, vmin=vmin, vmax=vmax) # plot initial weight matrix
+		vbound = np.maximum(vmax, np.abs(vmin))
+		vbound = 5
+
+		mappable = axs[2 * i + 1][0].matshow(sorted_w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][0])
 
-		mappable = axs[2 * i + 1][1].matshow(w, vmin=vmin, vmax=vmax) # plot final weight matrix
+		mappable = axs[2 * i + 1][1].matshow(sorted_w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][1])
 
 		axs[2 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
@@ -377,12 +394,12 @@ def simulate_single_network(index, x, track_params=True, train=True):
 		mixed_inputs[:, -n_i:] = 0.02 * mixed_inputs[:, -n_i:]
 		r_in[:, 1:] += mixed_inputs
 
-		if i <= 400:
-			surviving_synapse_mask_for_i = np.random.rand(n_e, n_e) > DROPOUT_PROB_PER_ITER
-			drop_mask_for_i = np.logical_and(~surviving_synapse_mask_for_i, surviving_synapse_mask)
-			surviving_synapse_mask[drop_mask_for_i] = False
+		# if i <= 400:
+		# 	surviving_synapse_mask_for_i = np.random.rand(n_e, n_e) > DROPOUT_PROB_PER_ITER
+		# 	drop_mask_for_i = np.logical_and(~surviving_synapse_mask_for_i, surviving_synapse_mask)
+		# 	surviving_synapse_mask[drop_mask_for_i] = False
 
-			w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
+		# 	w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
@@ -552,13 +569,19 @@ if __name__ == '__main__':
 	else:
 		x0 = np.concatenate([np.zeros(24), 5e-3 * np.ones(5)])
 
-# 	x0 = '''0.02000823 -0.12441293 -0.03365112 -0.12084871  0.00107426 -0.00182773
- #  0.02428422 -0.00753884  0.05495447  0.00810028  0.00745455 -0.11756651
- # -0.04842812 -0.09974678  0.00720619  0.00869501  0.02850774 -0.01940583
- #  0.02648215 -0.03583781'''
-# 	x0 = process_params_str(x0)
+# 	x1 = '''0.03319516 -0.02460002 -0.0194806  -0.031211    0.01034758 -0.01734708
+ #  0.01798712  0.00962709  0.00431229  0.04313792  0.04115364 -0.05190074
+ #  0.01912274  0.03640839  0.01504871 -0.02156684  0.02122507  0.00741272
+ # -0.01294517 -0.00479894  0.00765137  0.02295402 -0.01261857 -0.06408623
+ #  0.02498256  0.00175581  0.01820646  0.00683108  0.01163846'''
 
-	print(x0)
+	x1 = '''0.02766081 0 0 0 0 0 0 -0.00267098 0 0.0075 0 -0.02690996 0.01465655 0 0 0 0 0 0 -0.00149564 -0.00061212  0.02 0 -0.03423732 0.0185072 0.00810703 0.0117672 0.01875745 0.01220495'''
+	x1 = process_params_str(x1)
+
+	# x0[0] = 0.5 * x0[0]
+	# x0[12] = 0.5 * x0[12]
+
+	print(x1)
 
 	eval_tracker = {
 		'evals': 0,
@@ -566,25 +589,26 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	eval_all([x0], eval_tracker=eval_tracker)
+	# eval_all([x0], eval_tracker=eval_tracker)
+	eval_all([x1], eval_tracker=eval_tracker)
 
-	options = {
-		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-		'popsize': 15,
-		'bounds': [
-			[-10] * 24 + [1e-3] * 5,
-			[10] * 24 + [25e-3] * 5,
-		],
-	}
+	# options = {
+	# 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+	# 	'popsize': 15,
+	# 	'bounds': [
+	# 		[-10] * 24 + [1e-3] * 5,
+	# 		[10] * 24 + [25e-3] * 5,
+	# 	],
+	# }
 
-	for k in range(10):
-		es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
+	# for k in range(10):
+	# 	es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
 
-		print(es.opts)
+	# 	print(es.opts)
 
-		while not es.stop():
-			X = es.ask()
-			es.tell(X, eval_all(X, eval_tracker=eval_tracker))
-			es.disp()
+	# 	while not es.stop():
+	# 		X = es.ask()
+	# 		es.tell(X, eval_all(X, eval_tracker=eval_tracker))
+	# 		es.disp()
 
-		options['popsize'] += 2
+	# 	options['popsize'] += 2
