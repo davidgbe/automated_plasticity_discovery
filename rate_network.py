@@ -101,8 +101,9 @@ def simulate_inner_loop(
         # calculate exponential filtered of firing rate to use for STDP-like plasticity rules
         r_exp_filtered[:, i+1, :] = r_exp_filtered[:, i, :] * (1 - dt / int_time_consts) + r[i, :] * (dt / int_time_consts)
 
-        r_0_pow = np.ones(n_e + n_i)
-        r_1_pow = r[i+1, :]
+        r_0_pow = np.ones(n_e + n_i) / 0.1
+        r_1_pow = r[i+1, :] / 0.01
+        r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 1e-2
         # r_2_pow = np.square(r[i+1, :])
 
         # find outer products of zeroth, first powers of firing rates to compute updates due to plasticity rules
@@ -116,17 +117,17 @@ def simulate_inner_loop(
         # r_2_r_1 = r_1_r_2.T
         # r_2_r_2 = np.outer(r_2_pow, r_2_pow)
 
-        r_0_r_exp = np.outer(r_exp_filtered[0, i+1, :], r_0_pow)
-        r_1_r_exp = np.outer(r_exp_filtered[1, i+1, :], r_1_pow)
-        r_exp_r_0 = np.outer(r_0_pow, r_exp_filtered[2, i+1, :])
-        r_exp_r_1 = np.outer(r_1_pow, r_exp_filtered[3, i+1, :])
+        r_0_r_exp = np.outer(r_exp_filtered_curr[0, :], r_0_pow)
+        r_1_r_exp = np.outer(r_exp_filtered_curr[1, :], r_1_pow)
+        r_exp_r_0 = np.outer(r_0_pow, r_exp_filtered_curr[2, :])
+        r_exp_r_1 = np.outer(r_1_pow, r_exp_filtered_curr[3, :])
         # r_2_r_exp = np.outer(r_exp_filtered[3, i+1, :], r_2_pow)
         # r_exp_r_2 = r_2_r_exp.T
 
-        r_0_r_exp_w = np.outer(r_exp_filtered[4, i+1, :], r_0_pow)
-        r_1_r_exp_w = np.outer(r_exp_filtered[5, i+1, :], r_1_pow)
-        r_exp_r_0_w = np.outer(r_0_pow, r_exp_filtered[6, i+1, :])
-        r_exp_r_1_w = np.outer(r_1_pow, r_exp_filtered[7, i+1, :])
+        r_0_r_exp_w = np.outer(r_exp_filtered_curr[4, :], r_0_pow)
+        r_1_r_exp_w = np.outer(r_exp_filtered_curr[5, :], r_1_pow)
+        r_exp_r_0_w = np.outer(r_0_pow, r_exp_filtered_curr[6, :])
+        r_exp_r_1_w = np.outer(r_1_pow, r_exp_filtered_curr[7, :])
 
         # r_0_by_r_exp_r = np.outer(r_exp_filtered[4, i+1, :] * r_1_pow, r_0_pow)
         # r_exp_r_by_r_0 = r_0_by_r_exp_r.T
