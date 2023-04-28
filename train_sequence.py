@@ -78,7 +78,8 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$x_{int}$',
 	r'$x_{int} \, y$',
 	# r'$x_{int} \, y^2$',
-	# r'$y_{int} \, y$',
+	r'$y_{int} \, y$',
+	r'$x_{int} \, x$',
 
 	r'$w$',
 	r'$w \, y$',
@@ -94,7 +95,8 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$w x_{int}$',
 	r'$w x_{int} \, y$',
 	# r'$w x_{int} \, y^2$',
-	# r'$w y_{int} \, y$',
+	r'$w y_{int} \, y$',
+	r'$w x_{int} \, x$',
 
 	# r'$w^2$',
 	# r'$w^2 \, y$',
@@ -354,8 +356,8 @@ def simulate_single_network(index, x, track_params=True, train=True):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
-	plasticity_coefs = x[:16]
-	rule_time_constants = x[16:]
+	plasticity_coefs = x[:20]
+	rule_time_constants = x[20:]
 
 	if FIXED_DATA:
 		if train:
@@ -422,12 +424,10 @@ def simulate_single_network(index, x, track_params=True, train=True):
 			
 
 		if i in [n_inner_loop_iters - 1 - 10 * k for k in range(5)]:
-			# loss_start = time.time()
 			loss, mean_active_time_diffs, activity_loss = calc_loss(r)
 			all_mean_active_time_diffs.append(mean_active_time_diffs)
 			total_activity_loss += activity_loss
 
-			# print(time.time() - loss_start)
 			cumulative_loss += loss
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -477,8 +477,8 @@ def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coef
 
 
 def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
-	plasticity_coefs = x[:16]
-	rule_time_constants = x[16:]
+	plasticity_coefs = x[:20]
+	rule_time_constants = x[20:]
 
 	if np.any(np.array([res['blew_up'] for res in results])):
 		if eval_tracker is not None:
@@ -578,7 +578,7 @@ if __name__ == '__main__':
 	if args.load_initial is not None:
 		x0 = load_best_params(args.load_initial)
 	else:
-		x0 = np.concatenate([np.zeros(16), 5e-3 * np.ones(8)])
+		x0 = np.concatenate([np.zeros(20), 5e-3 * np.ones(12)])
 
 # 	x0 = '''0.02000823 -0.12441293 -0.03365112 -0.12084871  0.00107426 -0.00182773
  #  0.02428422 -0.00753884  0.05495447  0.00810028  0.00745455 -0.11756651
@@ -598,10 +598,10 @@ if __name__ == '__main__':
 
 	options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-		'popsize': 15,
+		# 'popsize': 15,
 		'bounds': [
-			[-10] * 16 + [0.5e-3] * 8,
-			[10] * 16 + [40e-3] * 8,
+			[-10] * 20 + [0.5e-3] * 12,
+			[10] * 20 + [40e-3] * 12,
 		],
 	}
 
@@ -615,4 +615,5 @@ if __name__ == '__main__':
 			es.tell(X, eval_all(X, eval_tracker=eval_tracker))
 			es.disp()
 
-		options['popsize'] += 2
+
+		# options['popsize'] += 2

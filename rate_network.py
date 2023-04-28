@@ -101,10 +101,14 @@ def simulate_inner_loop(
         # calculate exponential filtered of firing rate to use for STDP-like plasticity rules
         r_exp_filtered[:, i+1, :] = r_exp_filtered[:, i, :] * (1 - dt / int_time_consts) + r[i, :] * (dt / int_time_consts)
 
-        r_0_pow = np.ones(n_e + n_i) / 0.1
-        r_1_pow = r[i+1, :] / 0.01
+        r_0_pow = np.ones(n_e + n_i)
+        r_1_pow = r[i+1, :] / 0.1
+        r_2_pow = np.square(r[i+1, :]) / 0.01
         r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 1e-2
-        # r_2_pow = np.square(r[i+1, :])
+
+        r_0_pow_split = [r_0_pow[:n_e], r_0_pow[n_e:n_e + n_i]]
+        r_1_pow_split = [r_1_pow[:n_e], r_1_pow[n_e:n_e + n_i]]
+        r_exp_filtered_curr_split = [r_exp_filtered_curr[:, :n_e], r_exp_filtered_curr[:, n_e:n_e + n_i]]
 
         # find outer products of zeroth, first powers of firing rates to compute updates due to plasticity rules
         r_0_r_0 = np.outer(r_0_pow, r_0_pow)
@@ -117,61 +121,69 @@ def simulate_inner_loop(
         # r_2_r_1 = r_1_r_2.T
         # r_2_r_2 = np.outer(r_2_pow, r_2_pow)
 
-        r_0_r_exp = np.outer(r_exp_filtered_curr[0, :], r_0_pow)
-        r_1_r_exp = np.outer(r_exp_filtered_curr[1, :], r_1_pow)
-        r_exp_r_0 = np.outer(r_0_pow, r_exp_filtered_curr[2, :])
-        r_exp_r_1 = np.outer(r_1_pow, r_exp_filtered_curr[3, :])
-        # r_2_r_exp = np.outer(r_exp_filtered[3, i+1, :], r_2_pow)
-        # r_exp_r_2 = r_2_r_exp.T
+        w_updates_unweighted = []
 
-        r_0_r_exp_w = np.outer(r_exp_filtered_curr[4, :], r_0_pow)
-        r_1_r_exp_w = np.outer(r_exp_filtered_curr[5, :], r_1_pow)
-        r_exp_r_0_w = np.outer(r_0_pow, r_exp_filtered_curr[6, :])
-        r_exp_r_1_w = np.outer(r_1_pow, r_exp_filtered_curr[7, :])
+        for k, pop_indices in enumerate([[0, 0]]): # [[0, 0], [0, 1], [1, 0]]
+            p_i = pop_indices[0]
+            p_j = pop_indices[1]
 
-        # r_0_by_r_exp_r = np.outer(r_exp_filtered[4, i+1, :] * r_1_pow, r_0_pow)
-        # r_exp_r_by_r_0 = r_0_by_r_exp_r.T
+            r_0_r_exp = np.outer(r_exp_filtered_curr_split[p_j][k, :], r_0_pow_split[p_i])
+            r_1_r_exp = np.outer(r_exp_filtered_curr_split[p_j][k + 1, :], r_1_pow_split[p_i])
+            r_exp_r_0 = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 2, :])
+            r_exp_r_1 = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 3, :])
+            r_0_by_r_exp_r = np.outer(r_exp_filtered_curr_split[p_j][k + 4, :] * r_1_pow_split[p_j], r_0_pow_split[p_i])
+            r_exp_r_by_r_0 = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 5, :] * r_1_pow_split[p_i])
 
-        r_cross_products = np.stack((
-            r_0_r_0,
-            r_0_r_1,
-            r_1_r_0,
-            # r_0_r_2,
-            # r_2_r_0,
-            r_1_r_1,
-            # r_1_r_2,
-            # r_2_r_1,
-            # r_2_r_2,
-            r_0_r_exp,
-            r_1_r_exp,
-            r_exp_r_0,
-            r_exp_r_1,
-            # r_exp_r_2,
-            # r_0_by_r_exp_r,
+            r_0_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 6, :], r_0_pow_split[p_i])
+            r_1_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 7, :], r_1_pow_split[p_i])
+            r_exp_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 8, :])
+            r_exp_r_1_w = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 9, :])
+            r_0_by_r_exp_r_w = np.outer(r_exp_filtered_curr_split[p_j][k + 10, :] * r_1_pow_split[p_j], r_0_pow_split[p_i])
+            r_exp_r_by_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 11, :] * r_1_pow_split[p_i])
 
-            r_0_r_0,
-            r_0_r_1,
-            r_1_r_0,
-            # r_0_r_2,
-            # r_2_r_0,
-            r_1_r_1,
-            # r_1_r_2,
-            # r_2_r_1,
-            # r_2_r_2,
-            r_0_r_exp_w,
-            r_1_r_exp_w,
-            r_exp_r_0_w,
-            r_exp_r_1_w,
-        ))
+            r_cross_products = np.stack((
+                r_0_r_0[:n_e, :n_e],
+                r_0_r_1[:n_e, :n_e],
+                r_1_r_0[:n_e, :n_e],
+                # r_0_r_2,
+                # r_2_r_0,
+                r_1_r_1[:n_e, :n_e],
+                # r_1_r_2,
+                # r_2_r_1,
+                # r_2_r_2,
+                r_0_r_exp,
+                r_1_r_exp,
+                r_exp_r_0,
+                r_exp_r_1,
+                # r_exp_r_2,
+                r_0_by_r_exp_r,
+                r_exp_r_by_r_0,
 
-        w_updates_unweighted = r_cross_products
-        num_rules = w_updates_unweighted.shape[0]
-        w_updates_unweighted[int(0.5 * num_rules):num_rules] = w_copy * w_updates_unweighted[int(0.5 * num_rules):num_rules]
+                r_0_r_0[:n_e, :n_e],
+                r_0_r_1[:n_e, :n_e],
+                r_1_r_0[:n_e, :n_e],
+                # r_0_r_2,
+                # r_2_r_0,
+                r_1_r_1[:n_e, :n_e],
+                # r_1_r_2,
+                # r_2_r_1,
+                # r_2_r_2,
+                r_0_r_exp_w,
+                r_1_r_exp_w,
+                r_exp_r_0_w,
+                r_exp_r_1_w,
+                r_0_by_r_exp_r_w,
+                r_exp_r_by_r_0_w,
+            ))
+
+            w_updates_unweighted.append(r_cross_products)
+            num_rules = w_updates_unweighted[k].shape[0]
+            w_updates_unweighted[k][int(0.5 * num_rules):num_rules] = w_copy[:n_e, :n_e] * w_updates_unweighted[k][int(0.5 * num_rules):num_rules]
 
         w_not_almost_zero = np.where(np.abs(w) > 2e-6, 1, 0)
 
         if track_params:
-            dw_e_e_unsummed = plasticity_coefs[:one_third_n_params].reshape(one_third_n_params, 1, 1) * (w_updates_unweighted[:, :n_e, :n_e] * w_plastic[:n_e, :n_e] * w_not_almost_zero[:n_e, :n_e])
+            dw_e_e_unsummed = plasticity_coefs[:one_third_n_params].reshape(one_third_n_params, 1, 1) * (w_updates_unweighted[k] * w_plastic[:n_e, :n_e] * w_not_almost_zero[:n_e, :n_e])
             effects_e_e_delta = np.sum(np.abs(dw_e_e_unsummed), axis=1)
             effects_e_e_delta = np.sum(effects_e_e_delta, axis=1)
             effects_e_e += effects_e_e_delta
@@ -191,13 +203,13 @@ def simulate_inner_loop(
             # dw_i_e = np.sum(dw_i_e_unsummed, axis=0)
         else:
             # dot updates due to all rules with coefficients for these rules and compute total weight updates. Do not update non-plastic weights.
-            dw_e_e = np.sum(plasticity_coefs[:one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, :n_e], axis=0) * w_plastic[:n_e, :n_e]
-            # dw_e_i = np.sum(plasticity_coefs[one_third_n_params:2*one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, n_e:, :n_e], axis=0) * w_plastic[n_e:, :n_e]
-            # dw_i_e = np.sum(plasticity_coefs[2 * one_third_n_params:].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, n_e:], axis=0) * w_plastic[:n_e, n_e:]
+            dw_e_e = np.sum(plasticity_coefs[:one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[k], axis=0) * w_plastic[:n_e, :n_e]
+            # dw_e_i = np.sum(plasticity_coefs[one_third_n_params:2*one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, n_e:, :n_e], axis=0) * w_plastic[n_e:n_e + n_i, :n_e]
+            # dw_i_e = np.sum(plasticity_coefs[2 * one_third_n_params:].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, n_e:], axis=0) * w_plastic[:n_e, n_e:n_e + n_i]
 
         w_copy[:n_e, :n_e] += (0.0005 * dw_e_e)
-        # w_copy[n_e:, :n_e] += (0.0005 * dw_e_i)
-        # w_copy[:n_e, n_e:] += (0.0005 * dw_i_e)
+        # w_copy[n_e:n_e + n_i, :n_e] += (0.0005 * dw_e_i)
+        # w_copy[:n_e, n_e:n_e + n_i] += (0.0005 * dw_i_e)
 
         # if sign of weight is flipped by update, set it to an infinitesimal amount with its initial polarity
         polarity_flip = sign_w * w_copy
