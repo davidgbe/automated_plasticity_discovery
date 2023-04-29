@@ -44,14 +44,14 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_
 
     n_params = len(plasticity_coefs)
 
-    w_copy, effects_e_e = simulate_inner_loop(t, n_e, n_i, inp, plasticity_coefs, rule_time_constants, w, w_plastic, dt, g, w_u, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
+    w_copy, effects_e_e, effects_e_i, effects_i_e = simulate_inner_loop(t, n_e, n_i, inp, plasticity_coefs, rule_time_constants, w, w_plastic, dt, g, w_u, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
 
     if track_params:
-        return r, s, v, w_copy, effects_e_e, r_exp_filtered
+        return r, s, v, w_copy, np.concatenate([effects_e_e, effects_e_i, effects_i_e]), r_exp_filtered
     else:
         return r, s, v, w_copy, None, r_exp_filtered
 
-# @njit
+@njit
 def simulate_inner_loop(
     t : np.ndarray,
     n_e : int,
@@ -77,6 +77,7 @@ def simulate_inner_loop(
     n_params : int):
 
     one_third_n_params = int(n_params / 3)
+    pop_slices = [slice(0, n_e), slice(n_e, n_e + n_i)]
 
     w_copy = np.copy(w)
     effects_e_e = np.zeros((one_third_n_params))
@@ -142,12 +143,12 @@ def simulate_inner_loop(
             r_exp_r_by_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 11, :] * r_1_pow_split[p_i])
 
             r_cross_products = np.stack((
-                r_0_r_0[:n_e, :n_e],
-                r_0_r_1[:n_e, :n_e],
-                r_1_r_0[:n_e, :n_e],
+                r_0_r_0[pop_slices[p_j], pop_slices[p_i]],
+                r_0_r_1[pop_slices[p_j], pop_slices[p_i]],
+                r_1_r_0[pop_slices[p_j], pop_slices[p_i]],
                 # r_0_r_2,
                 # r_2_r_0,
-                r_1_r_1[:n_e, :n_e],
+                r_1_r_1[pop_slices[p_j], pop_slices[p_i]],
                 # r_1_r_2,
                 # r_2_r_1,
                 # r_2_r_2,
@@ -159,12 +160,12 @@ def simulate_inner_loop(
                 r_0_by_r_exp_r,
                 r_exp_r_by_r_0,
 
-                r_0_r_0[:n_e, :n_e],
-                r_0_r_1[:n_e, :n_e],
-                r_1_r_0[:n_e, :n_e],
+                r_0_r_0[pop_slices[p_j], pop_slices[p_i]],
+                r_0_r_1[pop_slices[p_j], pop_slices[p_i]],
+                r_1_r_0[pop_slices[p_j], pop_slices[p_i]],
                 # r_0_r_2,
                 # r_2_r_0,
-                r_1_r_1[:n_e, :n_e],
+                r_1_r_1[pop_slices[p_j], pop_slices[p_i]],
                 # r_1_r_2,
                 # r_2_r_1,
                 # r_2_r_2,
@@ -178,7 +179,7 @@ def simulate_inner_loop(
 
             w_updates_unweighted.append(r_cross_products)
             num_rules = w_updates_unweighted[k].shape[0]
-            w_updates_unweighted[k][int(0.5 * num_rules):num_rules] = w_copy[:n_e, :n_e] * w_updates_unweighted[k][int(0.5 * num_rules):num_rules]
+            w_updates_unweighted[k][int(0.5 * num_rules):num_rules] = w_copy[pop_slices[p_j], pop_slices[p_i]] * w_updates_unweighted[k][int(0.5 * num_rules):num_rules]
 
         w_not_almost_zero = np.where(np.abs(w) > 2e-6, 1, 0)
 
@@ -215,5 +216,5 @@ def simulate_inner_loop(
         polarity_flip = sign_w * w_copy
         w_copy = np.where(polarity_flip >= 0, w_copy, inf_w)
 
-    return w_copy, effects_e_e
+    return w_copy, effects_e_e, effects_e_i, effects_i_e
 
