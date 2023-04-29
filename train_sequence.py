@@ -51,6 +51,8 @@ ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
+N_RULES = 60
+N_TIMECONSTS = 36
 
 T = 0.1 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -85,7 +87,7 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$w \, y$',
 	r'$w \, x$',
 	# r'$w \, y^2$',
-	# r'$w \, x^2$',
+	# r'$w \, x^2$',0
 	r'$w \, x \, y$',
 	# r'$w \, x \, y^2$',
 	# r'$w \, x^2 \, y$',
@@ -115,8 +117,8 @@ rule_names = [ # Define labels for all rules to be run during simulations
 
 rule_names = [
 	[r'$E \rightarrow E$ ' + r_name for r_name in rule_names],
-	# [r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
-	# [r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
+	[r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
+	[r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
 ]
 rule_names = np.array(rule_names).flatten()
 
@@ -356,8 +358,8 @@ def simulate_single_network(index, x, track_params=True, train=True):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
-	plasticity_coefs = x[:20]
-	rule_time_constants = x[20:]
+	plasticity_coefs = x[:N_RULES]
+	rule_time_constants = x[N_RULES:]
 
 	if FIXED_DATA:
 		if train:
@@ -409,7 +411,6 @@ def simulate_single_network(index, x, track_params=True, train=True):
 			birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
 
 			surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
-			surviving_synapse_mask[birth_mask_for_i] = False
 
 			w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
 			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
@@ -477,8 +478,8 @@ def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coef
 
 
 def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
-	plasticity_coefs = x[:20]
-	rule_time_constants = x[20:]
+	plasticity_coefs = x[:N_RULES]
+	rule_time_constants = x[N_RULES:]
 
 	if np.any(np.array([res['blew_up'] for res in results])):
 		if eval_tracker is not None:
@@ -578,7 +579,7 @@ if __name__ == '__main__':
 	if args.load_initial is not None:
 		x0 = load_best_params(args.load_initial)
 	else:
-		x0 = np.concatenate([np.zeros(20), 5e-3 * np.ones(12)])
+		x0 = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
 
 # 	x0 = '''0.02000823 -0.12441293 -0.03365112 -0.12084871  0.00107426 -0.00182773
  #  0.02428422 -0.00753884  0.05495447  0.00810028  0.00745455 -0.11756651
@@ -600,8 +601,8 @@ if __name__ == '__main__':
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
 		# 'popsize': 15,
 		'bounds': [
-			[-10] * 20 + [0.5e-3] * 12,
-			[10] * 20 + [40e-3] * 12,
+			[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
+			[10] * N_RULES + [40e-3] * N_TIMECONSTS,
 		],
 	}
 
