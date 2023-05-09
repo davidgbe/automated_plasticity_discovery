@@ -13,6 +13,7 @@ import argparse
 import cma
 from numba import njit
 from scipy.sparse import csc_matrix
+from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
 from csv_writer import write_csv
 
@@ -172,58 +173,30 @@ def make_network():
 
 def calc_loss(r : np.ndarray):
 
-	r_exc = r[:, :n_e]
-
 	if np.isnan(r).any():
-		return 1e8, np.nan * np.zeros(r_exc.shape[1] - 1), 0
+		return 10000
 
-	r_maxs = r_exc.max(axis=0)
-	r_summed = np.sum(r_exc, axis=0)
-	r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
-	r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
+	r_exc = r[:, :, :n_e]
 
-	r_normed = r_exc / r_summed_safe_divide
-	t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
-	t_vars = np.sum(np.power(t.reshape(t.shape[0], 1), 2) * r_normed, axis=0) - np.power(t_means, 2)
+	times = (np.random.rand(20) * r_exc.shape[1]).astype(int)
 
-	# add measure of spike consistency
+	stacked_activities_to_regress = []
 
-	t_means_nan = copy(t_means)
-	t_means_nan[~r_active_mask] = np.nan
-	t_means_diffs = t_means_nan[1:] - t_means_nan[0]
+	for i in range(r.shape[0]):
+		stacked_activities_to_regress.append(r_exc[i, times, :])
 
-	loss = 0
-	activity_loss = 0
-	activity_overlap_loss = 0
+	X = np.concatenate(stacked_activities_to_regress, axis=0)
+	y = np.stack([times for j in range(r.shape[0])]).flatten()
 
-	for i in np.arange(r_exc.shape[1]):
-		if r_active_mask[i]:
-			if i != 0:
-				# loss_activity_var = ACTIVITY_LOSS_COEF * np.power((t_vars[i] - 4e-6) / 4e-6, 2)
-				# loss += loss_activity_var
-				# activity_loss += loss_activity_var
+	print('X SHAPE', X.shape)
+	print('y SHAPE', y.shape)
 
-				# loss_activity_zero_mom = ACTIVITY_LOSS_COEF * np.power((r_summed[i] - 15) / 15, 2)
-				# loss += loss_activity_zero_mom
-				# activity_loss += loss_activity_zero_mom
+	reg = LinearRegression().fit(X, y)
+	loss = 5000 * (1 - reg.score(X, y))
 
-				loss_activity_max = ACTIVITY_LOSS_COEF * np.power(np.minimum(r_maxs[i] - 0.2, 0) / 0.2, 2)
-				loss += loss_activity_max
-				activity_loss += loss_activity_max
+	print('loss:', loss)
 
-			if i != 0 and i != n_e - 1:
-				for k in np.arange(i+1, r_exc.shape[1]):
-						activity_overlap_loss += np.dot(r_exc[:, i], r_exc[:, k])
-		else:
-			loss += 100
-
-	activity_overlap_loss *= 1e5 * 2 /  (r_exc.shape[0] * ((n_e - 1)**2 - (n_e - 1)))
-
-	print('activity_overlap_loss:', activity_overlap_loss)
-
-	loss += activity_overlap_loss
-
-	return loss, t_means_diffs, activity_loss
+	return loss
 
 
 def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True):
@@ -375,11 +348,9 @@ def simulate_single_network(index, x, track_params=True, train=True):
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
 
-	cumulative_loss = 0
-
 	all_effects = np.zeros(plasticity_coefs.shape)
-	all_mean_active_time_diffs = []
-	total_activity_loss = 0
+	normed_loss = 10000
+	rs_for_loss = []
 
 	w_hist = []
 	all_weight_deltas = []
@@ -425,11 +396,7 @@ def simulate_single_network(index, x, track_params=True, train=True):
 			
 
 		if i in [n_inner_loop_iters - 1 - 10 * k for k in range(5)]:
-			loss, mean_active_time_diffs, activity_loss = calc_loss(r)
-			all_mean_active_time_diffs.append(mean_active_time_diffs)
-			total_activity_loss += activity_loss
-
-			cumulative_loss += loss
+			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
 
@@ -442,19 +409,8 @@ def simulate_single_network(index, x, track_params=True, train=True):
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
-	normed_loss = cumulative_loss / 5
-
 	if i == n_inner_loop_iters - 1:
-		all_mean_active_time_diffs = np.stack(all_mean_active_time_diffs)
-		mean_active_time_stds = np.nanstd(all_mean_active_time_diffs, axis=0)
-		mean_active_time_means = np.nanmean(all_mean_active_time_diffs, axis=0)
-
-		non_nan_non_zero = np.bitwise_and(~np.isnan(mean_active_time_means), mean_active_time_means != 0)
-		mean_active_time_normed_stds = np.where(non_nan_non_zero, mean_active_time_stds / np.abs(mean_active_time_means), 0)
-
-		print('jitter_penalty:', ACTIVITY_JITTER_COEF * np.sum(mean_active_time_normed_stds))
-		print('activity_loss:', total_activity_loss / 5)
-		normed_loss += ACTIVITY_JITTER_COEF * np.sum(mean_active_time_normed_stds)
+		normed_loss = calc_loss(np.stack(rs_for_loss))
 
 	return {
 		'loss': normed_loss,
