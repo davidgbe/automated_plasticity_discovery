@@ -178,21 +178,28 @@ def calc_loss(r : np.ndarray):
 
 	r_exc = r[:, :, :n_e]
 
-	times = (np.random.rand(20) * r_exc.shape[1]).astype(int)
+	train_times = (np.random.rand(20) * r_exc.shape[1]).astype(int)
+	test_times = (np.random.rand(20) * r_exc.shape[1]).astype(int)
 
-	stacked_activities_to_regress = []
+	stacked_activities_train = []
+	stacked_activities_test = []
 
 	for i in range(r.shape[0]):
-		stacked_activities_to_regress.append(r_exc[i, times, :])
+		stacked_activities_train.append(r_exc[i, train_times, :])
+		stacked_activities_test.append(r_exc[i, test_times, :])
 
-	X = np.concatenate(stacked_activities_to_regress, axis=0)
-	y = np.stack([times for j in range(r.shape[0])]).flatten()
+	X_train = np.concatenate(stacked_activities_train, axis=0)
+	y_train = np.stack([train_times for j in range(r.shape[0])]).flatten()
 
-	print('X SHAPE', X.shape)
-	print('y SHAPE', y.shape)
+	X_test = np.concatenate(stacked_activities_test, axis=0)
+	y_test = np.stack([test_times for j in range(r.shape[0])]).flatten()
 
-	reg = LinearRegression().fit(X, y)
-	loss = 1000 * (1 - reg.score(X, y))
+	# print('X SHAPE', X.shape)
+	# print('y SHAPE', y.shape)
+
+	reg = LinearRegression().fit(X_train, y_train)
+
+	loss = 1000 * (1 - reg.score(X_test, y_test))
 
 	print('loss:', loss)
 
