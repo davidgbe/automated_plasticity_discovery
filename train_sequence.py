@@ -55,7 +55,7 @@ INPUT_RATE_PER_CELL = 80
 N_RULES = 60
 N_TIMECONSTS = 36
 
-T = 0.1 # Total duration of one network simulation
+T = 0.075 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 15 # Number excitatory cells in sequence (also length of sequence)
@@ -162,8 +162,10 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 
-	# w_initial[:n_e, :n_e] = exp_if_under_val(1, (n_e, n_e), 0.03 * w_e_e)
 	w_initial[:n_e, :n_e] = 0.05 * w_e_e * (0.2 + 0.8 * np.random.rand(n_e, n_e))
+
+	# w_initial[:n_e, :n_e] = np.diag(np.ones(n_e - 1), k=-1) * w_e_e * 0.7
+
 	w_initial[n_e:, :n_e] = gaussian_if_under_val(0.8, (n_i, n_e), w_e_i, 0.3 * w_e_i)
 	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
 
@@ -182,19 +184,22 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 	stacked_activities_test = []
 
 	for i in range(r.shape[0]):
-		if i < 3:
+		if i < 6:
 			stacked_activities_train.append(r_exc[i, train_times, :])
 		else:
 			stacked_activities_test.append(r_exc[i, test_times, :])
 
 	X_train = np.concatenate(stacked_activities_train, axis=0)
-	y_train = np.stack([train_times for j in range(3)]).flatten()
+	y_train = np.stack([train_times for j in range(6)]).flatten()
 
 	X_test = np.concatenate(stacked_activities_test, axis=0)
-	y_test = np.stack([test_times for j in range(r.shape[0] - 3)]).flatten()
+	y_test = np.stack([test_times for j in range(r.shape[0] - 6)]).flatten()
 
 	# print('X SHAPE', X.shape)
 	# print('y SHAPE', y.shape)
+
+	print(X_train)
+	print(y_train)
 
 	reg = LinearRegression().fit(X_train, y_train)
 
@@ -227,32 +232,34 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		w_initial = res['w_initial']
 		effects = res['syn_effects']
 		all_weight_deltas = res['all_weight_deltas']
+		rs_for_loss = res['rs_for_loss']
 
 		all_effects.append(effects)
 
-		for l_idx in range(r.shape[1]):
-			if l_idx < n_e:
-				if l_idx % 1 == 0:
-					axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
-					# axs[2 * i][0].plot(t, all_r_targets[loss_min_idx, :, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
+		for trial_idx in range(rs_for_loss.shape[0]):
+			r = rs_for_loss[trial_idx, ...]
 
-					# axs[2 * i][0].plot(t, 4 * r_exp_filtered[:, l_idx], '-.', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
-			else:
-				axs[2 * i][1].plot(t, r[:, l_idx], c='black') # graph inh activity
+			for l_idx in range(r.shape[1]):
+				if l_idx < n_e:
+					if l_idx % 1 == 0:
+						axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
+						# axs[2 * i][0].plot(t, all_r_targets[loss_min_idx, :, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
 
-		r_exc = r[:, :n_e]
-		r_summed = np.sum(r_exc, axis=0)
-		r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
-		r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
-		r_normed = r_exc / r_summed_safe_divide
-		t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
-		t_ordering = np.argsort(t_means)
-		t_ordering = np.concatenate([t_ordering, np.arange(n_e, n_e + n_i)])
-		# print(t_means)
-		# print(t_ordering)
+						# axs[2 * i][0].plot(t, 4 * r_exp_filtered[:, l_idx], '-.', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
+				else:
+					axs[2 * i][1].plot(t, r[:, l_idx], c='black') # graph inh activity
 
-		sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
-		sorted_w = w[t_ordering, :][:, t_ordering]
+		# r_exc = r[:, :n_e]
+		# r_summed = np.sum(r_exc, axis=0)
+		# r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
+		# r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
+		# r_normed = r_exc / r_summed_safe_divide
+		# t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
+		# t_ordering = np.argsort(t_means)
+		# t_ordering = np.concatenate([t_ordering, np.arange(n_e, n_e + n_i)])
+
+		# sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
+		# sorted_w = w[t_ordering, :][:, t_ordering]
 
 		vmin = np.min([w_initial.min(), w.min()])
 		vmax = np.max([w_initial.max(), w.max()])
@@ -260,10 +267,10 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		vbound = np.maximum(vmax, np.abs(vmin))
 		vbound = 5
 
-		mappable = axs[2 * i + 1][0].matshow(sorted_w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
+		mappable = axs[2 * i + 1][0].matshow(w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][0])
 
-		mappable = axs[2 * i + 1][1].matshow(sorted_w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
+		mappable = axs[2 * i + 1][1].matshow(w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][1])
 
 		axs[2 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
@@ -349,8 +356,8 @@ def simulate_single_network(index, x, track_params=True, train=True):
 		np.random.seed()
 
 	w_initial = make_network() # make a new, distorted sequence
-	train_times = (np.random.rand(80) * (T/dt - 1)).astype(int)
-	test_times = (np.random.rand(20) * (T/dt - 1)).astype(int)
+	train_times = (np.random.rand(500) * (T/dt - 1)).astype(int) # 500
+	test_times = (np.random.rand(200) * (T/dt - 1)).astype(int)	# 200
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
 	w = copy(w_initial)
@@ -403,7 +410,7 @@ def simulate_single_network(index, x, track_params=True, train=True):
 			}
 			
 
-		if i in [n_inner_loop_iters - 1 - 10 * k for k in range(6)]:
+		if i in [n_inner_loop_iters - 1 - 5 * k for k in range(12)]:
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -418,12 +425,14 @@ def simulate_single_network(index, x, track_params=True, train=True):
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
 	if i == n_inner_loop_iters - 1:
-		normed_loss = calc_loss(np.stack(rs_for_loss), train_times, test_times)
+		rs_for_loss = np.stack(rs_for_loss)
+		normed_loss = calc_loss(rs_for_loss, train_times, test_times)
 
 	return {
 		'loss': normed_loss,
 		'blew_up': False,
 		'r': r,
+		'rs_for_loss': rs_for_loss,
 		'r_exp_filtered': r_exp_filtered,
 		'w': w,
 		'w_initial': w_initial,
@@ -545,13 +554,8 @@ if __name__ == '__main__':
 	else:
 		x0 = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
 
-# 	x0 = '''0.02000823 -0.12441293 -0.03365112 -0.12084871  0.00107426 -0.00182773
- #  0.02428422 -0.00753884  0.05495447  0.00810028  0.00745455 -0.11756651
- # -0.04842812 -0.09974678  0.00720619  0.00869501  0.02850774 -0.01940583
- #  0.02648215 -0.03583781'''
-# 	x0 = process_params_str(x0)
-
-	print(x0)
+	# x0 = '0.015150231080860853 -0.0005565562968846225 -0.011342933493557755 -0.0017835014747324463 -0.008105058861911568 0.006300325499018495 0.010737912274320718 -0.0022153927054256225 0.005011772440677343 0.003911892924365264 -0.0025599813196799715 0.008433288517525945 -0.015683944116193078 -0.01073469017554358 -0.01453600768622708 0.008897845287246823 -0.002400223609988792 0.006277945746451863 0.005958242555966737 -0.0017151344362763095 -0.0005305642598299263 -0.0038456134106142595 -0.0042273955837853145 0.00015643911822035427 0.005658422671864675 -0.012942824550224776 -0.0016857674379432619 0.0034269788228243575 -0.0007586779235179064 0.015878327713827002 -0.00761417926976094 0.0026704059385816185 -0.0009110959381543257 -0.0072678269225285004 -0.008490447177184009 0.0025130284964513376 0.0026953830480928114 0.0112099816219705 0.003452941485713117 -0.001010642608378748 0.011072567904424204 -0.010073803532942164 0.005310702237859529 0.008503371886867431 -0.0002520429089937458 -0.010928237483446476 -0.016646681353037786 0.016528557910764706 -0.006278236122360254 0.00015053043377685196 -0.009376653936304675 0.004140292630415475 0.021498926774598102 -0.010580439603618487 -0.00037055931919318785 -0.00024333006011246008 0.0053322282651365235 0.0012630776386394747 -0.010858374977333593 0.002287632382515885 0.01161984929076193 0.015003601114101494 0.0024923641946675355 0.007979343952723235 0.010442359301322783 0.005332506245060676 0.0051759426925965125 0.0022831425389478873 0.0017965898075430916 0.0029819929782111433 0.0058120419195369175 0.01838845663209496 0.007506681115997392 0.006856180908725688 0.0037767273114825937 0.005407114329121245 0.013115975910925521 0.006583450993904788 0.004895550041716785 0.003964642178904141 0.004386289254398042 0.002116094525315477 0.005029680064953978 0.008487167738248005 0.00264874339826988 0.00924111872982395 0.008203747351133992 0.0012674583957144182 0.011870136129609968 0.008004696199195376 0.0035954880398415016 0.009895578700148773 0.0033135268893883588 0.0014755992042285548 0.007973033871164438 0.0024277096133550726'
+	# x0 = process_params_str(x0)
 
 	eval_tracker = {
 		'evals': 0,
