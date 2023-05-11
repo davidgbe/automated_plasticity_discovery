@@ -171,28 +171,27 @@ def make_network():
 	return w_initial
 
 
-def calc_loss(r : np.ndarray):
+def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray):
 
 	if np.isnan(r).any():
 		return 10000
 
 	r_exc = r[:, :, :n_e]
 
-	train_times = (np.random.rand(20) * r_exc.shape[1]).astype(int)
-	test_times = (np.random.rand(20) * r_exc.shape[1]).astype(int)
-
 	stacked_activities_train = []
 	stacked_activities_test = []
 
 	for i in range(r.shape[0]):
-		stacked_activities_train.append(r_exc[i, train_times, :])
-		stacked_activities_test.append(r_exc[i, test_times, :])
+		if i < 3:
+			stacked_activities_train.append(r_exc[i, train_times, :])
+		else:
+			stacked_activities_test.append(r_exc[i, test_times, :])
 
 	X_train = np.concatenate(stacked_activities_train, axis=0)
-	y_train = np.stack([train_times for j in range(r.shape[0])]).flatten()
+	y_train = np.stack([train_times for j in range(3)]).flatten()
 
 	X_test = np.concatenate(stacked_activities_test, axis=0)
-	y_test = np.stack([test_times for j in range(r.shape[0])]).flatten()
+	y_test = np.stack([test_times for j in range(r.shape[0] - 3)]).flatten()
 
 	# print('X SHAPE', X.shape)
 	# print('y SHAPE', y.shape)
@@ -350,6 +349,8 @@ def simulate_single_network(index, x, track_params=True, train=True):
 		np.random.seed()
 
 	w_initial = make_network() # make a new, distorted sequence
+	train_times = (np.random.rand(80) * (T/dt - 1)).astype(int)
+	test_times = (np.random.rand(20) * (T/dt - 1)).astype(int)
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
 	w = copy(w_initial)
@@ -402,7 +403,7 @@ def simulate_single_network(index, x, track_params=True, train=True):
 			}
 			
 
-		if i in [n_inner_loop_iters - 1 - 10 * k for k in range(5)]:
+		if i in [n_inner_loop_iters - 1 - 10 * k for k in range(6)]:
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -417,7 +418,7 @@ def simulate_single_network(index, x, track_params=True, train=True):
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
 	if i == n_inner_loop_iters - 1:
-		normed_loss = calc_loss(np.stack(rs_for_loss))
+		normed_loss = calc_loss(np.stack(rs_for_loss), train_times, test_times)
 
 	return {
 		'loss': normed_loss,
