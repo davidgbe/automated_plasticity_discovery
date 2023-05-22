@@ -354,8 +354,10 @@ def simulate_single_network(index, x, track_params=True, train=True):
 		np.random.seed()
 
 	w_initial = make_network() # make a new, distorted sequence
-	train_times = (np.random.rand(500) * (T/dt - 1)).astype(int) # 500
-	test_times = (np.random.rand(200) * (T/dt - 1)).astype(int)	# 200
+
+	decode_start = 0.003/dt
+	train_times = (decode_start + np.random.rand(500) * (T/dt - decode_start - 1)).astype(int) # 500
+	test_times = (decode_start + np.random.rand(200) * (T/dt - decode_start - 1)).astype(int)	# 200
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
 	w = copy(w_initial)
