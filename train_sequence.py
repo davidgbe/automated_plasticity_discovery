@@ -52,14 +52,14 @@ ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
-N_RULES = 60
-N_TIMECONSTS = 36
+N_RULES = 72
+N_TIMECONSTS = 48
 
-T = 0.075 # Total duration of one network simulation
+T = 0.04 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
-n_e = 15 # Number excitatory cells in sequence (also length of sequence)
-n_i = 15 # Number inhibitory cells
+n_e = 8 # Number excitatory cells in sequence (also length of sequence)
+n_i = 8 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 
@@ -73,33 +73,31 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	# r'$y^2$',
 	# r'$x^2$',
 	r'$x \, y$',
-	# r'$x \, y^2$',
-	# r'$x^2 \, y$',
-	# r'$x^2 \, y^2$',
-	r'$y_{int}$',
-	r'$x \, y_{int}$',
-	r'$x_{int}$',
-	r'$x_{int} \, y$',
+	r'$\tilde{y}$',
+	r'$x \, \tilde{y}$',
+	r'$\tilde{x}$',
+	r'$\tilde{x} \, y$',
 	# r'$x_{int} \, y^2$',
-	r'$y_{int} \, y$',
-	r'$x_{int} \, x$',
+	r'$\tilde{y} \, y$',
+	r'$\tilde{x} \, x$',
+	r'$\tilde{y}^2$',
+	r'$\tilde{x}^2$',
 
 	r'$w$',
-	r'$w \, y$',
-	r'$w \, x$',
-	# r'$w \, y^2$',
-	# r'$w \, x^2$',0
-	r'$w \, x \, y$',
-	# r'$w \, x \, y^2$',
-	# r'$w \, x^2 \, y$',
-	# r'$w \, x^2 \, y^2$',
-	r'$w y_{int}$',
-	r'$w x \, y_{int}$',
-	r'$w x_{int}$',
-	r'$w x_{int} \, y$',
-	# r'$w x_{int} \, y^2$',
-	r'$w y_{int} \, y$',
-	r'$w x_{int} \, x$',
+	r'$w y$',
+	r'$w x$',
+	# r'$y^2$',
+	# r'$x^2$',
+	r'$w x \, y$',
+	r'$w \tilde{y}$',
+	r'$w x \, \tilde{y}$',
+	r'$w \tilde{x}$',
+	r'$w \tilde{x} \, y$',
+	# r'$x_{int} \, y^2$',
+	r'$w \tilde{y} \, y$',
+	r'$w \tilde{x} \, x$',
+	r'$w \tilde{y}^2$',
+	r'$w \tilde{x}^2$',
 
 	# r'$w^2$',
 	# r'$w^2 \, y$',
@@ -131,7 +129,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/seq_self_org_decoder_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/seq_self_org_decoder_all_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info

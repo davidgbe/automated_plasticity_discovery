@@ -3,8 +3,8 @@
 ## Presets
 #SBATCH --job-name=seq_cmaes
 
-#SBATCH -p compute-bigmem
-#SBATCH -A labfairhall
+#SBATCH -p compute
+#SBATCH -A stf
 
 #SBATCH --nodes=1
 #SBATCH --time=80:00:00
@@ -20,8 +20,7 @@ echo $CURRDIR
 ## Commands to run
 source python-env/bin/activate
 
-python train_sequence.py --std_expl 0.003 --pool_size 30 --batch 10 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0007 --seed 4002
-# python train_sequence.py --std_expl 0.0005 --pool_size 30 --batch 30 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --seed 2000
+python train_sequence.py --std_expl 0.003 --pool_size 30 --batch 10 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0 --seed 6000
 
 deactivate
 
