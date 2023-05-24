@@ -3,7 +3,7 @@ import os
 import numpy as np
 from functools import reduce, partial
 
-extra_dims = 10
+extra_dims = 100
 sparse_dims = 2
 total_dims = sparse_dims + extra_dims
 
@@ -34,7 +34,7 @@ for s in sigmas:
 		options = {
 			'verb_filenameprefix': os.path.join('./cmaes_test', 'outcmaes/'),
 			'verb_disp': 0,
-			'maxfevals': 50,
+			'maxfevals': 10000,
 		}
 
 		eval_tracker = {
@@ -44,17 +44,17 @@ for s in sigmas:
 		x, es = cma.fmin2(
 			partial(f, eval_tracker=eval_tracker),
 			np.zeros(total_dims),
-			1,
+			s,
 			restarts=10,
 			bipop=True,
 			options=options)
 
-		print(es.opts)
+		# print(es.opts)
 
 		# print(es)
 		# print(x, f(x) / prefactor)
 
-		print(i, f(x) / prefactor, eval_tracker['evals'])
+		# print(i, f(x) / prefactor, eval_tracker['evals'])
 
 		sigma_tally.append(f(x) / prefactor)
 		evals_tally.append(eval_tracker['evals'])
