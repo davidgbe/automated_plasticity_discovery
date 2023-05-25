@@ -52,8 +52,8 @@ ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
-N_RULES = 72
-N_TIMECONSTS = 48
+N_RULES = 60
+N_TIMECONSTS = 36
 
 T = 0.04 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -80,8 +80,8 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	# r'$x_{int} \, y^2$',
 	r'$\tilde{y} \, y$',
 	r'$\tilde{x} \, x$',
-	r'$\tilde{y}^2$',
-	r'$\tilde{x}^2$',
+	# r'$\tilde{y}^2$',
+	# r'$\tilde{x}^2$',
 
 	r'$w$',
 	r'$w y$',
@@ -96,8 +96,8 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	# r'$x_{int} \, y^2$',
 	r'$w \tilde{y} \, y$',
 	r'$w \tilde{x} \, x$',
-	r'$w \tilde{y}^2$',
-	r'$w \tilde{x}^2$',
+	# r'$w \tilde{y}^2$',
+	# r'$w \tilde{x}^2$',
 
 	# r'$w^2$',
 	# r'$w^2 \, y$',
@@ -576,8 +576,22 @@ if __name__ == '__main__':
 		],
 	}
 
-	for k in range(10):
-		es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
+	def f(x):
+		return 1
+
+	# es = cma.fmin2(f, [x0], STD_EXPL)
+	# print(es)
+	# print(es[1].opts)
+
+	# print(es.opts)
+	es = None
+	for k in range(200):
+		if k == 0:
+			es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
+			options['popsize'] = es.opts['popsize']
+		else:
+			options['popsize'] = 2 * options['popsize']
+			es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
 
 		print(es.opts)
 
