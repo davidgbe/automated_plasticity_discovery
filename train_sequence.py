@@ -52,8 +52,8 @@ ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
-N_RULES = 60
-N_TIMECONSTS = 36
+N_RULES = 20
+N_TIMECONSTS = 12
 
 T = 0.075 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -116,8 +116,8 @@ rule_names = [ # Define labels for all rules to be run during simulations
 
 rule_names = [
 	[r'$E \rightarrow E$ ' + r_name for r_name in rule_names],
-	[r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
-	[r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
+	# [r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
+	# [r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
 ]
 rule_names = np.array(rule_names).flatten()
 
@@ -424,7 +424,7 @@ def simulate_single_network(index, x, track_params=True, train=True):
 			w_hist.pop(0)
 
 		if effects is not None:
-			all_effects += effects
+			all_effects += effects[:N_RULES]
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
@@ -466,9 +466,9 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	true_losses = np.array([res['loss'] for res in results])
 	syn_effects = np.stack([res['syn_effects'] for res in results])
 	syn_effect_penalties = np.zeros(syn_effects.shape[0])
-	one_third_len = int(syn_effects.shape[1] / 3)
+	one_third_len = int(syn_effects.shape[1])
 
-	for i in range(3):
+	for i in range(1):
 		syn_effect_penalties += L1_PENALTIES[i] * np.sum(np.abs(syn_effects[:, i * one_third_len:(i+1) * one_third_len]), axis=1)
 
 	losses = true_losses + syn_effect_penalties
