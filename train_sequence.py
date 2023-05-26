@@ -203,7 +203,9 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 
 	reg = LinearRegression().fit(X_train, y_train)
 
-	loss = 1000 * (1 - reg.score(X_test, y_test))
+	print(np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 5000)
+
+	loss = 1000 * (1 - reg.score(X_test, y_test)) + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 5000
 
 	print('loss:', loss)
 
