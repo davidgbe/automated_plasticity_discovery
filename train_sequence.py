@@ -58,7 +58,7 @@ N_TIMECONSTS = 12
 T = 0.075 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
-n_e = 8 # Number excitatory cells in sequence (also length of sequence)
+n_e = 15 # Number excitatory cells in sequence (also length of sequence)
 n_i = 8 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
