@@ -543,10 +543,16 @@ if __name__ == '__main__':
 	# 3. Arange by average total synaptic change
 	# 4. Take only N largest terms in terms of synaptic change, drop rest, simulate 100 networks
 
+	# file_names = [
+	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6000_2023-05-31_10:27:28.126331',
+	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6001_2023-05-31_10:27:27.894879',
+	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6002_2023-06-02_22:59:05.788902',
+	# ]
+
 	file_names = [
-		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6000_2023-05-31_10:27:28.126331',
-		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6001_2023-05-31_10:27:27.894879',
-		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6002_2023-06-02_22:59:05.788902',
+		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_6000_2023-05-31_10:28:18.972929',
+		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_6001_2023-05-31_10:28:42.337351',
+		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_6002_2023-06-02_22:59:05.785824',
 	]
 
 	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
@@ -559,7 +565,7 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	eval_all([x_test] * 10, eval_tracker=eval_tracker)
+	eval_all([x_test] * 30, eval_tracker=eval_tracker)
 
 	for i in range(len(syn_effects_test)):
 		x_test_reduced = copy(x_test)
@@ -567,5 +573,5 @@ if __name__ == '__main__':
 		# set_smallest_n_zero(syn_effects_test, i, x_test_reduced[:N_RULES])
 		print(x_test_reduced)
 
-		eval_all([x_test_reduced] * 10, eval_tracker=eval_tracker)
+		eval_all([x_test_reduced] * 30, eval_tracker=eval_tracker)
 
