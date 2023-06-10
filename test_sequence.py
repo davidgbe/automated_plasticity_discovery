@@ -565,7 +565,7 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	# eval_all([x_test] * 30, eval_tracker=eval_tracker)
+	eval_all([x_test] * 30, eval_tracker=eval_tracker)
 
 	# for i in range(len(syn_effects_test)):
 	# 	x_test_reduced = copy(x_test)
