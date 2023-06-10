@@ -584,11 +584,11 @@ def load_best_avg_params(file_names, n_plasticity_coefs, n_time_constants, batch
 if __name__ == '__main__':
 	mp.set_start_method('fork')
 
-	rule_mapping = np.array([0, 4, 7, 8, 14, 16, 17, 18, 19])
-	tc_mapping = np.array([0, 3, 4, 6, 8, 9, 10, 11]) + N_RULES
+	# rule_mapping = np.array([0, 4, 7, 8, 14, 16, 17, 18, 19])
+	# tc_mapping = np.array([0, 3, 4, 6, 8, 9, 10, 11]) + N_RULES
 
-	# rule_mapping = np.array([0, 5, 7, 14, 18, 19])
-	# tc_mapping = np.array([1, 3, 6, 10, 11]) + N_RULES
+	rule_mapping = np.array([0, 5, 7, 14, 18, 19])
+	tc_mapping = np.array([1, 3, 6, 10, 11]) + N_RULES
 
 	mapping = np.concatenate([rule_mapping, tc_mapping]).astype(int)
 	print(mapping)
@@ -599,17 +599,17 @@ if __name__ == '__main__':
 	rule_mapping_one_hot = rule_mapping_one_hot.astype(bool)
 
 
-	file_names = [
-		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6000_2023-05-31_10:27:28.126331',
-		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6001_2023-05-31_10:27:27.894879',
-		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6002_2023-06-02_22:59:05.788902',
-	]
-
 	# file_names = [
-	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_6000_2023-05-31_10:28:18.972929',
-	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_6001_2023-05-31_10:28:42.337351',
-	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_6002_2023-06-02_22:59:05.785824',
+	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6000_2023-05-31_10:27:28.126331',
+	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6001_2023-05-31_10:27:27.894879',
+	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6002_2023-06-02_22:59:05.788902',
 	# ]
+
+	file_names = [
+		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_6000_2023-05-31_10:28:18.972929',
+		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_6001_2023-05-31_10:28:42.337351',
+		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_6002_2023-06-02_22:59:05.785824',
+	]
 
 	x0 = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)[1][mapping]
 
