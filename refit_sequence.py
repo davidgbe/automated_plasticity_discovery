@@ -587,7 +587,7 @@ if __name__ == '__main__':
 	# rule_mapping = np.array([0, 4, 7, 8, 14, 17, 18])
 	# tc_mapping = np.array([0, 3, 4, 6, 9, 10]) + N_RULES
 
-	rule_mapping = np.array([[0, 5, 7, 14, 18, 19]])
+	rule_mapping = np.array([0, 5, 7, 14, 18, 19])
 	tc_mapping = np.array([1, 3, 6, 10, 11]) + N_RULES
 
 	mapping = np.concatenate([rule_mapping, tc_mapping]).astype(int)
