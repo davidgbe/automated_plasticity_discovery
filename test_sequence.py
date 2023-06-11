@@ -5,6 +5,7 @@ import time
 from functools import partial
 from disp import get_ordered_colors
 from aux import gaussian_if_under_val, exp_if_under_val, rev_argsort, set_smallest_n_zero
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from datetime import datetime
@@ -16,6 +17,15 @@ from scipy.sparse import csc_matrix
 from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
 from csv_writer import write_csv
+
+new_rc_params = {
+    'text.usetex': False,
+    "svg.fonttype": 'none'
+}
+matplotlib.rcParams.update(new_rc_params)
+
+plt.rcParams['font.size'] = 15
+plt.rcParams['axes.linewidth'] = 3.0
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
