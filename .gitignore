@@ -6,3 +6,5 @@ __pycache__/**/*
 .ipynb_checkpoints/
 python-env/**/*
 cmaes_test/**/*
+figures/**/*
+**/*.zip
