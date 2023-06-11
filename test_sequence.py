@@ -24,6 +24,9 @@ new_rc_params = {
 }
 matplotlib.rcParams.update(new_rc_params)
 
+plt.rcParams['font.size'] = 15
+plt.rcParams['axes.linewidth'] = 3.0
+
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
 ### Parse arguments 
