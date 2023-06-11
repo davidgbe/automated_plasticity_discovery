@@ -129,7 +129,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/decoder_refit_ee_2_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/decoder_refit_ee_2_syn_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -587,8 +587,8 @@ if __name__ == '__main__':
 	# rule_mapping = np.array([0, 4, 7, 8, 14, 16, 17, 18, 19])
 	# tc_mapping = np.array([0, 3, 4, 6, 8, 9, 10, 11]) + N_RULES
 
-	rule_mapping = np.array([0, 5, 7, 14, 18, 19])
-	tc_mapping = np.array([1, 3, 6, 10, 11]) + N_RULES
+	rule_mapping = np.array([0, 5, 7, 14, 16, 18, 19])
+	tc_mapping = np.array([1, 3, 6, 8, 10, 11]) + N_RULES
 
 	mapping = np.concatenate([rule_mapping, tc_mapping]).astype(int)
 	print(mapping)
