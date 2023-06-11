@@ -316,6 +316,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	fig.tight_layout()
 	if train:
 		fig.savefig(f'{out_dir}/{zero_padding}{evals}.png')
+		fig.savefig(f'{out_dir}/{zero_padding}{evals}.svg')
 	else:
 		fig.savefig(f'{out_dir}/{zero_padding}{evals}_test.png')
 	plt.close('all')
