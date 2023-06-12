@@ -566,8 +566,12 @@ if __name__ == '__main__':
 	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_6002_2023-06-02_22:59:05.785824',
 	# ]
 
+	# file_names = [
+	# 	'decoder_refit_ee_2_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_300_2023-06-10_12:43:54.952561',
+	# ]
+
 	file_names = [
-		'decoder_refit_ee_2_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_300_2023-06-10_12:43:54.952561',
+		'decoder_refit_ee_2_syn_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_300_2023-06-10_23:49:16.532621',
 	]
 
 	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
