@@ -342,7 +342,7 @@ def poisson_arrivals_to_inputs(arrivals, tau_alpha):
 	return input_current
 
 
-def simulate_single_network(index, x, track_params=True, train=True):
+def simulate_single_network(index, x, train, track_params=True):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
@@ -481,11 +481,11 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 				if eval_tracker['evals'] > 0:
 					eval_tracker['best_loss'] = loss
 					eval_tracker['best_changed'] = True
-					eval_tracker['plasticity_coefs'] = copy(plasticity_coefs)
+					eval_tracker['params'] = copy(x)
 				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
 			eval_tracker['evals'] += 1
 		else:
-			plot_results(results, eval_tracker, out_dir, eval_tracker['plasticity_coefs'], true_losses, syn_effect_penalties, train=False)
+			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=False)
 
 	print('guess:', plasticity_coefs)
 	print('loss:', loss)
@@ -517,7 +517,7 @@ def simulate_single_network_wrapper(tup):
 	return simulate_single_network(*tup)
 
 
-def eval_all(X, eval_tracker=None):
+def eval_all(X, eval_tracker=None, train=True):
 	start = time.time()
 
 	indices = np.arange(BATCH_SIZE)
@@ -526,7 +526,7 @@ def eval_all(X, eval_tracker=None):
 	task_vars = []
 	for x in X:
 		for idx in indices:
-			task_vars.append((idx, x))
+			task_vars.append((idx, x, train))
 	results = pool.map(simulate_single_network_wrapper, task_vars)
 
 	pool.close()
@@ -534,9 +534,12 @@ def eval_all(X, eval_tracker=None):
 
 	losses = []
 	for i in range(len(X)):
-		loss, true_losses, syn_effects = process_plasticity_rule_results(results[BATCH_SIZE * i: BATCH_SIZE * (i+1)], X[i], eval_tracker=eval_tracker)
+		loss, true_losses, syn_effects = process_plasticity_rule_results(results[BATCH_SIZE * i: BATCH_SIZE * (i+1)], X[i], eval_tracker=eval_tracker, train=train)
 		losses.append(loss)
-		log_sim_results(train_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
+		if train:
+			log_sim_results(train_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
+		else:
+			log_sim_results(test_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
 	
 	dur = time.time() - start
 	print('dur:', dur)
@@ -581,9 +584,6 @@ if __name__ == '__main__':
 		],
 	}
 
-	def f(x):
-		return 1
-
 	# es = cma.fmin2(f, [x0], STD_EXPL)
 	# print(es)
 	# print(es[1].opts)
@@ -603,6 +603,8 @@ if __name__ == '__main__':
 		while not es.stop():
 			X = es.ask()
 			es.tell(X, eval_all(X, eval_tracker=eval_tracker))
+			if eval_tracker['best_changed']:
+				eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
 			es.disp()
 
 
