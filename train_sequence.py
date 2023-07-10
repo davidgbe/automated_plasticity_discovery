@@ -487,6 +487,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 			eval_tracker['evals'] += 1
 		else:
 			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=False)
+			eval_tracker['best_changed'] = False
 
 	print('guess:', plasticity_coefs)
 	print('loss:', loss)
