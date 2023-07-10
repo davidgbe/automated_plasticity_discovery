@@ -93,11 +93,11 @@ def simulate_inner_loop(
         # firing rates are calculated as normalized synaptic conductances
         shifted_s_e = s[i, :n_e] - 0.1
         shifted_s_e[shifted_s_e < 0] = 0
-        r[i+1, :n_e] = g * np.tanh(shifted_s_e)
+        r[i+1, :n_e] = g * shifted_s_e
 
         shifted_s_i = s[i, n_e:] - 0.1
         shifted_s_i[shifted_s_i < 0] = 0
-        r[i+1, n_e:] = g * np.tanh(shifted_s_i)
+        r[i+1, n_e:] = g * shifted_s_i
         
         # calculate exponential filtered of firing rate to use for STDP-like plasticity rules
         r_exp_filtered[:, i+1, :] = r_exp_filtered[:, i, :] * (1 - dt / int_time_consts) + r[i, :] * (dt / int_time_consts)

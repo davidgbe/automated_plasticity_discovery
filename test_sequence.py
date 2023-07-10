@@ -51,7 +51,7 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (399, 400) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (999, 1000) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -65,10 +65,10 @@ INPUT_RATE_PER_CELL = 80
 N_RULES = 20
 N_TIMECONSTS = 12
 
-T = 0.075 # Total duration of one network simulation
+T = 0.75 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
-n_e = 15 # Number excitatory cells in sequence (also length of sequence)
+n_e = 25 # Number excitatory cells in sequence (also length of sequence)
 n_i = 8 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=100)
 test_seeds = np.random.randint(0, 1e7, size=100)
@@ -139,7 +139,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/ee_no_syn_refit_test_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/ee_no_syn_local_test_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -209,9 +209,13 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 
 	# print(np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100)
 
-	loss = 1000 * (1 - reg.score(X_test, y_test)) + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100
+	decoding_loss = 1000 * (1 - reg.score(X_test, y_test))
+	activity_loss = np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100
 
-	# print('loss:', loss)
+	print(f'decoding loss: {decoding_loss}')
+	print(f'activity loss: {activity_loss}')
+
+	loss = decoding_loss + activity_loss
 
 	return loss
 
@@ -220,104 +224,122 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	scale = 3
 	n_res_to_show = BATCH_SIZE
 
-	gs = gridspec.GridSpec(2 * n_res_to_show + 3, 2)
-	fig = plt.figure(figsize=(4  * scale, (2 * n_res_to_show + 3) * scale), tight_layout=True)
-	axs = [[fig.add_subplot(gs[i, 0]), fig.add_subplot(gs[i, 1])] for i in range(2 * n_res_to_show)]
-	axs += [fig.add_subplot(gs[2 * n_res_to_show, :])]
-	axs += [fig.add_subplot(gs[2 * n_res_to_show + 1, :])]
-	axs += [fig.add_subplot(gs[2 * n_res_to_show + 2, :])]
+	gs = gridspec.GridSpec(2 * 2 * n_res_to_show + 3, 2)
+	fig = plt.figure(figsize=(4  * scale, (2 * 2 * n_res_to_show + 3) * scale), tight_layout=True)
+	axs = []
+	for i in range(n_res_to_show):
+		axs.append([fig.add_subplot(gs[4*i:4*i+3, 0]), fig.add_subplot(gs[4*i:4*i+3, 1])])
+		axs.append([fig.add_subplot(gs[4*i+3, 0]), fig.add_subplot(gs[4*i+3, 1])])
+
+	axs += [fig.add_subplot(gs[2 * 2 * n_res_to_show, :])]
+	axs += [fig.add_subplot(gs[2 * 2 * n_res_to_show + 1, :])]
+	axs += [fig.add_subplot(gs[2 * 2 * n_res_to_show + 2, :])]
 
 	all_effects = []
 
 	for i in np.arange(BATCH_SIZE):
 		# for each network in the batch, graph its excitatory, inhibitory activity, as well as the target activity
 		res = results[i]
-		r = res['r']
-		r_exp_filtered = res['r_exp_filtered']
+
+		blew_up = res['blew_up']
 		w = res['w']
 		w_initial = res['w_initial']
-		effects = res['syn_effects']
-		all_weight_deltas = res['all_weight_deltas']
-		rs_for_loss = res['rs_for_loss']
 
-		all_effects.append(effects)
+		t_ordering = None
 
-		for trial_idx in range(rs_for_loss.shape[0]):
-			r = rs_for_loss[trial_idx, ...]
+		if not blew_up:
+			r = res['r']
+			r_exp_filtered = res['r_exp_filtered']
+			effects = res['syn_effects']
+			all_weight_deltas = res['all_weight_deltas']
+			rs_for_loss = res['rs_for_loss']
 
-			for l_idx in range(r.shape[1]):
-				if l_idx < n_e:
-					if l_idx % 1 == 0:
-						axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
-						# axs[2 * i][0].plot(t, all_r_targets[loss_min_idx, :, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
+			all_effects.append(effects)
 
-						# axs[2 * i][0].plot(t, 4 * r_exp_filtered[:, l_idx], '-.', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
-				else:
-					axs[2 * i][1].plot(t, r[:, l_idx], c='black') # graph inh activity
+			for trial_idx in range(rs_for_loss.shape[0]):
+				r = rs_for_loss[trial_idx, ...]
 
-		r_exc = r[:, :n_e]
-		r_summed = np.sum(r_exc, axis=0)
-		r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
-		r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
-		r_normed = r_exc / r_summed_safe_divide
-		t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
-		t_ordering = np.argsort(t_means)
-		t_ordering = np.concatenate([t_ordering, np.arange(n_e, n_e + n_i)])
+				for l_idx in range(r.shape[1]):
+					if l_idx < n_e:
+						if l_idx % 1 == 0:
+							axs[2 * i][0].plot(t, r[:, l_idx] - trial_idx * 1.1 * rs_for_loss[..., :n_e].max() , c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
+							# axs[2 * i][0].plot(t, all_r_targets[loss_min_idx, :, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
 
-		sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
-		sorted_w = w[t_ordering, :][:, t_ordering]
+							# axs[2 * i][0].plot(t, 4 * r_exp_filtered[:, l_idx], '-.', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
+					else:
+						axs[2 * i][1].plot(t, r[:, l_idx] - trial_idx * 1.1 * rs_for_loss[..., :n_e].max(), c='black') # graph inh activity
+
+			r_exc = r[:, :n_e]
+			r_summed = np.sum(r_exc, axis=0)
+			r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
+			r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
+			r_normed = r_exc / r_summed_safe_divide
+			t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
+			t_ordering = np.argsort(t_means)
+			t_ordering = np.concatenate([t_ordering, np.arange(n_e, n_e + n_i)])
+
+			axs[2 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
+			for i_axs in range(2):
+				axs[2 * i][i_axs].set_xlabel('Time (s)')
+				axs[2 * i][i_axs].set_ylabel('Firing rate')
+
+			axs[2 * n_res_to_show + 2].plot(np.arange(len(all_weight_deltas)), np.log(all_weight_deltas), label=f'{i}')
 
 		vmin = np.min([w_initial.min(), w.min()])
 		vmax = np.max([w_initial.max(), w.max()])
 
 		vbound = np.maximum(vmax, np.abs(vmin))
-		vbound = 5
+		# vbound = 5
 
-		mappable = axs[2 * i + 1][0].matshow(sorted_w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
-		plt.colorbar(mappable, ax=axs[2 * i + 1][0])
+		if t_ordering is not None:
+			sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
+			sorted_w = w[t_ordering, :][:, t_ordering]
 
-		mappable = axs[2 * i + 1][1].matshow(sorted_w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
-		plt.colorbar(mappable, ax=axs[2 * i + 1][1])
+			mappable = axs[2 * i + 1][0].matshow(sorted_w_initial[:n_e, :n_e], vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
+			plt.colorbar(mappable, ax=axs[2 * i + 1][0])
 
-		axs[2 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
-		for i_axs in range(2):
-			axs[2 * i][i_axs].set_xlabel('Time (s)')
-			axs[2 * i][i_axs].set_ylabel('Firing rate')
+			mappable = axs[2 * i + 1][1].matshow(sorted_w[:n_e, :n_e], vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
+			plt.colorbar(mappable, ax=axs[2 * i + 1][1])
+		else:
+			mappable = axs[2 * i + 1][0].matshow(w_initial[:n_e, :n_e], vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
+			plt.colorbar(mappable, ax=axs[2 * i + 1][0])
 
-		axs[2 * n_res_to_show + 2].plot(np.arange(len(all_weight_deltas)), np.log(all_weight_deltas), label=f'{i}')
+			mappable = axs[2 * i + 1][1].matshow(w[:n_e, :n_e], vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
+			plt.colorbar(mappable, ax=axs[2 * i + 1][1])
 
 	partial_rules_len = int(len(plasticity_coefs))
 
 	all_effects = np.array(all_effects)
 	effects = np.mean(all_effects, axis=0)
 
-	axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
-	effects_argsort = []
-	for l in range(1):
-		effects_partial = effects[l * partial_rules_len: (l+1) * partial_rules_len]
-		effects_argsort_partial = np.flip(np.argsort(effects_partial))
-		effects_argsort.append(effects_argsort_partial + l * partial_rules_len)
-		x = np.arange(len(effects_argsort_partial)) + l * partial_rules_len
-		axs[2 * n_res_to_show + 1].bar(x, effects_partial[effects_argsort_partial], zorder=0)
-		for i_e in x:
-			axs[2 * n_res_to_show + 1].scatter(i_e * np.ones(all_effects.shape[0]), all_effects[:, effects_argsort_partial][:, i_e], c='black', zorder=1, s=3)
-	axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
-	axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
+	if type(effects) is np.ndarray:
+		axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
+		effects_argsort = []
+		for l in range(1):
+			effects_partial = effects[l * partial_rules_len: (l+1) * partial_rules_len]
+			effects_argsort_partial = np.flip(np.argsort(effects_partial))
+			effects_argsort.append(effects_argsort_partial + l * partial_rules_len)
+			x = np.arange(len(effects_argsort_partial)) + l * partial_rules_len
+			axs[2 * n_res_to_show + 1].bar(x, effects_partial[effects_argsort_partial], zorder=0)
+			for i_e in x:
+				axs[2 * n_res_to_show + 1].scatter(i_e * np.ones(all_effects.shape[0]), all_effects[:, effects_argsort_partial][:, i_e], c='black', zorder=1, s=3)
+		axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
+		axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
 
-	true_loss = np.sum(true_losses)
-	syn_effect_penalty = np.sum(syn_effect_penalties)
-	axs[2 * n_res_to_show].set_title(f'Loss: {true_loss + syn_effect_penalty}, {true_loss}, {syn_effect_penalty}')
+		true_loss = np.sum(true_losses)
+		syn_effect_penalty = np.sum(syn_effect_penalties)
+		axs[2 * n_res_to_show].set_title(f'Loss: {true_loss + syn_effect_penalty}, {true_loss}, {syn_effect_penalty}')
 
-	# plot the coefficients assigned to each plasticity rule (unsorted by size)
-	for l in range(1):
-		axs[2 * n_res_to_show].bar(np.arange(partial_rules_len) + l * partial_rules_len, plasticity_coefs[l * partial_rules_len: (l+1) * partial_rules_len])
-	axs[2 * n_res_to_show].set_xticks(np.arange(len(plasticity_coefs)))
-	axs[2 * n_res_to_show].set_xticklabels(rule_names, rotation=60, ha='right')
-	axs[2 * n_res_to_show].set_xlim(-1, len(plasticity_coefs))
+		# plot the coefficients assigned to each plasticity rule (unsorted by size)
+		for l in range(1):
+			axs[2 * n_res_to_show].bar(np.arange(partial_rules_len) + l * partial_rules_len, plasticity_coefs[l * partial_rules_len: (l+1) * partial_rules_len])
+		axs[2 * n_res_to_show].set_xticks(np.arange(len(plasticity_coefs)))
+		axs[2 * n_res_to_show].set_xticklabels(rule_names, rotation=60, ha='right')
+		axs[2 * n_res_to_show].set_xlim(-1, len(plasticity_coefs))
 
-	axs[2 * n_res_to_show + 2].set_xlabel('Epochs')
-	axs[2 * n_res_to_show + 2].set_ylabel('log(delta W)')
-	axs[2 * n_res_to_show + 2].legend()
+		axs[2 * n_res_to_show + 2].set_xlabel('Epochs')
+		axs[2 * n_res_to_show + 2].set_ylabel('log(delta W)')
+		axs[2 * n_res_to_show + 2].legend()
 
 	pad = 4 - len(str(eval_tracker['evals']))
 	zero_padding = '0' * pad
@@ -364,8 +386,8 @@ def simulate_single_network(index, x, track_params=True, train=True):
 
 	w_initial = make_network() # make a new, distorted sequence
 
-	decode_start = 0.003/dt
-	decode_end = (T - 0.01) /dt
+	decode_start = 3e-3 / dt
+	decode_end = 65e-3 / dt
 	train_times = (decode_start + np.random.rand(500) * (decode_end - decode_start - 1)).astype(int) # 500
 	test_times = (decode_start + np.random.rand(200) * (decode_end - decode_start - 1)).astype(int)	# 200
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
@@ -387,13 +409,14 @@ def simulate_single_network(index, x, track_params=True, train=True):
 
 	fixed_inputs_spks = np.zeros((len(t), n_e + n_i))
 	fixed_inputs_spks[:10, 0] = 1
-	fixed_inputs_spks[:, 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(len(t), n_e - 1 + n_i))
+	fixed_inputs_spks[10:int(65e-3/dt), 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 10, n_e - 1 + n_i))
 
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
 
-		random_inputs_poisson = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(len(t), n_e + n_i))
+		random_inputs_poisson = np.zeros((len(t), n_e + n_i))
+		random_inputs_poisson[10:int(65e-3/dt), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 10, n_e + n_i))
 		random_inputs_poisson[:, 0] = 0
 
 		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
@@ -414,13 +437,18 @@ def simulate_single_network(index, x, track_params=True, train=True):
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
-		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e, :n_e]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
+		if np.isnan(r).any() or (np.abs(w_out) > 500).any() or (np.abs(w_out[:n_e, :n_e]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
+			print(np.isnan(r).any())
+			print((np.abs(w_out) > 500).any())
+
 			return {
 				'blew_up': True,
+				'w': w_out,
+				'w_initial': w_initial,
 			}
 			
 
-		if i in [n_inner_loop_iters - 1 - 5 * k for k in range(12)]:
+		if i % 100 == 0: # in [n_inner_loop_iters - 1 - 20 * k for k in range(12)]:
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -466,6 +494,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	if np.any(np.array([res['blew_up'] for res in results])):
 		if eval_tracker is not None:
 			eval_tracker['evals'] += 1
+			plot_results(results, eval_tracker, out_dir, plasticity_coefs, np.zeros(BATCH_SIZE), np.zeros(N_RULES), train=True)
 		return 1e8 * BATCH_SIZE + 1e7 * np.sum(np.abs(plasticity_coefs)), 1e8 * np.ones((len(results),)), np.zeros((len(results), len(plasticity_coefs)))
 
 	true_losses = np.array([res['loss'] for res in results])
@@ -554,11 +583,12 @@ if __name__ == '__main__':
 	# 3. Arange by average total synaptic change
 	# 4. Take only N largest terms in terms of synaptic change, drop rest, simulate 100 networks
 
-	# file_names = [
-	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6000_2023-05-31_10:27:28.126331',
-	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6001_2023-05-31_10:27:27.894879',
-	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6002_2023-06-02_22:59:05.788902',
-	# ]
+	file_names = [
+		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6000_2023-05-31_10:27:28.126331',
+		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6001_2023-05-31_10:27:27.894879',
+		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6002_2023-06-02_22:59:05.788902',
+	]
+
 
 	# file_names = [
 	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_6000_2023-05-31_10:28:18.972929',
@@ -570,13 +600,48 @@ if __name__ == '__main__':
 	# 	'decoder_refit_ee_2_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_300_2023-06-10_12:43:54.952561',
 	# ]
 
-	file_names = [
-		'decoder_refit_ee_2_syn_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_300_2023-06-10_23:49:16.532621',
-	]
+	# file_names = [
+	# 	'decoder_refit_ee_2_syn_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_300_2023-06-10_23:49:16.532621',
+	# ]
 
-	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
+	# syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 
-	print(x_test)
+
+	# rule_mapping = np.array([17, 18])
+	# tc_mapping = np.array([0, 3, 4, 6, 8, 9, 10, 11]) + N_RULES
+
+	# rule_mapping = np.array([0, 5, 7, 14, 16, 18, 19])
+	# tc_mapping = np.array([1, 3, 6, 8, 10, 11]) + N_RULES
+
+	# mapping = np.concatenate([rule_mapping, tc_mapping]).astype(int)
+	# print(mapping)
+
+	# rule_mapping_one_hot = np.zeros(N_RULES + N_TIMECONSTS)
+	# rule_mapping_one_hot[rule_mapping] = 1
+	# rule_mapping_one_hot[tc_mapping] = 1
+	# rule_mapping_one_hot = rule_mapping_one_hot.astype(bool)
+
+	# x_test[(~rule_mapping_one_hot[:N_RULES]).nonzero()] = 0
+
+	# x_test[:N_RULES] = 4 * x_test[:N_RULES]
+
+	x_test = np.concatenate([np.zeros(N_RULES), 10e-3 * np.ones(N_TIMECONSTS)])
+
+	# x_test[5] = -0.0015
+	# x_test[7] = 0.0015
+
+	# x_test[8] = -0.1
+
+	x_test[17] = 0.05
+	x_test[18] = -0.05
+	x_test[10] = 0.02
+
+	# x_test[24] = 0.5e-3
+	x_test[30] = 6e-3
+
+
+	x_test[:N_RULES] = 0.4 * x_test[:N_RULES]
+
 
 	eval_tracker = {
 		'evals': 0,
@@ -584,7 +649,7 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	eval_all([x_test] * 30, eval_tracker=eval_tracker)
+	eval_all([x_test] * 3, eval_tracker=eval_tracker)
 
 	# for i in range(len(syn_effects_test)):
 	# 	x_test_reduced = copy(x_test)
