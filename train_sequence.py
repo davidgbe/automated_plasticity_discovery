@@ -55,10 +55,10 @@ INPUT_RATE_PER_CELL = 80
 N_RULES = 20
 N_TIMECONSTS = 12
 
-T = 0.11 # Total duration of one network simulation
+T = 0.6 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
-n_e = 25 # Number excitatory cells in sequence (also length of sequence)
+n_e = 20 # Number excitatory cells in sequence (also length of sequence)
 n_i = 8 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
@@ -360,7 +360,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	w_initial = make_network() # make a new, distorted sequence
 
 	decode_start = 3e-3/dt
-	decode_end = 65e-3/dt
+	decode_end = 40e-3/dt
 	train_times = (decode_start + np.random.rand(500) * (decode_end - decode_start - 1)).astype(int) # 500
 	test_times = (decode_start + np.random.rand(200) * (decode_end - decode_start - 1)).astype(int)	# 200
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
@@ -382,21 +382,21 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	fixed_inputs_spks = np.zeros((len(t), n_e + n_i))
 	fixed_inputs_spks[:10, 0] = 1
-	fixed_inputs_spks[10:int(65e-3/dt), 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 10, n_e - 1 + n_i))
+	fixed_inputs_spks[10:int(decode_end), 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(decode_end) - 10, n_e - 1 + n_i))
 
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
 
 		random_inputs_poisson = np.zeros((len(t), n_e + n_i))
-		random_inputs_poisson[10:int(65e-3/dt), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 10, n_e + n_i))
+		random_inputs_poisson[10:int(decode_end), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(decode_end) - 10, n_e + n_i))
 		random_inputs_poisson[:, 0] = 0
 
 		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		if i <= 400:
+		if i <= 1000:
 			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
 			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
@@ -471,7 +471,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	one_third_len = int(syn_effects.shape[1])
 
 	for i in range(1):
-		syn_effect_penalties += L1_PENALTIES[i] * np.sum(np.abs(syn_effects[:, i * one_third_len:(i+1) * one_third_len]), axis=1)
+		syn_effect_penalties += L1_PENALTIES[i] * np.sum(np.power(np.abs(syn_effects[:, i * one_third_len:(i+1) * one_third_len]), 0.8), axis=1)
 
 	losses = true_losses + syn_effect_penalties
 	loss = np.sum(losses)
@@ -568,11 +568,6 @@ if __name__ == '__main__':
 	# 0.04235063474576262 -0.013949451627719043 -0.013278013164683633 0.02681015144232688 0.0006667111741560528 -0.022448643673210058 -0.010460157018507601 0.03607668737663884 0.001366463317132445 0.008407426058479266 -0.0012012593678615276 0.04277920056330786 0.04154829884397255 -0.02932860687833184 -0.01530729657531738 0.017403893020981668 0.015088583271851213 0.03318493486636041 -0.08207099797632758 -0.03358568102328232 0.0048932354377987115 0.039621074540071466 0.03611848451153047 0.01035210370034132 0.030285767909846655 0.029965398669501 0.00793144366970018 0.0010837094241556264 0.0018032096258530906 0.010082281157033288 0.002360296249155331 0.027433369524464905
 	# '''
 	# x0 = process_params_str(x0)
-
-	x0[17] = 0.05
-	x0[18] = -0.05
-	x0[10] = 0.02
-	x0[30] = 6e-3
 
 	eval_tracker = {
 		'evals': 0,
