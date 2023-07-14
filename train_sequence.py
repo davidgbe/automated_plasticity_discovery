@@ -471,7 +471,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	one_third_len = int(syn_effects.shape[1])
 
 	for i in range(1):
-		syn_effect_penalties += L1_PENALTIES[i] * np.sum(np.power(np.abs(syn_effects[:, i * one_third_len:(i+1) * one_third_len]), 0.8), axis=1)
+		syn_effect_penalties += L1_PENALTIES[i] * np.sum(np.power(np.abs(syn_effects[:, i * one_third_len:(i+1) * one_third_len]), 0.5), axis=1)
 
 	losses = true_losses + syn_effect_penalties
 	loss = np.sum(losses)
@@ -562,7 +562,7 @@ if __name__ == '__main__':
 	if args.load_initial is not None:
 		x0 = load_best_params(args.load_initial)
 	else:
-		x0 = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
+		x0 = np.concatenate([np.zeros(N_RULES), 10e-3 * np.ones(N_TIMECONSTS)])
 
 	# x0 = '''
 	# 0.04235063474576262 -0.013949451627719043 -0.013278013164683633 0.02681015144232688 0.0006667111741560528 -0.022448643673210058 -0.010460157018507601 0.03607668737663884 0.001366463317132445 0.008407426058479266 -0.0012012593678615276 0.04277920056330786 0.04154829884397255 -0.02932860687833184 -0.01530729657531738 0.017403893020981668 0.015088583271851213 0.03318493486636041 -0.08207099797632758 -0.03358568102328232 0.0048932354377987115 0.039621074540071466 0.03611848451153047 0.01035210370034132 0.030285767909846655 0.029965398669501 0.00793144366970018 0.0010837094241556264 0.0018032096258530906 0.010082281157033288 0.002360296249155331 0.027433369524464905
@@ -575,6 +575,11 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
+	# x0[17] = 0.05
+	# x0[18] = -0.05
+	# x0[10] = 0.02
+	# x0[30] = 6e-3
+
 	eval_all([x0], eval_tracker=eval_tracker)
 
 	options = {
@@ -586,18 +591,13 @@ if __name__ == '__main__':
 		],
 	}
 
-	# es = cma.fmin2(f, [x0], STD_EXPL)
-	# print(es)
-	# print(es[1].opts)
-
-	# print(es.opts)
 	es = None
 	for k in range(200):
 		if k == 0:
 			es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
 			options['popsize'] = es.opts['popsize']
 		else:
-			options['popsize'] = 2 * options['popsize']
+			options['popsize'] = options['popsize'] + 2
 			es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
 
 		print(es.opts)
@@ -608,6 +608,3 @@ if __name__ == '__main__':
 			if eval_tracker['best_changed']:
 				eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
 			es.disp()
-
-
-		# options['popsize'] += 2
