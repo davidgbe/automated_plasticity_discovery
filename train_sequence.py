@@ -471,7 +471,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	one_third_len = int(syn_effects.shape[1])
 
 	for i in range(1):
-		syn_effect_penalties += L1_PENALTIES[i] * np.sum(np.power(np.abs(syn_effects[:, i * one_third_len:(i+1) * one_third_len]), 0.5), axis=1)
+		syn_effect_penalties += L1_PENALTIES[i] * np.sum(np.abs(syn_effects[:, i * one_third_len:(i+1) * one_third_len]), axis=1)
 
 	losses = true_losses + syn_effect_penalties
 	loss = np.sum(losses)
