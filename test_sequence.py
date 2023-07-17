@@ -65,10 +65,10 @@ INPUT_RATE_PER_CELL = 80
 N_RULES = 20
 N_TIMECONSTS = 12
 
-T = 0.75 # Total duration of one network simulation
+T = 0.1 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
-n_e = 25 # Number excitatory cells in sequence (also length of sequence)
+n_e = 20 # Number excitatory cells in sequence (also length of sequence)
 n_i = 8 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=100)
 test_seeds = np.random.randint(0, 1e7, size=100)
@@ -387,7 +387,7 @@ def simulate_single_network(index, x, track_params=True, train=True):
 	w_initial = make_network() # make a new, distorted sequence
 
 	decode_start = 3e-3 / dt
-	decode_end = 65e-3 / dt
+	decode_end = 40e-3 / dt
 	train_times = (decode_start + np.random.rand(500) * (decode_end - decode_start - 1)).astype(int) # 500
 	test_times = (decode_start + np.random.rand(200) * (decode_end - decode_start - 1)).astype(int)	# 200
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
@@ -409,14 +409,14 @@ def simulate_single_network(index, x, track_params=True, train=True):
 
 	fixed_inputs_spks = np.zeros((len(t), n_e + n_i))
 	fixed_inputs_spks[:10, 0] = 1
-	fixed_inputs_spks[10:int(65e-3/dt), 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 10, n_e - 1 + n_i))
+	fixed_inputs_spks[10:int(decode_end), 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(decode_end) - 10, n_e - 1 + n_i))
 
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
 
 		random_inputs_poisson = np.zeros((len(t), n_e + n_i))
-		random_inputs_poisson[10:int(65e-3/dt), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 10, n_e + n_i))
+		random_inputs_poisson[10:int(decode_end), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(decode_end) - 10, n_e + n_i))
 		random_inputs_poisson[:, 0] = 0
 
 		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
@@ -448,7 +448,7 @@ def simulate_single_network(index, x, track_params=True, train=True):
 			}
 			
 
-		if i % 100 == 0: # in [n_inner_loop_iters - 1 - 20 * k for k in range(12)]:
+		if i in [n_inner_loop_iters - 1 - 20 * k for k in range(12)]:
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -627,20 +627,35 @@ if __name__ == '__main__':
 
 	x_test = np.concatenate([np.zeros(N_RULES), 10e-3 * np.ones(N_TIMECONSTS)])
 
-	# x_test[5] = -0.0015
-	# x_test[7] = 0.0015
+	def process_params_str(s):
+		params = []
+		for x in s.split(' '):
+			x = x.replace('\n', '')
+			if x != '':
+				params.append(float(x))
+		return np.array(params)
 
-	# x_test[8] = -0.1
+	x_test = """0.00994896 -0.0059831   0.00165969  0.00099257 -0.00906797 -0.01195217
+	  0.02892079  0.01904135 -0.00702429 -0.01028594  0.00032007  0.00099657
+	 -0.00025176  0.01693961 -0.01655136 -0.00132654  0.00329937  0.00366948
+	 -0.00968543 -0.00440321  0.02510667  0.0159938   0.00890859  0.00469475
+	  0.00732924  0.0112648   0.01096249  0.01799837  0.0062357   0.01224314
+	  0.01192354  0.0100045"""
 
-	x_test[17] = 0.05
-	x_test[18] = -0.05
-	x_test[10] = 0.02
+	x_test = process_params_str(x_test)
 
-	# x_test[24] = 0.5e-3
-	x_test[30] = 6e-3
+	rule_mapping_one_hot = np.zeros(N_RULES + N_TIMECONSTS)
+	rule_mapping_one_hot[[5, 6, 7, 8, 9, 14, 18]] = 1
+	rule_mapping_one_hot = rule_mapping_one_hot.astype(bool)
+	x_test[(~rule_mapping_one_hot[:N_RULES]).nonzero()] = 0
 
 
-	x_test[:N_RULES] = 0.4 * x_test[:N_RULES]
+	# x_test[17] = 0.05
+	# x_test[18] = -0.05
+	# x_test[10] = 0.02
+	# # x_test[24] = 0.5e-3
+	# x_test[30] = 6e-3
+	# x_test[:N_RULES] = 0.4 * x_test[:N_RULES]
 
 
 	eval_tracker = {

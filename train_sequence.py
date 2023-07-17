@@ -205,7 +205,7 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 
 	print(np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100)
 
-	loss = 1000 * (1 - reg.score(X_test, y_test)) + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100
+	loss = 1000 * (1 - reg.score(X_test, y_test)) + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100 + np.sum(r[:, -1, :]) / (r.shape[0] * r.shape[2]) * 50e4
 
 	print('loss:', loss)
 
