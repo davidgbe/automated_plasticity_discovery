@@ -55,7 +55,7 @@ INPUT_RATE_PER_CELL = 80
 N_RULES = 20
 N_TIMECONSTS = 12
 
-T = 0.06 # Total duration of one network simulation
+T = 0.07 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 20 # Number excitatory cells in sequence (also length of sequence)

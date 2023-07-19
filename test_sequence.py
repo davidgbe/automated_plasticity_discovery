@@ -65,7 +65,7 @@ INPUT_RATE_PER_CELL = 80
 N_RULES = 20
 N_TIMECONSTS = 12
 
-T = 0.1 # Total duration of one network simulation
+T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 20 # Number excitatory cells in sequence (also length of sequence)
@@ -635,19 +635,28 @@ if __name__ == '__main__':
 				params.append(float(x))
 		return np.array(params)
 
-	x_test = """0.00994896 -0.0059831   0.00165969  0.00099257 -0.00906797 -0.01195217
-	  0.02892079  0.01904135 -0.00702429 -0.01028594  0.00032007  0.00099657
-	 -0.00025176  0.01693961 -0.01655136 -0.00132654  0.00329937  0.00366948
-	 -0.00968543 -0.00440321  0.02510667  0.0159938   0.00890859  0.00469475
-	  0.00732924  0.0112648   0.01096249  0.01799837  0.0062357   0.01224314
-	  0.01192354  0.0100045"""
+	x_test = """0.01078262  0.04252098 -0.02613715  0.00263092  0.00287484 -0.03038017
+  0.03252074  0.02523055 -0.0196899  -0.00712348  0.00307298  0.02913838
+ -0.00620072  0.03156029 -0.0289823  -0.00572642  0.01664906  0.06770186
+ -0.06973589 -0.00688509  0.01001621  0.00191695  0.02017177  0.00200748
+  0.00757414  0.01824961  0.00084848  0.00146397  0.0173993   0.00360303
+  0.00286904  0.00056006"""
 
 	x_test = process_params_str(x_test)
 
-	rule_mapping_one_hot = np.zeros(N_RULES + N_TIMECONSTS)
-	rule_mapping_one_hot[[5, 6, 7, 8, 9, 14, 18]] = 1
-	rule_mapping_one_hot = rule_mapping_one_hot.astype(bool)
-	x_test[(~rule_mapping_one_hot[:N_RULES]).nonzero()] = 0
+	# x_test[2] = 0
+	# x_test[6] = 0
+	# x_test[9] = 0
+
+	# x_test[5] = 0
+	# x_test[7] = 0
+
+	# x_test[17] = 0
+
+	# rule_mapping_one_hot = np.zeros(N_RULES + N_TIMECONSTS)
+	# rule_mapping_one_hot[[5, 6, 7, 8, 9, 14, 18]] = 1
+	# rule_mapping_one_hot = rule_mapping_one_hot.astype(bool)
+	# x_test[(~rule_mapping_one_hot[:N_RULES]).nonzero()] = 0
 
 
 	# x_test[17] = 0.05
