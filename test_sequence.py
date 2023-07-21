@@ -635,37 +635,25 @@ if __name__ == '__main__':
 				params.append(float(x))
 		return np.array(params)
 
-	x_test = """0.01078262  0.04252098 -0.02613715  0.00263092  0.00287484 -0.03038017
-  0.03252074  0.02523055 -0.0196899  -0.00712348  0.00307298  0.02913838
- -0.00620072  0.03156029 -0.0289823  -0.00572642  0.01664906  0.06770186
- -0.06973589 -0.00688509  0.01001621  0.00191695  0.02017177  0.00200748
-  0.00757414  0.01824961  0.00084848  0.00146397  0.0173993   0.00360303
-  0.00286904  0.00056006"""
+	x_test = """1.30625759e-03  5.07273161e-03  9.72926993e-03  8.20701630e-03
+ -1.15945291e-02 -5.42854122e-03  1.06634018e-02  1.80188961e-02
+ -2.03345389e-03 -1.13567602e-03  4.68023369e-03 -1.28827933e-02
+  6.39667674e-03 -1.26128562e-02 -4.06660021e-03  8.76091356e-03
+  2.37038429e-03  1.19217454e-02 -3.27756066e-02 -3.10586940e-05
+  1.79717197e-03  1.52089940e-03  7.81750280e-03  1.18509315e-02
+  2.33824408e-02  2.83126400e-03  1.30438116e-02  3.69784142e-03
+  5.87482744e-03  4.60167557e-03  9.54855146e-03  1.11811245e-03"""
 
 	x_test = process_params_str(x_test)
 
-	# x_test[2] = 0
-	# x_test[6] = 0
-	# x_test[9] = 0
+	rule_mapping_one_hot = np.zeros(N_RULES + N_TIMECONSTS)
+	rule_mapping_one_hot[[4, 5, 6, 7, 13, 14, 17, 18]] = 1
+	rule_mapping_one_hot = rule_mapping_one_hot.astype(bool)
+	x_test[(~rule_mapping_one_hot[:N_RULES]).nonzero()] = 0
 
-	# x_test[5] = 0
-	# x_test[7] = 0
+	print(rule_names[:N_RULES][rule_mapping_one_hot[:N_RULES]])
 
-	# x_test[17] = 0
-
-	# rule_mapping_one_hot = np.zeros(N_RULES + N_TIMECONSTS)
-	# rule_mapping_one_hot[[5, 6, 7, 8, 9, 14, 18]] = 1
-	# rule_mapping_one_hot = rule_mapping_one_hot.astype(bool)
-	# x_test[(~rule_mapping_one_hot[:N_RULES]).nonzero()] = 0
-
-
-	# x_test[17] = 0.05
-	# x_test[18] = -0.05
-	# x_test[10] = 0.02
-	# # x_test[24] = 0.5e-3
-	# x_test[30] = 6e-3
-	# x_test[:N_RULES] = 0.4 * x_test[:N_RULES]
-
+	x_test[4] = 0.75 * x_test[4]
 
 	eval_tracker = {
 		'evals': 0,
@@ -675,11 +663,11 @@ if __name__ == '__main__':
 
 	eval_all([x_test] * 3, eval_tracker=eval_tracker)
 
-	# for i in range(len(syn_effects_test)):
+	# for i in range(N_RULES):
 	# 	x_test_reduced = copy(x_test)
 	# 	x_test_reduced[i] = 0
 	# 	# set_smallest_n_zero(syn_effects_test, i, x_test_reduced[:N_RULES])
 	# 	print(x_test_reduced)
 
-	# 	eval_all([x_test_reduced] * 30, eval_tracker=eval_tracker)
+	# 	eval_all([x_test_reduced] * 3, eval_tracker=eval_tracker)
 
