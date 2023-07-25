@@ -41,7 +41,7 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (999, 1000) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (24, 25) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -52,8 +52,8 @@ ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
-N_RULES = 20
-N_TIMECONSTS = 12
+N_RULES = 34
+N_TIMECONSTS = 16
 
 T = 0.07 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -70,48 +70,40 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'',
 	r'$y$',
 	r'$x$',
-	# r'$y^2$',
-	# r'$x^2$',
 	r'$x \, y$',
-	r'$\tilde{y}$',
+	r'$\sigma(y)$',
+	r'$\sigma(x)$',
+	r'$x \sigma(y)$',
+	r'$\sigma(x) y $',
+	r'$\sigma(x) \sigma(y) $',
+
 	r'$x \, \tilde{y}$',
-	r'$\tilde{x}$',
 	r'$\tilde{x} \, y$',
-	# r'$x_{int} \, y^2$',
+	r'$\sigma(x) \, \tilde{y}$',
+	r'$\tilde{x} \, \sigma(y)$',
 	r'$\tilde{y} \, y$',
 	r'$\tilde{x} \, x$',
-	# r'$\tilde{y}^2$',
-	# r'$\tilde{x}^2$',
+	r'$\tilde{y}^2$',
+	r'$\tilde{x}^2$',
 
-	r'$w$',
+	r'w',
 	r'$w y$',
 	r'$w x$',
-	# r'$y^2$',
-	# r'$x^2$',
 	r'$w x \, y$',
-	r'$w \tilde{y}$',
+	r'$w \sigma(y)$',
+	r'$w \sigma(x)$',
+	r'$w x \sigma(y)$',
+	r'$w \sigma(x) y $',
+	r'$w \sigma(x) \sigma(y) $',
+
 	r'$w x \, \tilde{y}$',
-	r'$w \tilde{x}$',
 	r'$w \tilde{x} \, y$',
-	# r'$x_{int} \, y^2$',
+	r'$w \sigma(x) \, \tilde{y}$',
+	r'$w \tilde{x} \, \sigma(y)$',
 	r'$w \tilde{y} \, y$',
 	r'$w \tilde{x} \, x$',
-	# r'$w \tilde{y}^2$',
-	# r'$w \tilde{x}^2$',
-
-	# r'$w^2$',
-	# r'$w^2 \, y$',
-	# r'$w^2 \, x$',
-	# r'$w^2 \, y^2$',
-	# r'$w^2 \, x^2$',
-	# r'$w^2 \, x \, y$',
-	# r'$w^2 \, x \, y^2$',
-	# r'$w^2 \, x^2 \, y$',
-	# r'$w^2 \, x^2 \, y^2$',
-	# r'$w^2 y_{int}$',
-	# r'$w^2 x \, y_{int}$',
-	# r'$w^2 x_{int}$',
-	# r'$w^2 x_{int} \, y$',
+	r'$w \tilde{y}^2$',
+	r'$w \tilde{x}^2$',
 ]
 
 rule_names = [
@@ -416,7 +408,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			}
 			
 
-		if i in [n_inner_loop_iters - 1 - 5 * k for k in range(12)]:
+		if i > 10:
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -563,11 +555,6 @@ if __name__ == '__main__':
 		x0 = load_best_params(args.load_initial)
 	else:
 		x0 = np.concatenate([np.zeros(N_RULES), 10e-3 * np.ones(N_TIMECONSTS)])
-
-	# x0 = '''
-	# 0.04235063474576262 -0.013949451627719043 -0.013278013164683633 0.02681015144232688 0.0006667111741560528 -0.022448643673210058 -0.010460157018507601 0.03607668737663884 0.001366463317132445 0.008407426058479266 -0.0012012593678615276 0.04277920056330786 0.04154829884397255 -0.02932860687833184 -0.01530729657531738 0.017403893020981668 0.015088583271851213 0.03318493486636041 -0.08207099797632758 -0.03358568102328232 0.0048932354377987115 0.039621074540071466 0.03611848451153047 0.01035210370034132 0.030285767909846655 0.029965398669501 0.00793144366970018 0.0010837094241556264 0.0018032096258530906 0.010082281157033288 0.002360296249155331 0.027433369524464905
-	# '''
-	# x0 = process_params_str(x0)
 
 	eval_tracker = {
 		'evals': 0,

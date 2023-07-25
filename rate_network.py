@@ -52,6 +52,23 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_
         return r, s, v, w_copy, None, r_exp_filtered
 
 @njit
+def repeat_vec(vec : np.ndarray, n : int): # same as ones_vec or np.outer(vec, ones)
+    outer = np.empty((vec.shape[0], n), dtype=np.float64)
+    for index in range(n):
+        outer[:, index] = vec
+    return outer
+
+@njit
+def outer_bin_vec_vec(bin_vec : np.ndarray, vec : np.ndarray):
+    outer = np.empty((vec.shape[0], bin_vec.shape[0]), dtype=np.float64)
+    for index in range(outer.shape[1]):
+        if bin_vec[index]:
+            outer[:, index] = vec
+        else:
+            outer[:, index] = 0
+    return outer
+
+@njit
 def simulate_inner_loop(
     t : np.ndarray,
     n_e : int,
@@ -78,6 +95,7 @@ def simulate_inner_loop(
 
     one_third_n_params = int(n_params)
     pop_slices = [slice(0, n_e), slice(n_e, n_e + n_i)]
+    pop_sizes = [n_e, n_i]
 
     w_copy = np.copy(w)
     effects_e_e = np.zeros((one_third_n_params))
@@ -85,6 +103,8 @@ def simulate_inner_loop(
     effects_i_e = np.zeros((one_third_n_params))
 
     int_time_consts = rule_time_constants.reshape(rule_time_constants.shape[0], 1) * np.ones((rule_time_constants.shape[0], n_e + n_i))
+
+    n_total = n_e + n_i
 
     for i in range(0, len(t) - 1):
         v[i+1, :] = w_u * inp[i, :] + np.dot(w_copy, r[i, :].T) # calculate input to synaptic conductance equation
@@ -104,23 +124,30 @@ def simulate_inner_loop(
 
         r_0_pow = np.ones(n_e + n_i)
         r_1_pow = r[i+1, :] / 0.1
-        r_2_pow = np.square(r[i+1, :]) / 0.01
+        r_bin = np.zeros(n_e + n_i)
+        r_bin[r_1_pow > 0] = 1
+        # r_2_pow = np.square(r[i+1, :]) / 0.01
         r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.01
 
         r_0_pow_split = [r_0_pow[:n_e], r_0_pow[n_e:n_e + n_i]]
+        r_bin_split = [r_bin[:n_e], r_bin[n_e:n_e + n_i]]
         r_1_pow_split = [r_1_pow[:n_e], r_1_pow[n_e:n_e + n_i]]
         r_exp_filtered_curr_split = [r_exp_filtered_curr[:, :n_e], r_exp_filtered_curr[:, n_e:n_e + n_i]]
 
         # find outer products of zeroth, first powers of firing rates to compute updates due to plasticity rules
-        r_0_r_0 = np.outer(r_0_pow, r_0_pow)
-        r_0_r_1 = np.outer(r_1_pow, r_0_pow)
+        r_0_r_0 = np.ones(n_total**2).reshape(n_total, n_total)
+  
+        r_bin_r_0 = outer_bin_vec_vec(r_bin, r_0_pow)
+        r_0_r_bin = r_bin_r_0.T
+
+        r_0_r_1 = repeat_vec(r_1_pow, n_total)
         r_1_r_0 = r_0_r_1.T
-        # r_0_r_2 = np.outer(r_2_pow, r_0_pow)
-        # r_2_r_0 = r_0_r_2.T
+
+        r_bin_r_bin = outer_bin_vec_vec(r_bin, r_bin)
+        r_bin_r_1 = outer_bin_vec_vec(r_bin, r_1_pow)
+
+        r_1_r_bin = r_bin_r_1.T
         r_1_r_1 = np.outer(r_1_pow, r_1_pow)
-        # r_1_r_2 = np.outer(r_2_pow, r_1_pow)
-        # r_2_r_1 = r_1_r_2.T
-        # r_2_r_2 = np.outer(r_2_pow, r_2_pow)
 
         w_updates_unweighted = []
 
@@ -128,59 +155,95 @@ def simulate_inner_loop(
             p_i = pop_indices[0]
             p_j = pop_indices[1]
 
-            r_0_r_exp = np.outer(r_exp_filtered_curr_split[p_j][k, :], r_0_pow_split[p_i])
-            r_1_r_exp = np.outer(r_exp_filtered_curr_split[p_j][k + 1, :], r_1_pow_split[p_i])
-            r_exp_r_0 = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 2, :])
-            r_exp_r_1 = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 3, :])
-            r_0_by_r_exp_r = np.outer(r_exp_filtered_curr_split[p_j][k + 4, :] * r_1_pow_split[p_j], r_0_pow_split[p_i])
-            r_exp_r_by_r_0 = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 5, :] * r_1_pow_split[p_i])
-            # r_0_by_r_exp_2 = np.outer(np.square(r_exp_filtered_curr_split[p_j][k + 6, :]), r_0_pow_split[p_i])
-            # r_exp_2_by_r_0 = np.outer(r_0_pow_split[p_j], np.square(r_exp_filtered_curr_split[p_i][k + 7, :]))
+
+            r_1_r_exp = np.outer(r_exp_filtered_curr_split[p_j][k, :], r_1_pow_split[p_i])
+            r_exp_r_1 = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 1, :])
+
+            r_bin_r_exp = outer_bin_vec_vec(r_bin_split[p_i], r_exp_filtered_curr_split[p_j][k + 2, :]) # same as np.outer(r_exp[p_j], r_bin[p_i])
+            r_exp_r_bin = outer_bin_vec_vec(r_bin_split[p_j], r_exp_filtered_curr_split[p_i][k + 3, :]).T
+
+            r_exp_r = r_exp_filtered_curr_split[p_j][k + 4, :] * r_1_pow_split[p_j]
+            r_0_by_r_exp_r = repeat_vec(r_exp_r, pop_sizes[p_i])
+
+            r_exp_r = r_exp_filtered_curr_split[p_i][k + 5, :] * r_1_pow_split[p_i]
+            r_exp_r_by_r_0 = repeat_vec(r_exp_r, pop_sizes[p_j]).T
+
+            r_exp_square = np.square(r_exp_filtered_curr_split[p_j][k + 6, :])
+            r_0_by_r_exp_2 = repeat_vec(r_exp_square, pop_sizes[p_i])
+
+            r_exp_square = np.square(r_exp_filtered_curr_split[p_i][k + 7, :])
+            r_exp_2_by_r_0 = repeat_vec(r_exp_square, pop_sizes[p_j]).T
 
 
-            r_0_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 6, :], r_0_pow_split[p_i])
-            r_1_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 7, :], r_1_pow_split[p_i])
-            r_exp_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 8, :])
+            r_1_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 8, :], r_1_pow_split[p_i])
             r_exp_r_1_w = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 9, :])
-            r_0_by_r_exp_r_w = np.outer(r_exp_filtered_curr_split[p_j][k + 10, :] * r_1_pow_split[p_j], r_0_pow_split[p_i])
-            r_exp_r_by_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 11, :] * r_1_pow_split[p_i])
-            # r_0_by_r_exp_2_w = np.outer(np.square(r_exp_filtered_curr_split[p_j][k + 14, :]), r_0_pow_split[p_i])
-            # r_exp_2_by_r_0_w = np.outer(r_0_pow_split[p_j], np.square(r_exp_filtered_curr_split[p_i][k + 15, :]))
+
+            r_bin_r_exp_w = outer_bin_vec_vec(r_bin_split[p_i], r_exp_filtered_curr_split[p_j][k + 10, :]) # same as np.outer(r_exp[p_j], r_bin[p_i])
+            r_exp_r_bin_w = outer_bin_vec_vec(r_bin_split[p_j], r_exp_filtered_curr_split[p_i][k + 11, :]).T
+
+            r_exp_r = r_exp_filtered_curr_split[p_j][k + 12, :] * r_1_pow_split[p_j]
+            r_0_by_r_exp_r_w = repeat_vec(r_exp_r, pop_sizes[p_i])
+
+            r_exp_r = r_exp_filtered_curr_split[p_i][k + 13, :] * r_1_pow_split[p_i]
+            r_exp_r_by_r_0_w = repeat_vec(r_exp_r, pop_sizes[p_j]).T
+
+            r_exp_square = np.square(r_exp_filtered_curr_split[p_j][k + 14, :])
+            r_0_by_r_exp_2_w = repeat_vec(r_exp_square, pop_sizes[p_i])
+
+            r_exp_square = np.square(r_exp_filtered_curr_split[p_i][k + 15, :])
+            r_exp_2_by_r_0_w = repeat_vec(r_exp_square, pop_sizes[p_j]).T
+
+            # print(r_1_r_exp.shape)
+            # print(r_exp_r_1.shape)
+            # print(r_bin_r_exp.shape)
+            # print(r_exp_r_bin.shape)
+            # print(r_0_by_r_exp_r.shape)
+            # print(r_exp_r_by_r_0.shape)
+            # print(r_0_by_r_exp_2.shape)
+            # print(r_exp_2_by_r_0.shape)
+
 
             r_cross_products = np.stack((
                 r_0_r_0[pop_slices[p_j], pop_slices[p_i]],
                 r_0_r_1[pop_slices[p_j], pop_slices[p_i]],
                 r_1_r_0[pop_slices[p_j], pop_slices[p_i]],
-                # r_0_r_2,
-                # r_2_r_0,
                 r_1_r_1[pop_slices[p_j], pop_slices[p_i]],
-                r_0_r_exp,
+
+                r_0_r_bin[pop_slices[p_j], pop_slices[p_i]],
+                r_bin_r_0[pop_slices[p_j], pop_slices[p_i]],
+                r_1_r_bin[pop_slices[p_j], pop_slices[p_i]],
+                r_bin_r_1[pop_slices[p_j], pop_slices[p_i]],
+                r_bin_r_bin[pop_slices[p_j], pop_slices[p_i]],
+
                 r_1_r_exp,
-                r_exp_r_0,
                 r_exp_r_1,
-                # r_exp_r_2,
+                r_bin_r_exp,
+                r_exp_r_bin,
                 r_0_by_r_exp_r,
                 r_exp_r_by_r_0,
-                # r_0_by_r_exp_2,
-                # r_exp_2_by_r_0,
+                r_0_by_r_exp_2,
+                r_exp_2_by_r_0,
+
 
                 r_0_r_0[pop_slices[p_j], pop_slices[p_i]],
                 r_0_r_1[pop_slices[p_j], pop_slices[p_i]],
                 r_1_r_0[pop_slices[p_j], pop_slices[p_i]],
-                # r_0_r_2,
-                # r_2_r_0,
                 r_1_r_1[pop_slices[p_j], pop_slices[p_i]],
-                # r_1_r_2,
-                # r_2_r_1,
-                # r_2_r_2,
-                r_0_r_exp_w,
+
+                r_bin_r_0[pop_slices[p_j], pop_slices[p_i]],
+                r_0_r_bin[pop_slices[p_j], pop_slices[p_i]],
+                r_1_r_bin[pop_slices[p_j], pop_slices[p_i]],
+                r_bin_r_1[pop_slices[p_j], pop_slices[p_i]],
+                r_bin_r_bin[pop_slices[p_j], pop_slices[p_i]],
+
                 r_1_r_exp_w,
-                r_exp_r_0_w,
                 r_exp_r_1_w,
+                r_bin_r_exp_w,
+                r_exp_r_bin_w,
                 r_0_by_r_exp_r_w,
                 r_exp_r_by_r_0_w,
-                # r_0_by_r_exp_2_w,
-                # r_exp_2_by_r_0_w,
+                r_0_by_r_exp_2_w,
+                r_exp_2_by_r_0_w,
             ))
 
             w_updates_unweighted.append(r_cross_products)
