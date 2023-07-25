@@ -408,7 +408,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			}
 			
 
-		if i > 10:
+		if i in [n_inner_loop_iters - 1 - 5 * k for k in range(12)]:
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
