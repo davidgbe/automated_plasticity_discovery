@@ -569,7 +569,11 @@ if __name__ == '__main__':
 
 	losses_cal, all_syn_effects_cal = eval_all(X_cal, eval_tracker=eval_tracker)
 
-	rescalings = (all_syn_effects_cal + 1) / (np.sum(all_syn_effects_cal) + 1)
+	X_cal_norm = np.array([np.abs(x_cal) for x_cal in X_cal[:N_RULES]]).sum(axis=0)
+
+	rescalings = (all_syn_effects_cal + 1) / (X_cal_norm[:N_RULES] + 1e-4)
+	rescalings /= rescalings.sum()
+
 
 	if args.load_initial is not None:
 		x0 = load_best_params(args.load_initial)
