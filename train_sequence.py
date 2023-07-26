@@ -41,7 +41,7 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (999, 1000) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (100, 101) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -56,7 +56,7 @@ N_RULES = 34
 N_TIMECONSTS = 16
 
 T = 0.07 # Total duration of one network simulation
-dt = 1e-4 # Timestep
+dt = 2e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 20 # Number excitatory cells in sequence (also length of sequence)
 n_i = 8 # Number inhibitory cells
@@ -310,12 +310,13 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	pad = 4 - len(str(eval_tracker['evals']))
 	zero_padding = '0' * pad
 	evals = eval_tracker['evals']
+	prefix = eval_tracker['file_prefix']
 
 	fig.tight_layout()
 	if train:
-		fig.savefig(f'{out_dir}/{zero_padding}{evals}.png')
+		fig.savefig(f'{out_dir}/{prefix}_{zero_padding}{evals}.png')
 	else:
-		fig.savefig(f'{out_dir}/{zero_padding}{evals}_test.png')
+		fig.savefig(f'{out_dir}/{prefix}_{zero_padding}{evals}_test.png')
 	plt.close('all')
 
 
@@ -400,15 +401,14 @@ def simulate_single_network(index, x, train, track_params=True):
 			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=1e-3, g=1, w_u=1, track_params=track_params)
 
 		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e, :n_e]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
 			return {
 				'blew_up': True,
 			}
-			
 
-		if i in [n_inner_loop_iters - 1 - 5 * k for k in range(12)]:
+		if i in [n_inner_loop_iters - 1 - 1 * k for k in range(12)]:
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -470,7 +470,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 
 	if eval_tracker is not None:
 		if train:
-			if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
+			if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss'] or eval_tracker['file_prefix'] == 'CAL':
 				if eval_tracker['evals'] > 0:
 					eval_tracker['best_loss'] = loss
 					eval_tracker['best_changed'] = True
@@ -511,7 +511,7 @@ def simulate_single_network_wrapper(tup):
 	return simulate_single_network(*tup)
 
 
-def eval_all(X, eval_tracker=None, train=True):
+def eval_all(X, eval_tracker=None, train=True, rescalings=1):
 	start = time.time()
 
 	indices = np.arange(BATCH_SIZE)
@@ -527,9 +527,11 @@ def eval_all(X, eval_tracker=None, train=True):
 	pool.join()
 
 	losses = []
+	all_syn_effects = []
 	for i in range(len(X)):
 		loss, true_losses, syn_effects = process_plasticity_rule_results(results[BATCH_SIZE * i: BATCH_SIZE * (i+1)], X[i], eval_tracker=eval_tracker, train=train)
 		losses.append(loss)
+		all_syn_effects.append(syn_effects)
 		if train:
 			log_sim_results(train_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
 		else:
@@ -538,7 +540,9 @@ def eval_all(X, eval_tracker=None, train=True):
 	dur = time.time() - start
 	print('dur:', dur)
 
-	return losses
+	all_syn_effects = np.array(all_syn_effects).sum(axis=(0, 1))
+
+	return losses, all_syn_effects
 
 def process_params_str(s):
 	params = []
@@ -551,6 +555,22 @@ def process_params_str(s):
 if __name__ == '__main__':
 	mp.set_start_method('fork')
 
+	#### calibrate 
+
+
+	X_cal = [np.concatenate([np.random.normal(size=N_RULES, scale=STD_EXPL), 10e-3 * np.ones(N_TIMECONSTS)]) for k_cal in range(30)]
+
+	eval_tracker = {
+		'evals': 0,
+		'best_loss': np.nan,
+		'best_changed': False,
+		'file_prefix': 'CAL'
+	}
+
+	losses_cal, all_syn_effects_cal = eval_all(X_cal, eval_tracker=eval_tracker)
+
+	rescalings = (all_syn_effects_cal + 1) / (np.sum(all_syn_effects_cal) + 1)
+
 	if args.load_initial is not None:
 		x0 = load_best_params(args.load_initial)
 	else:
@@ -560,12 +580,15 @@ if __name__ == '__main__':
 		'evals': 0,
 		'best_loss': np.nan,
 		'best_changed': False,
+		'file_prefix': ''
 	}
 
 	# x0[17] = 0.05
 	# x0[18] = -0.05
 	# x0[10] = 0.02
 	# x0[30] = 6e-3
+
+	x0[:N_RULES] /= rescalings
 
 	eval_all([x0], eval_tracker=eval_tracker)
 
@@ -591,7 +614,13 @@ if __name__ == '__main__':
 
 		while not es.stop():
 			X = es.ask()
-			es.tell(X, eval_all(X, eval_tracker=eval_tracker))
+			X_rescaled = []
+			for i, x in enumerate(X):
+				x_rescaled = copy(x)
+				x_rescaled[:N_RULES] /= rescalings
+				X_rescaled.append(x_rescaled)
+			losses, all_syn_effects = eval_all(X_rescaled, eval_tracker=eval_tracker)
+			es.tell(X, losses)
 			if eval_tracker['best_changed']:
 				eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
 			es.disp()
