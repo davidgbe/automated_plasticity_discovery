@@ -404,8 +404,10 @@ def simulate_single_network(index, x, train, track_params=True):
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=1e-3, g=1, w_u=1, track_params=track_params)
 
 		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e, :n_e]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
+			
 			return {
 				'blew_up': True,
+				'syn_effects': all_effects,
 			}
 
 		if i in [n_inner_loop_iters - 1 - 1 * k for k in range(12)]:
@@ -455,7 +457,8 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	if np.any(np.array([res['blew_up'] for res in results])):
 		if eval_tracker is not None:
 			eval_tracker['evals'] += 1
-		return 1e8 * BATCH_SIZE + 1e7 * np.sum(np.abs(plasticity_coefs)), 1e8 * np.ones((len(results),)), np.zeros((len(results), len(plasticity_coefs)))
+		syn_effects = np.stack([res['syn_effects'] for res in results])
+		return 1e8 * BATCH_SIZE + 1e7 * np.sum(np.abs(plasticity_coefs)), 1e8 * np.ones((len(results),)), syn_effects
 
 	true_losses = np.array([res['loss'] for res in results])
 	syn_effects = np.stack([res['syn_effects'] for res in results])
@@ -571,8 +574,9 @@ if __name__ == '__main__':
 
 	X_cal_norm = np.array([np.abs(x_cal) for x_cal in X_cal[:N_RULES]]).sum(axis=0)
 
-	rescalings = (all_syn_effects_cal + 1) / (X_cal_norm[:N_RULES] + 1e-5)
-	rescalings /= rescalings.sum()
+	rescalings = (all_syn_effects_cal + 1) / X_cal_norm[:N_RULES]
+	rescalings /= rescalings.mean()
+	rescalings += 1e-4
 
 
 	if args.load_initial is not None:
@@ -587,18 +591,18 @@ if __name__ == '__main__':
 		'file_prefix': '',
 	}
 
-	# x0[17] = 0.05
-	# x0[18] = -0.05
-	# x0[10] = 0.02
-	# x0[30] = 6e-3
+	# # x0[17] = 0.05
+	# # x0[18] = -0.05
+	# # x0[10] = 0.02
+	# # x0[30] = 6e-3
 
 	x0[:N_RULES] /= rescalings
 
-	eval_all([x0], eval_tracker=eval_tracker)
+	# eval_all([x0], eval_tracker=eval_tracker
 
 	options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-		# 'popsize': 15,
+		'popsize': 25,
 		'bounds': [
 			[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
 			[10] * N_RULES + [40e-3] * N_TIMECONSTS,
@@ -610,8 +614,9 @@ if __name__ == '__main__':
 		if k == 0:
 			es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
 			options['popsize'] = es.opts['popsize']
+			print('popsize', options['popsize'])
 		else:
-			options['popsize'] = options['popsize'] + 2
+			options['popsize'] = options['popsize'] + 5
 			es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
 
 		print(es.opts)
