@@ -41,7 +41,7 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (100, 101) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (399, 400) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -564,14 +564,14 @@ if __name__ == '__main__':
 		'evals': 0,
 		'best_loss': np.nan,
 		'best_changed': False,
-		'file_prefix': 'CAL'
+		'file_prefix': 'CAL',
 	}
 
 	losses_cal, all_syn_effects_cal = eval_all(X_cal, eval_tracker=eval_tracker)
 
 	X_cal_norm = np.array([np.abs(x_cal) for x_cal in X_cal[:N_RULES]]).sum(axis=0)
 
-	rescalings = (all_syn_effects_cal + 1) / (X_cal_norm[:N_RULES] + 1e-4)
+	rescalings = (all_syn_effects_cal + 1) / (X_cal_norm[:N_RULES] + 1e-5)
 	rescalings /= rescalings.sum()
 
 
@@ -584,7 +584,7 @@ if __name__ == '__main__':
 		'evals': 0,
 		'best_loss': np.nan,
 		'best_changed': False,
-		'file_prefix': ''
+		'file_prefix': '',
 	}
 
 	# x0[17] = 0.05
