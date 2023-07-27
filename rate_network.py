@@ -28,7 +28,7 @@ def threshold_power(s : np.ndarray, v_th : float, p : float):
     return np.power(threshold_linear(s, v_th), p)
 
 ### Simulate dynamics
-def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, rule_time_constants : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, tau_e=5e-3, tau_i=5e-3, dt=1e-6, g=1, w_u=1, track_params=False):    
+def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, rule_time_constants : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, w_e_e_max : float, tau_e=5e-3, tau_i=5e-3, dt=1e-6, g=1, w_u=1, track_params=False):    
     len_t = len(t)
 
     inh_activity = np.zeros((len_t))
@@ -44,29 +44,12 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_
 
     n_params = len(plasticity_coefs)
 
-    w_copy, effects_e_e, effects_e_i, effects_i_e = simulate_inner_loop(t, n_e, n_i, inp, plasticity_coefs, rule_time_constants, w, w_plastic, dt, g, w_u, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
+    w_copy, effects_e_e, effects_e_i, effects_i_e = simulate_inner_loop(t, n_e, n_i, inp, plasticity_coefs, rule_time_constants, w, w_plastic, w_e_e_max, dt, g, w_u, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
 
     if track_params:
         return r, s, v, w_copy, np.concatenate([effects_e_e, effects_e_i, effects_i_e]), r_exp_filtered
     else:
         return r, s, v, w_copy, None, r_exp_filtered
-
-@njit
-def repeat_vec(vec : np.ndarray, n : int): # same as ones_vec or np.outer(vec, ones)
-    outer = np.empty((vec.shape[0], n), dtype=np.float)
-    for index in range(n):
-        outer[:, index] = vec
-    return outer
-
-@njit
-def outer_bin_vec_vec(bin_vec : np.ndarray, vec : np.ndarray):
-    outer = np.empty((vec.shape[0], bin_vec.shape[0]), dtype=np.float)
-    for index in range(outer.shape[1]):
-        if bin_vec[index] > 0:
-            outer[:, index] = vec
-        else:
-            outer[:, index] = 0
-    return outer
 
 @njit
 def simulate_inner_loop(
@@ -78,6 +61,7 @@ def simulate_inner_loop(
     rule_time_constants : np.ndarray,
     w : np.ndarray,
     w_plastic : np.ndarray,
+    w_e_e_max : float,
     dt : float,
     g : float,
     w_u : float,

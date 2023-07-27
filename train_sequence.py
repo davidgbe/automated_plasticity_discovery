@@ -55,11 +55,11 @@ INPUT_RATE_PER_CELL = 80
 N_RULES = 34
 N_TIMECONSTS = 16
 
-T = 0.07 # Total duration of one network simulation
-dt = 2e-4 # Timestep
+T = 0.2 # Total duration of one network simulation
+dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
-n_e = 20 # Number excitatory cells in sequence (also length of sequence)
-n_i = 8 # Number inhibitory cells
+n_e = 30 # Number excitatory cells in sequence (also length of sequence)
+n_i = 10 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 
@@ -142,8 +142,9 @@ write_csv(test_data_path, header)
 
 w_e_e = 0.8e-3 / dt
 w_e_i = 0.5e-4 / dt
-w_i_e = -0.3e-4 / dt
+w_i_e = -0.6e-4 / dt
 w_e_e_added = 0.05 * w_e_e * 0.2
+w_e_e_max  = 5
 
 def make_network():
 	'''
@@ -152,13 +153,13 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 
-	w_initial[:n_e, :n_e] = 0.05 * w_e_e * (0.2 + 0.8 * np.random.rand(n_e, n_e))
+	w_initial[:n_e, :n_e] = 0.05 * w_e_e * (0.2 + 0.8 * np.random.rand(n_e, n_e)) + 1 * w_e_e * np.diag(np.ones(n_e - 1), k=-1)
 
 	# w_initial[:n_e, :n_e] = np.diag(np.ones(n_e - 1), k=-1) * w_e_e * 0.7
 
-	w_initial[n_e:, :n_e] = gaussian_if_under_val(0.8, (n_i, n_e), w_e_i, 0.3 * w_e_i)
+	w_initial[n_e:, :n_e] = gaussian_if_under_val(1, (n_i, n_e), w_e_i, 0.3 * w_e_i)
 	w_initial[n_e:, :n_e] = np.where(w_initial[n_e:, :n_e] < 0, 0, w_initial[n_e:, :n_e])
-	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
+	w_initial[:n_e, n_e:] = gaussian_if_under_val(1, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
 	w_initial[:n_e, n_e:] = np.where(w_initial[:n_e, n_e:] > 0, 0, w_initial[:n_e, n_e:])
 
 	np.fill_diagonal(w_initial, 0)
@@ -176,16 +177,16 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 	stacked_activities_test = []
 
 	for i in range(r.shape[0]):
-		if i < 6:
+		if i < 2:
 			stacked_activities_train.append(r_exc[i, train_times, :])
 		else:
 			stacked_activities_test.append(r_exc[i, test_times, :])
 
 	X_train = np.concatenate(stacked_activities_train, axis=0)
-	y_train = np.stack([train_times for j in range(6)]).flatten()
+	y_train = np.stack([train_times for j in range(2)]).flatten()
 
 	X_test = np.concatenate(stacked_activities_test, axis=0)
-	y_test = np.stack([test_times for j in range(r.shape[0] - 6)]).flatten()
+	y_test = np.stack([test_times for j in range(r.shape[0] - 2)]).flatten()
 
 	# print('X SHAPE', X.shape)
 	# print('y SHAPE', y.shape)
@@ -244,16 +245,16 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 					axs[2 * i][1].plot(t, r[:, l_idx], c='black') # graph inh activity
 
 		r_exc = r[:, :n_e]
-		r_summed = np.sum(r_exc, axis=0)
-		r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
-		r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
-		r_normed = r_exc / r_summed_safe_divide
-		t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
-		t_ordering = np.argsort(t_means)
-		t_ordering = np.concatenate([t_ordering, np.arange(n_e, n_e + n_i)])
+		# r_summed = np.sum(r_exc, axis=0)
+		# r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
+		# r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
+		# r_normed = r_exc / r_summed_safe_divide
+		# t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
+		# t_ordering = np.argsort(t_means)
+		# t_ordering = np.concatenate([t_ordering, np.arange(n_e, n_e + n_i)])
 
-		sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
-		sorted_w = w[t_ordering, :][:, t_ordering]
+		# sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
+		# sorted_w = w[t_ordering, :][:, t_ordering]
 
 		vmin = np.min([w_initial.min(), w.min()])
 		vmax = np.max([w_initial.max(), w.max()])
@@ -261,10 +262,10 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		vbound = np.maximum(vmax, np.abs(vmin))
 		vbound = 5
 
-		mappable = axs[2 * i + 1][0].matshow(sorted_w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
+		mappable = axs[2 * i + 1][0].matshow(w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][0])
 
-		mappable = axs[2 * i + 1][1].matshow(sorted_w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
+		mappable = axs[2 * i + 1][1].matshow(w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][1])
 
 		axs[2 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
@@ -353,7 +354,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	w_initial = make_network() # make a new, distorted sequence
 
 	decode_start = 3e-3/dt
-	decode_end = 40e-3/dt
+	decode_end = 60e-3/dt
 	train_times = (decode_start + np.random.rand(500) * (decode_end - decode_start - 1)).astype(int) # 500
 	test_times = (decode_start + np.random.rand(200) * (decode_end - decode_start - 1)).astype(int)	# 200
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
@@ -375,17 +376,17 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	fixed_inputs_spks = np.zeros((len(t), n_e + n_i))
 	fixed_inputs_spks[:10, 0] = 1
-	fixed_inputs_spks[10:int(decode_end), 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(decode_end) - 10, n_e - 1 + n_i))
+	# fixed_inputs_spks[10:int(decode_end), 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(decode_end) - 10, n_e - 1 + n_i))
 
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
 
-		random_inputs_poisson = np.zeros((len(t), n_e + n_i))
-		random_inputs_poisson[10:int(decode_end), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(decode_end) - 10, n_e + n_i))
-		random_inputs_poisson[:, 0] = 0
+		# random_inputs_poisson = np.zeros((len(t), n_e + n_i))
+		# random_inputs_poisson[10:int(decode_end), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(decode_end) - 10, n_e + n_i))
+		# random_inputs_poisson[:, 0] = 0
 
-		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
+		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks, 3e-3)
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
@@ -401,14 +402,14 @@ def simulate_single_network(index, x, train, track_params=True):
 			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=1e-3, g=1, w_u=1, track_params=track_params)
+		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, w_e_e_max, dt=dt, tau_e=10e-3, tau_i=1e-3, g=1, w_u=1, track_params=track_params)
 
 		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e, :n_e]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
 			return {
 				'blew_up': True,
 			}
 
-		if i in [n_inner_loop_iters - 1 - 1 * k for k in range(12)]:
+		if i > n_inner_loop_iters - 4:
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -555,30 +556,17 @@ def process_params_str(s):
 if __name__ == '__main__':
 	mp.set_start_method('fork')
 
-	#### calibrate 
-
-
-	X_cal = [np.concatenate([np.random.normal(size=N_RULES, scale=STD_EXPL), 10e-3 * np.ones(N_TIMECONSTS)]) for k_cal in range(30)]
-
-	eval_tracker = {
-		'evals': 0,
-		'best_loss': np.nan,
-		'best_changed': False,
-		'file_prefix': 'CAL'
-	}
-
-	losses_cal, all_syn_effects_cal = eval_all(X_cal, eval_tracker=eval_tracker)
-
-	X_cal_norm = np.array([np.abs(x_cal) for x_cal in X_cal[:N_RULES]]).sum(axis=0)
-
-	rescalings = (all_syn_effects_cal + 1) / (X_cal_norm[:N_RULES] + 1e-4)
-	rescalings /= rescalings.sum()
-
-
 	if args.load_initial is not None:
 		x0 = load_best_params(args.load_initial)
 	else:
 		x0 = np.concatenate([np.zeros(N_RULES), 10e-3 * np.ones(N_TIMECONSTS)])
+
+	x0[9] = -0.1
+	x0[10] = 0.1
+	x0[32] = -0.002
+
+	x0[34] = 3e-3
+	x0[35] = 3e-3
 
 	eval_tracker = {
 		'evals': 0,
@@ -587,44 +575,4 @@ if __name__ == '__main__':
 		'file_prefix': ''
 	}
 
-	# x0[17] = 0.05
-	# x0[18] = -0.05
-	# x0[10] = 0.02
-	# x0[30] = 6e-3
-
-	x0[:N_RULES] /= rescalings
-
 	eval_all([x0], eval_tracker=eval_tracker)
-
-	options = {
-		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-		# 'popsize': 15,
-		'bounds': [
-			[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
-			[10] * N_RULES + [40e-3] * N_TIMECONSTS,
-		],
-	}
-
-	es = None
-	for k in range(200):
-		if k == 0:
-			es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
-			options['popsize'] = es.opts['popsize']
-		else:
-			options['popsize'] = options['popsize'] + 2
-			es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
-
-		print(es.opts)
-
-		while not es.stop():
-			X = es.ask()
-			X_rescaled = []
-			for i, x in enumerate(X):
-				x_rescaled = copy(x)
-				x_rescaled[:N_RULES] /= rescalings
-				X_rescaled.append(x_rescaled)
-			losses, all_syn_effects = eval_all(X_rescaled, eval_tracker=eval_tracker)
-			es.tell(X, losses)
-			if eval_tracker['best_changed']:
-				eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
-			es.disp()
