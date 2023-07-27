@@ -410,7 +410,7 @@ def simulate_single_network(index, x, train, track_params=True):
 				'syn_effects': all_effects,
 			}
 
-		if i in [n_inner_loop_iters - 1 - 1 * k for k in range(12)]:
+		if i in [n_inner_loop_iters - 1 - 5 * k for k in range(12)]:
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -598,7 +598,7 @@ if __name__ == '__main__':
 
 	x0[:N_RULES] /= rescalings
 
-	# eval_all([x0], eval_tracker=eval_tracker
+	eval_all([x0], eval_tracker=eval_tracker)
 
 	options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
