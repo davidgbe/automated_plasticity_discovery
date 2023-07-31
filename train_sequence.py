@@ -121,7 +121,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/decoder_ee_3_extended_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/decoder_ee_3_extended_tunable_ei_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -141,11 +141,11 @@ write_csv(test_data_path, header)
 
 
 w_e_e = 0.8e-3 / dt
-w_e_i = 0.5e-4 / dt
-w_i_e = -w_e_e
+w_e_i = w_e_e
+w_i_e = -0.3e-4 / dt
 w_e_e_added = 0.05 * w_e_e * 0.2
 
-def make_network(i_e_scale):
+def make_network(e_i_scale):
 	'''
 	Generates an excitatory chain with recurrent inhibition and weak recurrent excitation. Weights that form sequence are distored randomly.
 
@@ -156,9 +156,9 @@ def make_network(i_e_scale):
 
 	# w_initial[:n_e, :n_e] = np.diag(np.ones(n_e - 1), k=-1) * w_e_e * 0.7
 
-	w_initial[n_e:, :n_e] = gaussian_if_under_val(0.8, (n_i, n_e), w_e_i, 0.3 * w_e_i)
+	w_initial[n_e:, :n_e] = gaussian_if_under_val(0.8, (n_i, n_e), w_e_i * e_i_scale, 0.3 * w_e_i * e_i_scale)
 	w_initial[n_e:, :n_e] = np.where(w_initial[n_e:, :n_e] < 0, 0, w_initial[n_e:, :n_e])
-	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e * i_e_scale, 0.3 * np.abs(w_i_e) * i_e_scale)
+	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
 	w_initial[:n_e, n_e:] = np.where(w_initial[:n_e, n_e:] > 0, 0, w_initial[:n_e, n_e:])
 
 	np.fill_diagonal(w_initial, 0)
@@ -344,7 +344,7 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	plasticity_coefs = x[:N_RULES]
 	rule_time_constants = x[N_RULES:-1]
-	i_e_scale = x[-1]
+	e_i_scale = x[-1]
 
 	if FIXED_DATA:
 		if train:
@@ -354,7 +354,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	else:
 		np.random.seed()
 
-	w_initial = make_network(i_e_scale) # make a new, distorted sequence
+	w_initial = make_network(e_i_scale) # make a new, distorted sequence
 
 	decode_start = 3e-3/dt
 	decode_end = 40e-3/dt
@@ -457,7 +457,7 @@ def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coef
 def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	plasticity_coefs = x[:N_RULES]
 	rule_time_constants = x[N_RULES:-1]
-	i_e_scale = x[-1]
+	e_i_scale = x[-1]
 
 	if np.any(np.array([res['blew_up'] for res in results])):
 		if eval_tracker is not None:
