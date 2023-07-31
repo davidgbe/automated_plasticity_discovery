@@ -342,6 +342,8 @@ def simulate_single_network(index, x, train, track_params=True):
 	if len(x) != N_RULES + N_TIMECONSTS + 1:
 		raise ValueError('Improper length of input vector')
 
+	print(x)
+
 	plasticity_coefs = x[:N_RULES]
 	rule_time_constants = x[N_RULES:-1]
 	e_i_scale = x[-1]
@@ -563,10 +565,32 @@ def process_params_str(s):
 if __name__ == '__main__':
 	mp.set_start_method('fork')
 
-	#### calibrate 
+	#### calibrate
+
+	bounds = [
+			np.array([-0.1] * N_RULES + [0.5e-3] * N_TIMECONSTS + [1e-5]),
+			np.array([ 0.1] * N_RULES + [40e-3] * N_TIMECONSTS + [0.5]),
+	]
+
+	options = {
+		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+		'popsize': 20,
+		'bounds': [
+			[-1] * (N_RULES + N_TIMECONSTS + 1),
+			[1] * (N_RULES + N_TIMECONSTS + 1),
+		],
+	}
+
+	scale_factors = (bounds[1] - bounds[0]) / 2
+	biases = scale_factors + bounds[0]
 
 
-	X_cal = [np.concatenate([np.random.normal(size=N_RULES, scale=STD_EXPL), 10e-3 * np.ones(N_TIMECONSTS), np.ones(1)]) for k_cal in range(30)]
+	X_cal = [np.random.normal(size=N_RULES + N_TIMECONSTS + 1, scale=STD_EXPL) * scale_factors + biases for k_cal in range(30)]
+
+	for i_x, x in enumerate(X_cal):
+		X_cal[i_x][x <= bounds[0]] = bounds[0][x <= bounds[0]]
+		X_cal[i_x][x >= bounds[1]] = bounds[1][x >= bounds[1]]
+
 
 	eval_tracker = {
 		'evals': 0,
@@ -585,9 +609,9 @@ if __name__ == '__main__':
 
 
 	if args.load_initial is not None:
-		x0 = load_best_params(args.load_initial)
+		x0 = load_best_params(args.load_initial) * scale_factors + biases
 	else:
-		x0 = np.concatenate([np.zeros(N_RULES), 10e-3 * np.ones(N_TIMECONSTS), np.ones(1)])
+		x0 = np.zeros(N_RULES + N_TIMECONSTS + 1) * scale_factors + biases
 
 	eval_tracker = {
 		'evals': 0,
@@ -596,26 +620,9 @@ if __name__ == '__main__':
 		'file_prefix': '',
 	}
 
-	# # x0[17] = 0.05
-	# # x0[18] = -0.05
-	# # x0[10] = 0.02
-	# # x0[30] = 6e-3
-
-	# x0[28] = 10
-	# x0[32] = -1
-
 	x0[:N_RULES] /= rescalings
 
 	eval_all([x0], eval_tracker=eval_tracker)
-
-	options = {
-		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-		'popsize': 20,
-		'bounds': [
-			[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS + [1e-5],
-			[10] * N_RULES + [40e-3] * N_TIMECONSTS + [5],
-		],
-	}
 
 	es = None
 	for k in range(200):
@@ -633,7 +640,7 @@ if __name__ == '__main__':
 			X = es.ask()
 			X_rescaled = []
 			for i, x in enumerate(X):
-				x_rescaled = copy(x)
+				x_rescaled = copy(x) * scale_factors + biases
 				x_rescaled[:N_RULES] /= rescalings
 				X_rescaled.append(x_rescaled)
 			losses, all_syn_effects = eval_all(X_rescaled, eval_tracker=eval_tracker)
