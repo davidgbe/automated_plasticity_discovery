@@ -41,7 +41,7 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (399, 400) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (199, 200) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -142,10 +142,10 @@ write_csv(test_data_path, header)
 
 w_e_e = 0.8e-3 / dt
 w_e_i = 0.5e-4 / dt
-w_i_e = -0.3e-4 / dt
+w_i_e = -w_e_e
 w_e_e_added = 0.05 * w_e_e * 0.2
 
-def make_network():
+def make_network(i_e_scale):
 	'''
 	Generates an excitatory chain with recurrent inhibition and weak recurrent excitation. Weights that form sequence are distored randomly.
 
@@ -158,7 +158,7 @@ def make_network():
 
 	w_initial[n_e:, :n_e] = gaussian_if_under_val(0.8, (n_i, n_e), w_e_i, 0.3 * w_e_i)
 	w_initial[n_e:, :n_e] = np.where(w_initial[n_e:, :n_e] < 0, 0, w_initial[n_e:, :n_e])
-	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
+	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e * i_e_scale, 0.3 * np.abs(w_i_e) * i_e_scale)
 	w_initial[:n_e, n_e:] = np.where(w_initial[:n_e, n_e:] > 0, 0, w_initial[:n_e, n_e:])
 
 	np.fill_diagonal(w_initial, 0)
@@ -190,12 +190,12 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 	# print('X SHAPE', X.shape)
 	# print('y SHAPE', y.shape)
 
-	print(X_train)
-	print(y_train)
+	# print(X_train)
+	# print(y_train)
 
 	reg = LinearRegression().fit(X_train, y_train)
 
-	print(np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100)
+	# print(np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100)
 
 	loss = 1000 * (1 - reg.score(X_test, y_test)) + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100 + np.sum(r[:, -1, :]) / (r.shape[0] * r.shape[2]) * 50e4
 
@@ -339,8 +339,12 @@ def simulate_single_network(index, x, train, track_params=True):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
+	if len(x) != N_RULES + N_TIMECONSTS + 1:
+		raise ValueError('Improper length of input vector')
+
 	plasticity_coefs = x[:N_RULES]
-	rule_time_constants = x[N_RULES:]
+	rule_time_constants = x[N_RULES:-1]
+	i_e_scale = x[-1]
 
 	if FIXED_DATA:
 		if train:
@@ -350,7 +354,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	else:
 		np.random.seed()
 
-	w_initial = make_network() # make a new, distorted sequence
+	w_initial = make_network(i_e_scale) # make a new, distorted sequence
 
 	decode_start = 3e-3/dt
 	decode_end = 40e-3/dt
@@ -410,7 +414,7 @@ def simulate_single_network(index, x, train, track_params=True):
 				'syn_effects': all_effects,
 			}
 
-		if i in [n_inner_loop_iters - 1 - 5 * k for k in range(12)]:
+		if i in [n_inner_loop_iters - 1 - 1 * k for k in range(12)]:
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -452,7 +456,8 @@ def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coef
 
 def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	plasticity_coefs = x[:N_RULES]
-	rule_time_constants = x[N_RULES:]
+	rule_time_constants = x[N_RULES:-1]
+	i_e_scale = x[-1]
 
 	if np.any(np.array([res['blew_up'] for res in results])):
 		if eval_tracker is not None:
@@ -561,7 +566,7 @@ if __name__ == '__main__':
 	#### calibrate 
 
 
-	X_cal = [np.concatenate([np.random.normal(size=N_RULES, scale=STD_EXPL), 10e-3 * np.ones(N_TIMECONSTS)]) for k_cal in range(30)]
+	X_cal = [np.concatenate([np.random.normal(size=N_RULES, scale=STD_EXPL), 10e-3 * np.ones(N_TIMECONSTS), np.ones(1)]) for k_cal in range(30)]
 
 	eval_tracker = {
 		'evals': 0,
@@ -582,7 +587,7 @@ if __name__ == '__main__':
 	if args.load_initial is not None:
 		x0 = load_best_params(args.load_initial)
 	else:
-		x0 = np.concatenate([np.zeros(N_RULES), 10e-3 * np.ones(N_TIMECONSTS)])
+		x0 = np.concatenate([np.zeros(N_RULES), 10e-3 * np.ones(N_TIMECONSTS), np.ones(1)])
 
 	eval_tracker = {
 		'evals': 0,
@@ -596,16 +601,19 @@ if __name__ == '__main__':
 	# # x0[10] = 0.02
 	# # x0[30] = 6e-3
 
+	# x0[28] = 10
+	# x0[32] = -1
+
 	x0[:N_RULES] /= rescalings
 
 	eval_all([x0], eval_tracker=eval_tracker)
 
 	options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-		'popsize': 25,
+		'popsize': 20,
 		'bounds': [
-			[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
-			[10] * N_RULES + [40e-3] * N_TIMECONSTS,
+			[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS + [1e-5],
+			[10] * N_RULES + [40e-3] * N_TIMECONSTS + [5],
 		],
 	}
 
