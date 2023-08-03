@@ -611,11 +611,13 @@ if __name__ == '__main__':
 
 		losses_cal, all_syn_effects_cal = eval_all(X_cal, eval_tracker=eval_tracker)
 
-		for i_x, loss_cal, syn_effects_cal in zip(recal_indices, losses_cal, all_syn_effects_cal):
+		print(all_syn_effects_cal)
+
+		for i_x, loss_cal in zip(recal_indices, losses_cal):
 			if loss_cal < 1e7:
-				print('syn_effects', syn_effects_cal)
+				print('syn_effects', all_syn_effects_cal[i_x])
 				print('scale_factors[i_x]', scale_factors[i_x])
-				rescalings[i_x] = 1e-8 * syn_effects_cal / (scale_factors[i_x] * STD_EXPL / np.power(10, n))
+				rescalings[i_x] = 1e-8 * all_syn_effects_cal[i_x] / (scale_factors[i_x] * STD_EXPL / np.power(10, n))
 
 		n += 1
 
