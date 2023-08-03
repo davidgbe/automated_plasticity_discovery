@@ -55,7 +55,7 @@ INPUT_RATE_PER_CELL = 80
 N_RULES = 34
 N_TIMECONSTS = 16
 
-T = 0.07 # Total duration of one network simulation
+T = 0.11 # Total duration of one network simulation
 dt = 2e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 20 # Number excitatory cells in sequence (also length of sequence)
@@ -335,7 +335,7 @@ def poisson_arrivals_to_inputs(arrivals, tau_alpha):
 	return input_current
 
 
-def simulate_single_network(index, x, train, track_params=True):
+def simulate_single_network(index, x, train, calibrate, track_params=True):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
@@ -343,6 +343,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		raise ValueError('Improper length of input vector')
 
 	print(x)
+	print('calibrate', calibrate)
 
 	plasticity_coefs = x[:N_RULES]
 	rule_time_constants = x[N_RULES:-1]
@@ -359,10 +360,13 @@ def simulate_single_network(index, x, train, track_params=True):
 	w_initial = make_network(e_i_scale) # make a new, distorted sequence
 
 	decode_start = 3e-3/dt
-	decode_end = 40e-3/dt
+	decode_end = 65e-3/dt
 	train_times = (decode_start + np.random.rand(500) * (decode_end - decode_start - 1)).astype(int) # 500
 	test_times = (decode_start + np.random.rand(200) * (decode_end - decode_start - 1)).astype(int)	# 200
-	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
+	if calibrate:
+		n_inner_loop_iters = 15
+	else:
+		n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
@@ -521,7 +525,7 @@ def simulate_single_network_wrapper(tup):
 	return simulate_single_network(*tup)
 
 
-def eval_all(X, eval_tracker=None, train=True, rescalings=1):
+def eval_all(X, eval_tracker=None, train=True, calibrate=False):
 	start = time.time()
 
 	indices = np.arange(BATCH_SIZE)
@@ -530,7 +534,7 @@ def eval_all(X, eval_tracker=None, train=True, rescalings=1):
 	task_vars = []
 	for x in X:
 		for idx in indices:
-			task_vars.append((idx, x, train))
+			task_vars.append((idx, x, train, calibrate))
 	results = pool.map(simulate_single_network_wrapper, task_vars)
 
 	pool.close()
@@ -565,12 +569,69 @@ def process_params_str(s):
 if __name__ == '__main__':
 	mp.set_start_method('fork')
 
-	#### calibrate
+	# define the bounds for all parameters involved
 
 	bounds = [
 			np.array([-0.1] * N_RULES + [0.5e-3] * N_TIMECONSTS + [1e-5]),
 			np.array([ 0.1] * N_RULES + [40e-3] * N_TIMECONSTS + [0.5]),
 	]
+
+	scale_factors = (bounds[1] - bounds[0]) / 2
+	biases = scale_factors + bounds[0]
+
+	if args.load_initial is not None:
+		x0 = load_best_params(args.load_initial) * scale_factors + biases
+	else:
+		# define x0 as vector of biases
+		x0 = np.zeros(N_RULES + N_TIMECONSTS + 1) + biases
+
+	# calibrate by tuning the scale of each rule
+
+	eval_tracker = {
+		'evals': 0,
+		'best_loss': np.nan,
+		'best_changed': False,
+		'file_prefix': 'CAL',
+	}
+
+	# define a rescaling based on the amount of synaptic impact / rule coefficient
+	rescalings = np.ones(N_RULES)
+	losses_cal = 1e8 * np.ones(N_RULES)
+
+	n = 0
+	while (np.array(losses_cal) > 1e7).any():
+		X_cal = []
+		recal_indices = np.arange(N_RULES)[np.array(losses_cal) >= 1e7]
+
+		for i_x in recal_indices:
+			X_cal.append(copy(biases))
+			X_cal[-1][i_x] += scale_factors[i_x] * STD_EXPL / np.power(10, n)
+
+		# measure the synaptic change due to each rule isolated
+
+		losses_cal, all_syn_effects_cal = eval_all(X_cal, eval_tracker=eval_tracker)
+
+		for i_x, loss_cal, syn_effects_cal in zip(recal_indices, losses_cal, all_syn_effects_cal):
+			if loss_cal < 1e7:
+				print('syn_effects', syn_effects_cal)
+				print('scale_factors[i_x]', scale_factors[i_x])
+				rescalings[i_x] = 1e-8 * syn_effects_cal / (scale_factors[i_x] * STD_EXPL / np.power(10, n))
+
+		n += 1
+
+	print(rescalings)
+
+
+	# define eval_tracker for actual optimization
+
+	eval_tracker = {
+		'evals': 0,
+		'best_loss': np.nan,
+		'best_changed': False,
+		'file_prefix': '',
+	}
+
+	# define options for optimization
 
 	options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
@@ -581,58 +642,15 @@ if __name__ == '__main__':
 		],
 	}
 
-	scale_factors = (bounds[1] - bounds[0]) / 2
-	biases = scale_factors + bounds[0]
-
-
-	X_cal = [np.random.normal(size=N_RULES + N_TIMECONSTS + 1, scale=STD_EXPL) * scale_factors + biases for k_cal in range(30)]
-
-	for i_x, x in enumerate(X_cal):
-		X_cal[i_x][x <= bounds[0]] = bounds[0][x <= bounds[0]]
-		X_cal[i_x][x >= bounds[1]] = bounds[1][x >= bounds[1]]
-
-
-	eval_tracker = {
-		'evals': 0,
-		'best_loss': np.nan,
-		'best_changed': False,
-		'file_prefix': 'CAL',
-	}
-
-	losses_cal, all_syn_effects_cal = eval_all(X_cal, eval_tracker=eval_tracker)
-
-	X_cal_norm = np.array([np.abs(x_cal) for x_cal in X_cal[:N_RULES]]).sum(axis=0)
-
-	rescalings = (all_syn_effects_cal + 1) / X_cal_norm[:N_RULES]
-	rescalings /= rescalings.mean()
-	rescalings += 1e-4
-
-
-	if args.load_initial is not None:
-		x0 = load_best_params(args.load_initial) * scale_factors + biases
-	else:
-		x0 = np.zeros(N_RULES + N_TIMECONSTS + 1) * scale_factors + biases
-
-	eval_tracker = {
-		'evals': 0,
-		'best_loss': np.nan,
-		'best_changed': False,
-		'file_prefix': '',
-	}
-
-	x0[:N_RULES] /= rescalings
-
-	eval_all([x0], eval_tracker=eval_tracker)
-
 	es = None
 	for k in range(200):
 		if k == 0:
-			es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
+			es = cma.CMAEvolutionStrategy(biases, STD_EXPL, options)
 			options['popsize'] = es.opts['popsize']
 			print('popsize', options['popsize'])
 		else:
 			options['popsize'] = options['popsize'] + 5
-			es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
+			es = cma.CMAEvolutionStrategy(biases, STD_EXPL, options)
 
 		print(es.opts)
 
