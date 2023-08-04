@@ -18,6 +18,7 @@ from csv_reader import read_csv
 from csv_writer import write_csv
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
+from cmaes_test_tools import generate_surrogate_problem
 
 ### Parse arguments 
 
@@ -54,6 +55,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 34
 N_TIMECONSTS = 16
+N_RESTARTS = 10
 
 T = 0.11 # Total duration of one network simulation
 dt = 2e-4 # Timestep
@@ -343,7 +345,6 @@ def simulate_single_network(index, x, train, calibrate, track_params=True):
 		raise ValueError('Improper length of input vector')
 
 	print(x)
-	print('calibrate', calibrate)
 
 	plasticity_coefs = x[:N_RULES]
 	rule_time_constants = x[N_RULES:-1]
@@ -558,6 +559,7 @@ def eval_all(X, eval_tracker=None, train=True, calibrate=False):
 
 	return losses, all_syn_effects
 
+
 def process_params_str(s):
 	params = []
 	for x in s.split(' '):
@@ -565,6 +567,7 @@ def process_params_str(s):
 		if x != '':
 			params.append(float(x))
 	return np.array(params)
+
 
 if __name__ == '__main__':
 	mp.set_start_method('fork')
@@ -576,8 +579,14 @@ if __name__ == '__main__':
 			np.array([ 0.1] * N_RULES + [40e-3] * N_TIMECONSTS + [0.5]),
 	]
 
+	# bounds for benchmarking
+	# bounds = [
+	# 		np.array([-1] * (N_RULES +  N_TIMECONSTS + 1)),
+	# 		np.array([+1] * (N_RULES +  N_TIMECONSTS + 1)),
+	# ]
+
 	scale_factors = (bounds[1] - bounds[0]) / 2
-	biases = scale_factors + bounds[0]
+	biases = (bounds[1] + bounds[0]) / 2
 
 	if args.load_initial is not None:
 		x0 = load_best_params(args.load_initial) * scale_factors + biases
@@ -585,7 +594,7 @@ if __name__ == '__main__':
 		# define x0 as vector of biases
 		x0 = np.zeros(N_RULES + N_TIMECONSTS + 1) + biases
 
-	# calibrate by tuning the scale of each rule
+	# # calibrate by tuning the scale of each rule
 
 	eval_tracker = {
 		'evals': 0,
@@ -623,6 +632,7 @@ if __name__ == '__main__':
 
 	print(rescalings)
 
+	# rescalings = 1
 
 	# define eval_tracker for actual optimization
 
@@ -635,26 +645,49 @@ if __name__ == '__main__':
 
 	# define options for optimization
 
-	options = {
+	base_options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-		'popsize': 20,
 		'bounds': [
 			[-1] * (N_RULES + N_TIMECONSTS + 1),
 			[1] * (N_RULES + N_TIMECONSTS + 1),
 		],
 	}
+	incpopsize = 2
+
+	# eval_all = generate_surrogate_problem(N_RULES + N_TIMECONSTS + 1, 3)
+
+	best = cma.optimization_tools.BestSolution()
+	small_pop_fevals_count = 0
+	large_pop_fevals_count = 0
+	small_pop_runs_count = 0
+	large_pop_runs_count = 0
+	restarts = 0
+	poptype = 'small'
+	sigma_factor = 1
 
 	es = None
-	for k in range(200):
-		if k == 0:
-			es = cma.CMAEvolutionStrategy(biases, STD_EXPL, options)
-			options['popsize'] = es.opts['popsize']
-			print('popsize', options['popsize'])
-		else:
-			options['popsize'] = options['popsize'] + 5
-			es = cma.CMAEvolutionStrategy(biases, STD_EXPL, options)
 
-		print(es.opts)
+	while True:
+		options = copy(base_options)
+
+		if restarts > 0:
+			if small_pop_fevals_count < np.max([1, large_pop_fevals_count]):
+				poptype = 'small'
+				small_pop_runs_count += 1
+				popsize_multiplier = incpopsize**(large_pop_runs_count)
+				options['popsize'] = np.floor(popsize_multiplier**(np.random.uniform()**2) * base_options['popsize'])
+				options['maxiter'] = np.min([base_options['maxiter'], np.floor(0.5 * large_pop_fevals_count / base_options['popsize'])])
+				sigma_factor = 1e-2 * np.random.uniform()
+			else:
+				poptype = 'large'
+				large_pop_runs_count += 1
+				popsize_multiplier = incpopsize**(large_pop_runs_count)
+				options['popsize'] = popsize_multiplier * base_options['popsize']
+				options['maxiter'] = base_options['maxiter']
+				sigma_factor = 1
+				restarts += 1
+
+		es = cma.CMAEvolutionStrategy(biases, sigma_factor * STD_EXPL, options)
 
 		while not es.stop():
 			X = es.ask()
@@ -668,3 +701,23 @@ if __name__ == '__main__':
 			if eval_tracker['best_changed']:
 				eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
 			es.disp()
+
+		if poptype == 'large':
+			large_pop_fevals_count += es.countevals
+			large_pop_runs_count += 1
+		else:
+			small_pop_fevals_count += es.countevals
+			small_pop_runs_count += 1
+
+		if restarts == 0:
+			restarts = 1
+			base_options['maxiter'] = es.opts['maxiter']
+			base_options['popsize'] = es.opts['popsize']
+
+		best.update(es.best, es.sent_solutions)
+		print(best.get()[1])
+
+		if restarts >= N_RESTARTS:
+			break
+
+		print(f'RESTART {restarts}', f'POPTYPE {poptype}')
