@@ -598,50 +598,49 @@ if __name__ == '__main__':
 
 	# # calibrate by tuning the scale of each rule
 
-	eval_tracker = {
-		'evals': 0,
-		'best_loss': np.nan,
-		'best_changed': False,
-		'file_prefix': 'CAL',
-	}
+	# eval_tracker = {
+	# 	'evals': 0,
+	# 	'best_loss': np.nan,
+	# 	'best_changed': False,
+	# 	'file_prefix': 'CAL',
+	# }
 
-	# define a rescaling based on the amount of synaptic impact / rule coefficient
-	rescalings = np.ones(N_RULES)
-	losses_cal = 1e8 * np.ones(N_RULES)
-	recal_indices = np.arange(N_RULES)
+	# # define a rescaling based on the amount of synaptic impact / rule coefficient
+	# rescalings = np.ones(N_RULES)
+	# losses_cal = 1e8 * np.ones(N_RULES)
+	# recal_indices = np.arange(N_RULES)
 
-	n = 0
-	while (np.array(losses_cal) > 1e7).any():
-		X_cal = []
-		recal_indices = recal_indices[np.array(losses_cal) >= 1e7]
+	# n = 0
+	# while (np.array(losses_cal) > 1e7).any():
+	# 	X_cal = []
 
-		for i_x in recal_indices:
-			X_cal.append(copy(biases))
-			X_cal[-1][i_x] += scale_factors[i_x] * STD_EXPL / np.power(10, n)
+	# 	for i_x in recal_indices:
+	# 		X_cal.append(copy(biases))
+	# 		X_cal[-1][i_x] += scale_factors[i_x] * STD_EXPL / np.power(10, n)
 
-		# measure the synaptic change due to each rule isolated
+	# 	# measure the synaptic change due to each rule isolated
 
-		losses_cal, all_syn_effects_cal = eval_all(X_cal, eval_tracker=eval_tracker)
+	# 	losses_cal, all_syn_effects_cal = eval_all(X_cal, eval_tracker=eval_tracker)
 
-		print(all_syn_effects_cal)
+	# 	print(all_syn_effects_cal)
 
-		new_recal_indices = []
+	# 	new_recal_indices = []
 
-		for i_x, loss_cal in zip(recal_indices, losses_cal):
-			if loss_cal < 1e7:
-				print('syn_effects', all_syn_effects_cal[i_x])
-				print('scale_factors[i_x]', scale_factors[i_x])
-				rescalings[i_x] = 1e-8 * all_syn_effects_cal[i_x] / (scale_factors[i_x] * STD_EXPL / np.power(10, n))
-			else:
-				new_recal_indices.append(i_x)
+	# 	for i_x, loss_cal in zip(recal_indices, losses_cal):
+	# 		if loss_cal < 1e7:
+	# 			print('syn_effects', all_syn_effects_cal[i_x])
+	# 			print('scale_factors[i_x]', scale_factors[i_x])
+	# 			rescalings[i_x] = 1e-8 * all_syn_effects_cal[i_x] / (scale_factors[i_x] * STD_EXPL / np.power(10, n))
+	# 		else:
+	# 			new_recal_indices.append(i_x)
 
-		recal_indices = new_recal_indices
+	# 	recal_indices = new_recal_indices
 
-		n += 1
+	# 	n += 1
 
-	print(rescalings)
+	# print(rescalings)
 
-	# rescalings = 1
+	rescalings = 1
 
 	# define eval_tracker for actual optimization
 

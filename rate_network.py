@@ -127,7 +127,7 @@ def simulate_inner_loop(
         r_bin = np.zeros(n_e + n_i)
         r_bin[r_1_pow > 0] = 1
         # r_2_pow = np.square(r[i+1, :]) / 0.01
-        r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.01
+        r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.1
 
         r_0_pow_split = [r_0_pow[:n_e], r_0_pow[n_e:n_e + n_i]]
         r_bin_split = [r_bin[:n_e], r_bin[n_e:n_e + n_i]]
