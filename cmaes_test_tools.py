@@ -8,7 +8,7 @@ def generate_surrogate_problem(dims, sparse_dims):
 	means_sparse = 0.5 * np.random.uniform(size=sparse_dims)
 	stds_sparse = 0.5 * np.random.uniform(0.1, 0.3, size=sparse_dims)
 	means = np.concatenate([means_sparse, np.zeros(extra_dims)])
-	stds = np.concatenate([stds_sparse, 0.09 * np.ones(extra_dims)])
+	stds = np.concatenate([stds_sparse, 0.1 * np.ones(extra_dims)])
 
 	def f(X, eval_tracker=None):
 		losses = []

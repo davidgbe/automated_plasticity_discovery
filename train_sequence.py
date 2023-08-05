@@ -33,6 +33,8 @@ parser.add_argument('--load_initial', metavar='li', type=str, help='File from wh
 parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
 parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
+parser.add_argument('--tol_func_hist', metavar='tfh', type=float, default=1e-12)
+parser.add_argument('--tol_func', metavar='tf', type=float, default=1e-11)
 
 args = parser.parse_args()
 print(args)
@@ -123,7 +125,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/decoder_ee_3_extended_tunable_ei_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/decoder_ee_3_extended_bipop_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -575,8 +577,8 @@ if __name__ == '__main__':
 	# define the bounds for all parameters involved
 
 	bounds = [
-			np.array([-0.1] * N_RULES + [0.5e-3] * N_TIMECONSTS + [1e-5]),
-			np.array([ 0.1] * N_RULES + [40e-3] * N_TIMECONSTS + [0.5]),
+			np.array([-1] * N_RULES + [0.5e-3] * N_TIMECONSTS + [1e-5]),
+			np.array([ 1] * N_RULES + [40e-3] * N_TIMECONSTS + [0.5]),
 	]
 
 	# bounds for benchmarking
@@ -651,6 +653,8 @@ if __name__ == '__main__':
 			[-1] * (N_RULES + N_TIMECONSTS + 1),
 			[1] * (N_RULES + N_TIMECONSTS + 1),
 		],
+		'tolfun': args.tol_func,
+		'tolfunhist': args.tol_func_hist,
 	}
 	incpopsize = 2
 
@@ -716,6 +720,7 @@ if __name__ == '__main__':
 
 		best.update(es.best, es.sent_solutions)
 		print(best.get()[1])
+		print(es.stop())
 
 		if restarts >= N_RESTARTS:
 			break
