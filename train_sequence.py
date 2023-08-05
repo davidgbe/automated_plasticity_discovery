@@ -608,11 +608,12 @@ if __name__ == '__main__':
 	# define a rescaling based on the amount of synaptic impact / rule coefficient
 	rescalings = np.ones(N_RULES)
 	losses_cal = 1e8 * np.ones(N_RULES)
+	recal_indices = np.arange(N_RULES)
 
 	n = 0
 	while (np.array(losses_cal) > 1e7).any():
 		X_cal = []
-		recal_indices = np.arange(N_RULES)[np.array(losses_cal) >= 1e7]
+		recal_indices = recal_indices[np.array(losses_cal) >= 1e7]
 
 		for i_x in recal_indices:
 			X_cal.append(copy(biases))
@@ -624,11 +625,17 @@ if __name__ == '__main__':
 
 		print(all_syn_effects_cal)
 
+		new_recal_indices = []
+
 		for i_x, loss_cal in zip(recal_indices, losses_cal):
 			if loss_cal < 1e7:
 				print('syn_effects', all_syn_effects_cal[i_x])
 				print('scale_factors[i_x]', scale_factors[i_x])
 				rescalings[i_x] = 1e-8 * all_syn_effects_cal[i_x] / (scale_factors[i_x] * STD_EXPL / np.power(10, n))
+			else:
+				new_recal_indices.append(i_x)
+
+		recal_indices = new_recal_indices
 
 		n += 1
 
