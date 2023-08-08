@@ -59,7 +59,7 @@ N_RULES = 34
 N_TIMECONSTS = 16
 N_RESTARTS = 10
 
-T = 0.11 # Total duration of one network simulation
+T = 0.15 # Total duration of one network simulation
 dt = 2e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 20 # Number excitatory cells in sequence (also length of sequence)
@@ -125,7 +125,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/decoder_ee_3_extended_bipop_b_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/decoder_ee_3_extended_bipop_c_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -201,7 +201,7 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 
 	# print(np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100)
 
-	loss = 1000 * (1 - reg.score(X_test, y_test)) + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100 + np.sum(r[:, -1, :]) / (r.shape[0] * r.shape[2]) * 50e4
+	loss = 1000 * (1 - reg.score(X_test, y_test)) + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100 # + np.sum(r[:, -1, :]) / (r.shape[0] * r.shape[2]) * 50e4
 
 	print('loss:', loss)
 
