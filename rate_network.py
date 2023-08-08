@@ -122,12 +122,12 @@ def simulate_inner_loop(
         # calculate exponential filtered of firing rate to use for STDP-like plasticity rules
         r_exp_filtered[:, i+1, :] = r_exp_filtered[:, i, :] * (1 - dt / int_time_consts) + r[i, :] * (dt / int_time_consts)
 
-        r_0_pow = np.ones(n_e + n_i)
-        r_1_pow = r[i+1, :] / 0.1
+        r_0_pow = np.ones(n_e + n_i) / 10
+        r_1_pow = r[i+1, :] / 0.01
         r_bin = np.zeros(n_e + n_i)
         r_bin[r_1_pow > 0] = 1
         # r_2_pow = np.square(r[i+1, :]) / 0.01
-        r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.1
+        r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.01
 
         r_0_pow_split = [r_0_pow[:n_e], r_0_pow[n_e:n_e + n_i]]
         r_bin_split = [r_bin[:n_e], r_bin[n_e:n_e + n_i]]
@@ -135,7 +135,7 @@ def simulate_inner_loop(
         r_exp_filtered_curr_split = [r_exp_filtered_curr[:, :n_e], r_exp_filtered_curr[:, n_e:n_e + n_i]]
 
         # find outer products of zeroth, first powers of firing rates to compute updates due to plasticity rules
-        r_0_r_0 = np.ones(n_total**2).reshape(n_total, n_total)
+        r_0_r_0 = np.outer(r_0_pow, r_0_pow)
   
         r_bin_r_0 = np.outer(r_0_pow, r_bin)
         r_0_r_bin = r_bin_r_0.T
