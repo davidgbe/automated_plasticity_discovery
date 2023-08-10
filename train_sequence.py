@@ -23,7 +23,7 @@ from cmaes_test_tools import generate_surrogate_problem
 ### Parse arguments 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--std_expl', metavar='std', type=float, help='Initial standard deviation for parameter search via CMA-ES')
+parser.add_argument('--std_expl', metavar='std', type=float, nargs=3, help='Initial standard deviation for parameter search via CMA-ES')
 parser.add_argument('--l1_pen', metavar='l1', type=float, nargs=3, help='Prefactor for L1 penalties on loss function')
 parser.add_argument('--asp', metavar='asp', type=int, help="Flag for penalizing shape of neurons' activity ")
 parser.add_argument('--pool_size', metavar='ps', type=int, help='Number of processes to start for each loss function evaluation')
@@ -45,7 +45,9 @@ SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
 N_INNER_LOOP_RANGE = (199, 200) # Number of times to simulate network and plasticity rules per loss function evaluation
-STD_EXPL = args.std_expl
+STD_EXPL_RULES = args.std_expl[0]
+STD_EXPL_CONSTS= args.std_expl[1]
+STD_EXPL_INH= args.std_expl[2]
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
@@ -125,7 +127,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/decoder_ee_3_extended_bipop_c_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/decoder_ee_3_extended_bipop_c_{BATCH_SIZE}_STD_EXPL_{STD_EXPL_RULES}_{STD_EXPL_CONSTS}_{STD_EXPL_INH}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -577,8 +579,8 @@ if __name__ == '__main__':
 	# define the bounds for all parameters involved
 
 	bounds = [
-			np.array([-1] * N_RULES + [0.5e-3] * N_TIMECONSTS + [1e-5]),
-			np.array([ 1] * N_RULES + [40e-3] * N_TIMECONSTS + [0.5]),
+			np.array([-100] * N_RULES + [0.5e-3] * N_TIMECONSTS + [1e-5]),
+			np.array([ 100] * N_RULES + [40e-3] * N_TIMECONSTS + [0.5]),
 	]
 
 	# bounds for benchmarking
@@ -591,7 +593,11 @@ if __name__ == '__main__':
 	biases = (bounds[1] + bounds[0]) / 2
 
 	if args.load_initial is not None:
-		x0 = load_best_params(args.load_initial) * scale_factors + biases
+		x0 = load_best_params(args.load_initial) * scale_factors
+		x0[:N_RULES] *= STD_EXPL_RULES
+		x0[N_RULES:N_RULES + N_TIMECONSTS] *= STD_EXPL_CONSTS
+		x0[-1] *= STD_EXPL_INH
+		x0 += biases
 	else:
 		# define x0 as vector of biases
 		x0 = np.zeros(N_RULES + N_TIMECONSTS + 1) + biases
@@ -640,7 +646,7 @@ if __name__ == '__main__':
 
 	# print(rescalings)
 
-	rescalings = 1
+	# rescalings = 1
 
 	# define eval_tracker for actual optimization
 
@@ -697,14 +703,17 @@ if __name__ == '__main__':
 				sigma_factor = 1
 				restarts += 1
 
-		es = cma.CMAEvolutionStrategy(biases, sigma_factor * STD_EXPL, options)
+		es = cma.CMAEvolutionStrategy(biases, sigma_factor * 0.3, options)
 
 		while not es.stop():
 			X = es.ask()
 			X_rescaled = []
 			for i, x in enumerate(X):
-				x_rescaled = copy(x) * scale_factors + biases
-				x_rescaled[:N_RULES] /= rescalings
+				x_rescaled = copy(x) * scale_factors
+				x_rescaled[:N_RULES] *= STD_EXPL_RULES
+				x_rescaled[N_RULES:N_RULES + N_TIMECONSTS] *= STD_EXPL_CONSTS
+				x_rescaled[-1] *= STD_EXPL_INH
+				x_rescaled += biases
 				X_rescaled.append(x_rescaled)
 			losses, all_syn_effects = eval_all(X_rescaled, eval_tracker=eval_tracker)
 			es.tell(X, losses)
