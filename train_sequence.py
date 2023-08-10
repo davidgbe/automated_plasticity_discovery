@@ -593,14 +593,14 @@ if __name__ == '__main__':
 	biases = (bounds[1] + bounds[0]) / 2
 
 	if args.load_initial is not None:
-		x0 = load_best_params(args.load_initial) * scale_factors
+		x0 = (load_best_params(args.load_initial) - biases) * scale_factors
 		x0[:N_RULES] *= STD_EXPL_RULES
 		x0[N_RULES:N_RULES + N_TIMECONSTS] *= STD_EXPL_CONSTS
 		x0[-1] *= STD_EXPL_INH
 		x0 += biases
 	else:
 		# define x0 as vector of biases
-		x0 = np.zeros(N_RULES + N_TIMECONSTS + 1) + biases
+		x0 = biases
 
 	# # calibrate by tuning the scale of each rule
 
@@ -700,16 +700,19 @@ if __name__ == '__main__':
 				popsize_multiplier = incpopsize**(large_pop_runs_count)
 				options['popsize'] = popsize_multiplier * base_options['popsize']
 				options['maxiter'] = base_options['maxiter']
-				sigma_factor = 1
-				restarts += 1
 
-		es = cma.CMAEvolutionStrategy(biases, sigma_factor * 0.3, options)
+		print('biases:', biases)
+		print('scale_factors:', scale_factors)
+		print(args.std_expl)
+
+		es = cma.CMAEvolutionStrategy(np.zeros(N_RULES + N_TIMECONSTS + 1), sigma_factor * 0.003, options)
 
 		while not es.stop():
 			X = es.ask()
 			X_rescaled = []
 			for i, x in enumerate(X):
 				x_rescaled = copy(x) * scale_factors
+				print('x:', x)
 				x_rescaled[:N_RULES] *= STD_EXPL_RULES
 				x_rescaled[N_RULES:N_RULES + N_TIMECONSTS] *= STD_EXPL_CONSTS
 				x_rescaled[-1] *= STD_EXPL_INH
