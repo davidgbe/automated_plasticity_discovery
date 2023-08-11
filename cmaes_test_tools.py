@@ -5,7 +5,7 @@ from functools import reduce, partial
 def generate_surrogate_problem(dims, sparse_dims):
 	extra_dims = dims - sparse_dims
 
-	means_sparse = 0.5 * np.random.uniform(size=sparse_dims)
+	means_sparse = 0.5 * np.random.uniform(0.1, 1, size=sparse_dims)
 	stds_sparse = 0.5 * np.random.uniform(0.1, 0.3, size=sparse_dims)
 	means = np.concatenate([means_sparse, np.zeros(extra_dims)])
 	stds = np.concatenate([stds_sparse, 0.1 * np.ones(extra_dims)])
@@ -20,4 +20,4 @@ def generate_surrogate_problem(dims, sparse_dims):
 			losses.append(loss)
 		return losses, 0
 
-	return f
+	return f, means_sparse

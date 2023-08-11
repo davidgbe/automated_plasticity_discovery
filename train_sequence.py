@@ -669,7 +669,7 @@ if __name__ == '__main__':
 		'tolfunhist': args.tol_func_hist,
 	}
 
-	# eval_all = generate_surrogate_problem(N_RULES + N_TIMECONSTS + 1, 3)
+	eval_all, surrogate_answer = generate_surrogate_problem(N_RULES + N_TIMECONSTS + 1, 6)
 
 
 	# print('biases:', biases)
@@ -678,11 +678,13 @@ if __name__ == '__main__':
 
 	x0 = np.zeros(N_RULES + N_TIMECONSTS + 1)
 	rules_active_mask = np.zeros(N_RULES).astype(bool)
+	total_steps = 0
 
 	while True:
 		options = copy(base_options)
 		step_losses = []
 		step_params = []
+		step_iters = []
 		considered_rule_idxs = np.arange(N_RULES)[~rules_active_mask]
 
 		for rule_idx in considered_rule_idxs:
@@ -693,24 +695,32 @@ if __name__ == '__main__':
 			x_active_mask_aug[rule_idx] = True
 			x0_augmented = copy(x0)[x_active_mask_aug]
 
+
+			print(x0_augmented)
+
 			es = cma.CMAEvolutionStrategy(x0_augmented, 0.003, options)
 			min_loss = 1e7
 			min_params = copy(x0)
+			step_iters.append(0)
 
 			while not es.stop():
+				step_iters[-1] += 1
 				X = es.ask()
+				# print('gen_size:', len(X))
 				X_rescaled = []
 				for i, x in enumerate(X):
 					# expand x
 					x_reinflated = np.zeros(N_RULES + N_TIMECONSTS + 1)
 					x_reinflated[x_active_mask_aug.nonzero()[0]] = x
-					x_rescaled = x_reinflated * scale_factors
-					x_rescaled[:N_RULES] *= STD_EXPL_RULES
-					x_rescaled[N_RULES:N_RULES + N_TIMECONSTS] *= STD_EXPL_CONSTS
-					x_rescaled[-1] *= STD_EXPL_INH
-					x_rescaled += biases
-					x_rescaled[bounds[0] > x_rescaled] = bounds[0][bounds[0] > x_rescaled]
-					x_rescaled[bounds[1] < x_rescaled] = bounds[1][bounds[1] < x_rescaled]
+					x_rescaled = x_reinflated
+					# x_rescaled = x_reinflated * scale_factors
+					# x_rescaled[:N_RULES] *= STD_EXPL_RULES
+					# x_rescaled[N_RULES:N_RULES + N_TIMECONSTS] *= STD_EXPL_CONSTS
+					# x_rescaled[-1] *= STD_EXPL_INH
+					# x_rescaled += biases
+					x_rescaled *= 100
+					# x_rescaled[bounds[0] > x_rescaled] = bounds[0][bounds[0] > x_rescaled]
+					# x_rescaled[bounds[1] < x_rescaled] = bounds[1][bounds[1] < x_rescaled]
 					X_rescaled.append(x_rescaled)
 				losses, all_syn_effects = eval_all(X_rescaled, eval_tracker=eval_tracker)
 				es.tell(X, losses)
@@ -721,20 +731,33 @@ if __name__ == '__main__':
 					min_params[x_active_mask_aug] = X[min_param_idx]
 				if eval_tracker['best_changed']:
 					eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
-				es.disp()
+				# es.disp()
 
 			step_losses.append(min_loss)
 			step_params.append(min_params)
 
-			print('min_loss:', min_loss)
-			print('min_params:', min_params)
 
+			# print('min_loss:', min_loss)
+			# print('min_params:', min_params)
 
+		print(step_losses)
 		new_x_idx = considered_rule_idxs[np.argmin(step_losses)]
 		rules_active_mask[new_x_idx] = True
 		x0 = step_params[np.argmin(step_losses)]
-		print(rules_active_mask)
-		print(x0)
+		total_steps += np.sum(step_iters)
+		print('selected rules:', np.arange(N_RULES)[rules_active_mask])
+		print('gens for step', step_iters)
+		print('gens for step total:', np.sum(step_iters))
+		print('total_steps:', total_steps)
+		print('current sol:', x0[:N_RULES][rules_active_mask] * 100)
+		print('sol:', surrogate_answer )
 
+		if np.count_nonzero(rules_active_mask) == 6:
+			break
+
+		# print(x0)
+
+		if rules_active_mask.all():
+			break
 
 
