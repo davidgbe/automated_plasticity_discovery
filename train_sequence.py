@@ -61,7 +61,7 @@ N_RULES = 34
 N_TIMECONSTS = 16
 N_RESTARTS = 10
 
-T = 0.15 # Total duration of one network simulation
+T = 0.13 # Total duration of one network simulation
 dt = 2e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 20 # Number excitatory cells in sequence (also length of sequence)
@@ -717,6 +717,8 @@ if __name__ == '__main__':
 				x_rescaled[N_RULES:N_RULES + N_TIMECONSTS] *= STD_EXPL_CONSTS
 				x_rescaled[-1] *= STD_EXPL_INH
 				x_rescaled += biases
+				x_rescaled[bounds[0] > x_rescaled] = bounds[0][bounds[0] > x_rescaled]
+				x_rescaled[bounds[1] < x_rescaled] = bounds[1][bounds[1] < x_rescaled]
 				X_rescaled.append(x_rescaled)
 			losses, all_syn_effects = eval_all(X_rescaled, eval_tracker=eval_tracker)
 			es.tell(X, losses)
