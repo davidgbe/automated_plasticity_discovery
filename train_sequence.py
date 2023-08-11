@@ -44,7 +44,7 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (399, 400) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (19, 20) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL_RULES = args.std_expl[0]
 STD_EXPL_CONSTS= args.std_expl[1]
 STD_EXPL_INH= args.std_expl[2]
@@ -668,79 +668,73 @@ if __name__ == '__main__':
 		'tolfun': args.tol_func,
 		'tolfunhist': args.tol_func_hist,
 	}
-	incpopsize = 2
 
 	# eval_all = generate_surrogate_problem(N_RULES + N_TIMECONSTS + 1, 3)
 
-	best = cma.optimization_tools.BestSolution()
-	small_pop_fevals_count = 0
-	large_pop_fevals_count = 0
-	small_pop_runs_count = 0
-	large_pop_runs_count = 0
-	restarts = 0
-	poptype = 'small'
-	sigma_factor = 1
 
-	es = None
+	# print('biases:', biases)
+	# print('scale_factors:', scale_factors)
+	# print(args.std_expl)
+
+	x0 = np.zeros(N_RULES + N_TIMECONSTS + 1)
+	rules_active_mask = np.zeros(N_RULES).astype(bool)
 
 	while True:
 		options = copy(base_options)
+		step_losses = []
+		step_params = []
+		considered_rule_idxs = np.arange(N_RULES)[~rules_active_mask]
 
-		if restarts > 0:
-			if small_pop_fevals_count < np.max([1, large_pop_fevals_count]):
-				poptype = 'small'
-				small_pop_runs_count += 1
-				popsize_multiplier = incpopsize**(large_pop_runs_count)
-				options['popsize'] = np.floor(popsize_multiplier**(np.random.uniform()**2) * base_options['popsize'])
-				options['maxiter'] = np.min([base_options['maxiter'], np.floor(0.5 * large_pop_fevals_count / base_options['popsize'])])
-				sigma_factor = 1e-2 * np.random.uniform()
-			else:
-				poptype = 'large'
-				large_pop_runs_count += 1
-				popsize_multiplier = incpopsize**(large_pop_runs_count)
-				options['popsize'] = popsize_multiplier * base_options['popsize']
-				options['maxiter'] = base_options['maxiter']
+		for rule_idx in considered_rule_idxs:
+			print('rule idx:', rule_idx)
+			x_active_mask_aug = np.zeros(N_RULES + N_TIMECONSTS + 1).astype(bool)
+			x_active_mask_aug[:N_RULES] = copy(rules_active_mask)
+			x_active_mask_aug[-1] = True
+			x_active_mask_aug[rule_idx] = True
+			x0_augmented = copy(x0)[x_active_mask_aug]
 
-		print('biases:', biases)
-		print('scale_factors:', scale_factors)
-		print(args.std_expl)
+			es = cma.CMAEvolutionStrategy(x0_augmented, 0.003, options)
+			min_loss = 1e7
+			min_params = copy(x0)
 
-		es = cma.CMAEvolutionStrategy(np.zeros(N_RULES + N_TIMECONSTS + 1), sigma_factor * 0.003, options)
+			while not es.stop():
+				X = es.ask()
+				X_rescaled = []
+				for i, x in enumerate(X):
+					# expand x
+					x_reinflated = np.zeros(N_RULES + N_TIMECONSTS + 1)
+					x_reinflated[x_active_mask_aug.nonzero()[0]] = x
+					x_rescaled = x_reinflated * scale_factors
+					x_rescaled[:N_RULES] *= STD_EXPL_RULES
+					x_rescaled[N_RULES:N_RULES + N_TIMECONSTS] *= STD_EXPL_CONSTS
+					x_rescaled[-1] *= STD_EXPL_INH
+					x_rescaled += biases
+					x_rescaled[bounds[0] > x_rescaled] = bounds[0][bounds[0] > x_rescaled]
+					x_rescaled[bounds[1] < x_rescaled] = bounds[1][bounds[1] < x_rescaled]
+					X_rescaled.append(x_rescaled)
+				losses, all_syn_effects = eval_all(X_rescaled, eval_tracker=eval_tracker)
+				es.tell(X, losses)
+				if np.min(losses) < min_loss:
+					min_loss = np.min(losses)
+					min_param_idx = np.argmin(losses)
+					min_params = np.zeros(N_RULES + N_TIMECONSTS + 1)
+					min_params[x_active_mask_aug] = X[min_param_idx]
+				if eval_tracker['best_changed']:
+					eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
+				es.disp()
 
-		while not es.stop():
-			X = es.ask()
-			X_rescaled = []
-			for i, x in enumerate(X):
-				x_rescaled = copy(x) * scale_factors
-				print('x:', x)
-				x_rescaled[:N_RULES] *= STD_EXPL_RULES
-				x_rescaled[N_RULES:N_RULES + N_TIMECONSTS] *= STD_EXPL_CONSTS
-				x_rescaled[-1] *= STD_EXPL_INH
-				x_rescaled += biases
-				X_rescaled.append(x_rescaled)
-			losses, all_syn_effects = eval_all(X_rescaled, eval_tracker=eval_tracker)
-			es.tell(X, losses)
-			if eval_tracker['best_changed']:
-				eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
-			es.disp()
+			step_losses.append(min_loss)
+			step_params.append(min_params)
 
-		if poptype == 'large':
-			large_pop_fevals_count += es.countevals
-			large_pop_runs_count += 1
-		else:
-			small_pop_fevals_count += es.countevals
-			small_pop_runs_count += 1
+			print('min_loss:', min_loss)
+			print('min_params:', min_params)
 
-		if restarts == 0:
-			restarts = 1
-			base_options['maxiter'] = es.opts['maxiter']
-			base_options['popsize'] = es.opts['popsize']
 
-		best.update(es.best, es.sent_solutions)
-		print(best.get()[1])
-		print(es.stop())
+		new_x_idx = considered_rule_idxs[np.argmin(step_losses)]
+		rules_active_mask[new_x_idx] = True
+		x0 = step_params[np.argmin(step_losses)]
+		print(rules_active_mask)
+		print(x0)
 
-		if restarts >= N_RESTARTS:
-			break
 
-		print(f'RESTART {restarts}', f'POPTYPE {poptype}')
+
