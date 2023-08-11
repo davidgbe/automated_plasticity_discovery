@@ -44,7 +44,7 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (19, 20) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (399, 400) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL_RULES = args.std_expl[0]
 STD_EXPL_CONSTS= args.std_expl[1]
 STD_EXPL_INH= args.std_expl[2]
@@ -675,6 +675,43 @@ if __name__ == '__main__':
 	# print('scale_factors:', scale_factors)
 	# print(args.std_expl)
 
+	rule_mapping_contingencies = np.array([
+		[0],
+		[1],
+		[2],
+		[3],
+		[4],
+		[5],
+		[6],
+		[7],
+		[8],
+		[9, 34],
+		[10, 35],
+		[11, 36],
+		[12, 37],
+		[13, 38],
+		[14, 39],
+		[15, 40],
+		[16, 41],
+		[17, 42],
+		[18],
+		[19],
+		[20],
+		[21],
+		[22],
+		[23],
+		[24],
+		[25],
+		[26],
+		[27, 43],
+		[28, 44],
+		[29, 45],
+		[30, 46],
+		[31, 47],
+		[32, 48],
+		[33, 49],
+	])
+
 	x0 = np.zeros(N_RULES + N_TIMECONSTS + 1)
 	rules_active_mask = np.zeros(N_RULES).astype(bool)
 	total_steps = 0
@@ -689,9 +726,11 @@ if __name__ == '__main__':
 		for rule_idx in considered_rule_idxs:
 			print('rule idx:', rule_idx)
 			x_active_mask_aug = np.zeros(N_RULES + N_TIMECONSTS + 1).astype(bool)
-			x_active_mask_aug[:N_RULES] = copy(rules_active_mask)
+			for active_indices in rule_mapping_contingencies[rules_active_mask]:
+				x_active_mask_aug[active_indices] = True
 			x_active_mask_aug[-1] = True
-			x_active_mask_aug[rule_idx] = True
+			x_active_mask_aug[rule_mapping_contingencies[rule_idx]] = True
+			print(x_active_mask_aug)
 			x0_augmented = copy(x0)[x_active_mask_aug]
 
 			es = cma.CMAEvolutionStrategy(x0_augmented, 0.003, options)
