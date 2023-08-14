@@ -57,8 +57,8 @@ ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
-N_RULES = 34
-N_TIMECONSTS = 16
+N_RULES = 20
+N_TIMECONSTS = 12
 N_RESTARTS = 10
 
 T = 0.15 # Total duration of one network simulation
@@ -77,16 +77,16 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$y$',
 	r'$x$',
 	r'$x \, y$',
-	r'$\sigma(y)$',
-	r'$\sigma(x)$',
-	r'$x \sigma(y)$',
-	r'$\sigma(x) y $',
-	r'$\sigma(x) \sigma(y) $',
+	# r'$\sigma(y)$',
+	# r'$\sigma(x)$',
+	# r'$x \sigma(y)$',
+	# r'$\sigma(x) y $',
+	# r'$\sigma(x) \sigma(y) $',
 
 	r'$x \, \tilde{y}$',
 	r'$\tilde{x} \, y$',
-	r'$\sigma(x) \, \tilde{y}$',
-	r'$\tilde{x} \, \sigma(y)$',
+	# r'$\sigma(x) \, \tilde{y}$',
+	# r'$\tilde{x} \, \sigma(y)$',
 	r'$\tilde{y} \, y$',
 	r'$\tilde{x} \, x$',
 	r'$\tilde{y}^2$',
@@ -96,16 +96,16 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$w y$',
 	r'$w x$',
 	r'$w x \, y$',
-	r'$w \sigma(y)$',
-	r'$w \sigma(x)$',
-	r'$w x \sigma(y)$',
-	r'$w \sigma(x) y $',
-	r'$w \sigma(x) \sigma(y) $',
+	# r'$w \sigma(y)$',
+	# r'$w \sigma(x)$',
+	# r'$w x \sigma(y)$',
+	# r'$w \sigma(x) y $',
+	# r'$w \sigma(x) \sigma(y) $',
 
 	r'$w x \, \tilde{y}$',
 	r'$w \tilde{x} \, y$',
-	r'$w \sigma(x) \, \tilde{y}$',
-	r'$w \tilde{x} \, \sigma(y)$',
+	# r'$w \sigma(x) \, \tilde{y}$',
+	# r'$w \tilde{x} \, \sigma(y)$',
 	r'$w \tilde{y} \, y$',
 	r'$w \tilde{x} \, x$',
 	r'$w \tilde{y}^2$',
@@ -127,7 +127,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/decoder_ee_3_extended_bipop_d_{BATCH_SIZE}_STD_EXPL_{STD_EXPL_RULES}_{STD_EXPL_CONSTS}_{STD_EXPL_INH}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/stepwise_original_set_{BATCH_SIZE}_STD_EXPL_{STD_EXPL_RULES}_{STD_EXPL_CONSTS}_{STD_EXPL_INH}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -680,36 +680,22 @@ if __name__ == '__main__':
 		[1],
 		[2],
 		[3],
-		[4],
-		[5],
-		[6],
-		[7],
-		[8],
-		[9, 34],
-		[10, 35],
-		[11, 36],
-		[12, 37],
-		[13, 38],
-		[14, 39],
-		[15, 40],
-		[16, 41],
-		[17, 42],
-		[18],
-		[19],
-		[20],
-		[21],
-		[22],
-		[23],
-		[24],
-		[25],
-		[26],
-		[27, 43],
-		[28, 44],
-		[29, 45],
-		[30, 46],
-		[31, 47],
-		[32, 48],
-		[33, 49],
+		[4, 20],
+		[5, 21],
+		[6, 22],
+		[7, 23],
+		[8, 24],
+		[9, 25],
+		[10],
+		[11],
+		[12],
+		[13],
+		[14, 26],
+		[15, 27],
+		[16, 28],
+		[17, 29],
+		[18, 30],
+		[19, 31],
 	])
 
 	x0 = np.zeros(N_RULES + N_TIMECONSTS + 1)

@@ -157,40 +157,42 @@ def simulate_inner_loop(
 
 
             r_1_r_exp = np.outer(r_exp_filtered_curr_split[p_j][k, :], r_1_pow_split[p_i])
+
             r_exp_r_1 = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 1, :])
 
-            r_bin_r_exp = np.outer(r_exp_filtered_curr_split[p_j][k + 2, :], r_bin_split[p_i]) # same as np.outer(r_exp[p_j], r_bin[p_i])
-            r_exp_r_bin = np.outer(r_bin_split[p_j], r_exp_filtered_curr_split[p_i][k + 3, :])
+            # r_bin_r_exp = np.outer(r_exp_filtered_curr_split[p_j][k + 2, :], r_bin_split[p_i]) # same as np.outer(r_exp[p_j], r_bin[p_i])
+            # r_exp_r_bin = np.outer(r_bin_split[p_j], r_exp_filtered_curr_split[p_i][k + 3, :])
 
-            r_exp_r = r_exp_filtered_curr_split[p_j][k + 4, :] * r_1_pow_split[p_j]
+            r_exp_r = r_exp_filtered_curr_split[p_j][k + 2, :] * r_1_pow_split[p_j]
             r_0_by_r_exp_r = np.outer(r_exp_r, r_0_pow_split[p_i])
 
-            r_exp_r = r_exp_filtered_curr_split[p_i][k + 5, :] * r_1_pow_split[p_i]
+            r_exp_r = r_exp_filtered_curr_split[p_i][k + 3, :] * r_1_pow_split[p_i]
             r_exp_r_by_r_0 = np.outer(r_0_pow_split[p_j], r_exp_r)
 
-            r_exp_square = np.square(r_exp_filtered_curr_split[p_j][k + 6, :])
+            r_exp_square = np.square(r_exp_filtered_curr_split[p_j][k + 4, :])
             r_0_by_r_exp_2 = np.outer(r_exp_square, r_0_pow_split[p_i])
 
-            r_exp_square = np.square(r_exp_filtered_curr_split[p_i][k + 7, :])
+            r_exp_square = np.square(r_exp_filtered_curr_split[p_i][k + 5, :])
             r_exp_2_by_r_0 = np.outer(r_0_pow_split[p_j], r_exp_square)
 
 
-            r_1_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 8, :], r_1_pow_split[p_i])
-            r_exp_r_1_w = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 9, :])
+            r_1_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 6, :], r_1_pow_split[p_i])
 
-            r_bin_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 10, :], r_bin_split[p_i]) # same as np.outer(r_exp[p_j], r_bin[p_i])
-            r_exp_r_bin_w = np.outer(r_bin_split[p_j], r_exp_filtered_curr_split[p_i][k + 11, :])
+            r_exp_r_1_w = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 7, :])
 
-            r_exp_r = r_exp_filtered_curr_split[p_j][k + 12, :] * r_1_pow_split[p_j]
+            # r_bin_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 10, :], r_bin_split[p_i]) # same as np.outer(r_exp[p_j], r_bin[p_i])
+            # r_exp_r_bin_w = np.outer(r_bin_split[p_j], r_exp_filtered_curr_split[p_i][k + 11, :])
+
+            r_exp_r = r_exp_filtered_curr_split[p_j][k + 8, :] * r_1_pow_split[p_j]
             r_0_by_r_exp_r_w = np.outer(r_exp_r, r_0_pow_split[p_i])
 
-            r_exp_r = r_exp_filtered_curr_split[p_i][k + 13, :] * r_1_pow_split[p_i]
+            r_exp_r = r_exp_filtered_curr_split[p_i][k + 9, :] * r_1_pow_split[p_i]
             r_exp_r_by_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_r)
 
-            r_exp_square = np.square(r_exp_filtered_curr_split[p_j][k + 14, :])
+            r_exp_square = np.square(r_exp_filtered_curr_split[p_j][k + 10, :])
             r_0_by_r_exp_2_w = np.outer(r_exp_square, r_0_pow_split[p_i])
 
-            r_exp_square = np.square(r_exp_filtered_curr_split[p_i][k + 15, :])
+            r_exp_square = np.square(r_exp_filtered_curr_split[p_i][k + 11, :])
             r_exp_2_by_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_square)
 
             # print(r_1_r_exp.shape)
@@ -209,16 +211,16 @@ def simulate_inner_loop(
                 r_1_r_0[pop_slices[p_j], pop_slices[p_i]],
                 r_1_r_1[pop_slices[p_j], pop_slices[p_i]],
 
-                r_0_r_bin[pop_slices[p_j], pop_slices[p_i]],
-                r_bin_r_0[pop_slices[p_j], pop_slices[p_i]],
-                r_1_r_bin[pop_slices[p_j], pop_slices[p_i]],
-                r_bin_r_1[pop_slices[p_j], pop_slices[p_i]],
-                r_bin_r_bin[pop_slices[p_j], pop_slices[p_i]],
+                # r_0_r_bin[pop_slices[p_j], pop_slices[p_i]],
+                # r_bin_r_0[pop_slices[p_j], pop_slices[p_i]],
+                # r_1_r_bin[pop_slices[p_j], pop_slices[p_i]],
+                # r_bin_r_1[pop_slices[p_j], pop_slices[p_i]],
+                # r_bin_r_bin[pop_slices[p_j], pop_slices[p_i]],
 
                 r_1_r_exp,
                 r_exp_r_1,
-                r_bin_r_exp,
-                r_exp_r_bin,
+                # r_bin_r_exp,
+                # r_exp_r_bin,
                 r_0_by_r_exp_r,
                 r_exp_r_by_r_0,
                 r_0_by_r_exp_2,
@@ -230,16 +232,16 @@ def simulate_inner_loop(
                 r_1_r_0[pop_slices[p_j], pop_slices[p_i]],
                 r_1_r_1[pop_slices[p_j], pop_slices[p_i]],
 
-                r_bin_r_0[pop_slices[p_j], pop_slices[p_i]],
-                r_0_r_bin[pop_slices[p_j], pop_slices[p_i]],
-                r_1_r_bin[pop_slices[p_j], pop_slices[p_i]],
-                r_bin_r_1[pop_slices[p_j], pop_slices[p_i]],
-                r_bin_r_bin[pop_slices[p_j], pop_slices[p_i]],
+                # r_bin_r_0[pop_slices[p_j], pop_slices[p_i]],
+                # r_0_r_bin[pop_slices[p_j], pop_slices[p_i]],
+                # r_1_r_bin[pop_slices[p_j], pop_slices[p_i]],
+                # r_bin_r_1[pop_slices[p_j], pop_slices[p_i]],
+                # r_bin_r_bin[pop_slices[p_j], pop_slices[p_i]],
 
                 r_1_r_exp_w,
                 r_exp_r_1_w,
-                r_bin_r_exp_w,
-                r_exp_r_bin_w,
+                # r_bin_r_exp_w,
+                # r_exp_r_bin_w,
                 r_0_by_r_exp_r_w,
                 r_exp_r_by_r_0_w,
                 r_0_by_r_exp_2_w,
