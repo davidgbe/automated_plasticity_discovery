@@ -124,29 +124,29 @@ def simulate_inner_loop(
 
         r_0_pow = np.ones(n_e + n_i) / 5
         r_1_pow = r[i+1, :] / 0.01
-        r_bin = np.zeros(n_e + n_i)
-        r_bin[r_1_pow > 0] = 1
+        # r_bin = np.zeros(n_e + n_i)
+        # r_bin[r_1_pow > 0] = 1
         # r_2_pow = np.square(r[i+1, :]) / 0.01
         r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.01
 
         r_0_pow_split = [r_0_pow[:n_e], r_0_pow[n_e:n_e + n_i]]
-        r_bin_split = [r_bin[:n_e], r_bin[n_e:n_e + n_i]]
+        # r_bin_split = [r_bin[:n_e], r_bin[n_e:n_e + n_i]]
         r_1_pow_split = [r_1_pow[:n_e], r_1_pow[n_e:n_e + n_i]]
         r_exp_filtered_curr_split = [r_exp_filtered_curr[:, :n_e], r_exp_filtered_curr[:, n_e:n_e + n_i]]
 
         # find outer products of zeroth, first powers of firing rates to compute updates due to plasticity rules
         r_0_r_0 = np.outer(r_0_pow, r_0_pow)
   
-        r_bin_r_0 = np.outer(r_0_pow, r_bin)
-        r_0_r_bin = r_bin_r_0.T
+        # r_bin_r_0 = np.outer(r_0_pow, r_bin)
+        # r_0_r_bin = r_bin_r_0.T
 
         r_0_r_1 = np.outer(r_1_pow, r_0_pow)
         r_1_r_0 = r_0_r_1.T
 
-        r_bin_r_bin = np.outer(r_bin, r_bin)
-        r_bin_r_1 = np.outer(r_1_pow, r_bin)
+        # r_bin_r_bin = np.outer(r_bin, r_bin)
+        # r_bin_r_1 = np.outer(r_1_pow, r_bin)
 
-        r_1_r_bin = r_bin_r_1.T
+        # r_1_r_bin = r_bin_r_1.T
         r_1_r_1 = np.outer(r_1_pow, r_1_pow)
 
         w_updates_unweighted = []
@@ -166,34 +166,34 @@ def simulate_inner_loop(
             r_exp_r = r_exp_filtered_curr_split[p_j][k + 2, :] * r_1_pow_split[p_j]
             r_0_by_r_exp_r = np.outer(r_exp_r, r_0_pow_split[p_i])
 
-            r_exp_r = r_exp_filtered_curr_split[p_i][k + 3, :] * r_1_pow_split[p_i]
-            r_exp_r_by_r_0 = np.outer(r_0_pow_split[p_j], r_exp_r)
+            # r_exp_r = r_exp_filtered_curr_split[p_i][k + 3, :] * r_1_pow_split[p_i]
+            # r_exp_r_by_r_0 = np.outer(r_0_pow_split[p_j], r_exp_r)
 
-            r_exp_square = np.square(r_exp_filtered_curr_split[p_j][k + 4, :])
-            r_0_by_r_exp_2 = np.outer(r_exp_square, r_0_pow_split[p_i])
+            # r_exp_square = np.square(r_exp_filtered_curr_split[p_j][k + 4, :])
+            # r_0_by_r_exp_2 = np.outer(r_exp_square, r_0_pow_split[p_i])
 
-            r_exp_square = np.square(r_exp_filtered_curr_split[p_i][k + 5, :])
-            r_exp_2_by_r_0 = np.outer(r_0_pow_split[p_j], r_exp_square)
+            # r_exp_square = np.square(r_exp_filtered_curr_split[p_i][k + 5, :])
+            # r_exp_2_by_r_0 = np.outer(r_0_pow_split[p_j], r_exp_square)
 
 
-            r_1_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 6, :], r_1_pow_split[p_i])
+            r_1_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 3, :], r_1_pow_split[p_i])
 
-            r_exp_r_1_w = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 7, :])
+            r_exp_r_1_w = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 4, :])
 
             # r_bin_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 10, :], r_bin_split[p_i]) # same as np.outer(r_exp[p_j], r_bin[p_i])
             # r_exp_r_bin_w = np.outer(r_bin_split[p_j], r_exp_filtered_curr_split[p_i][k + 11, :])
 
-            r_exp_r = r_exp_filtered_curr_split[p_j][k + 8, :] * r_1_pow_split[p_j]
+            r_exp_r = r_exp_filtered_curr_split[p_j][k + 5, :] * r_1_pow_split[p_j]
             r_0_by_r_exp_r_w = np.outer(r_exp_r, r_0_pow_split[p_i])
 
-            r_exp_r = r_exp_filtered_curr_split[p_i][k + 9, :] * r_1_pow_split[p_i]
-            r_exp_r_by_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_r)
+            # r_exp_r = r_exp_filtered_curr_split[p_i][k + 9, :] * r_1_pow_split[p_i]
+            # r_exp_r_by_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_r)
 
-            r_exp_square = np.square(r_exp_filtered_curr_split[p_j][k + 10, :])
-            r_0_by_r_exp_2_w = np.outer(r_exp_square, r_0_pow_split[p_i])
+            # r_exp_square = np.square(r_exp_filtered_curr_split[p_j][k + 10, :])
+            # r_0_by_r_exp_2_w = np.outer(r_exp_square, r_0_pow_split[p_i])
 
-            r_exp_square = np.square(r_exp_filtered_curr_split[p_i][k + 11, :])
-            r_exp_2_by_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_square)
+            # r_exp_square = np.square(r_exp_filtered_curr_split[p_i][k + 11, :])
+            # r_exp_2_by_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_square)
 
             # print(r_1_r_exp.shape)
             # print(r_exp_r_1.shape)
@@ -207,9 +207,9 @@ def simulate_inner_loop(
 
             r_cross_products = np.stack((
                 r_0_r_0[pop_slices[p_j], pop_slices[p_i]],
-                r_0_r_1[pop_slices[p_j], pop_slices[p_i]],
-                r_1_r_0[pop_slices[p_j], pop_slices[p_i]],
-                r_1_r_1[pop_slices[p_j], pop_slices[p_i]],
+                # r_0_r_1[pop_slices[p_j], pop_slices[p_i]],
+                # r_1_r_0[pop_slices[p_j], pop_slices[p_i]],
+                # r_1_r_1[pop_slices[p_j], pop_slices[p_i]],
 
                 # r_0_r_bin[pop_slices[p_j], pop_slices[p_i]],
                 # r_bin_r_0[pop_slices[p_j], pop_slices[p_i]],
@@ -222,15 +222,15 @@ def simulate_inner_loop(
                 # r_bin_r_exp,
                 # r_exp_r_bin,
                 r_0_by_r_exp_r,
-                r_exp_r_by_r_0,
-                r_0_by_r_exp_2,
-                r_exp_2_by_r_0,
+                # r_exp_r_by_r_0,
+                # r_0_by_r_exp_2,
+                # r_exp_2_by_r_0,
 
 
                 r_0_r_0[pop_slices[p_j], pop_slices[p_i]],
-                r_0_r_1[pop_slices[p_j], pop_slices[p_i]],
-                r_1_r_0[pop_slices[p_j], pop_slices[p_i]],
-                r_1_r_1[pop_slices[p_j], pop_slices[p_i]],
+                # r_0_r_1[pop_slices[p_j], pop_slices[p_i]],
+                # r_1_r_0[pop_slices[p_j], pop_slices[p_i]],
+                # r_1_r_1[pop_slices[p_j], pop_slices[p_i]],
 
                 # r_bin_r_0[pop_slices[p_j], pop_slices[p_i]],
                 # r_0_r_bin[pop_slices[p_j], pop_slices[p_i]],
@@ -243,9 +243,9 @@ def simulate_inner_loop(
                 # r_bin_r_exp_w,
                 # r_exp_r_bin_w,
                 r_0_by_r_exp_r_w,
-                r_exp_r_by_r_0_w,
-                r_0_by_r_exp_2_w,
-                r_exp_2_by_r_0_w,
+                # r_exp_r_by_r_0_w,
+                # r_0_by_r_exp_2_w,
+                # r_exp_2_by_r_0_w,
             ))
 
             w_updates_unweighted.append(r_cross_products)

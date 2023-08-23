@@ -44,7 +44,7 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (399, 400) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (199, 200) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL_RULES = args.std_expl[0]
 STD_EXPL_CONSTS= args.std_expl[1]
 STD_EXPL_INH= args.std_expl[2]
@@ -57,11 +57,11 @@ ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
-N_RULES = 20
-N_TIMECONSTS = 12
+N_RULES = 8
+N_TIMECONSTS = 6
 N_RESTARTS = 10
 
-T = 0.15 # Total duration of one network simulation
+T = 0.12 # Total duration of one network simulation
 dt = 2e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 20 # Number excitatory cells in sequence (also length of sequence)
@@ -74,9 +74,9 @@ np.random.shuffle(layer_colors)
 
 rule_names = [ # Define labels for all rules to be run during simulations
 	r'',
-	r'$y$',
-	r'$x$',
-	r'$x \, y$',
+	# r'$y$',
+	# r'$x$',
+	# r'$x \, y$',
 	# r'$\sigma(y)$',
 	# r'$\sigma(x)$',
 	# r'$x \sigma(y)$',
@@ -88,14 +88,14 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	# r'$\sigma(x) \, \tilde{y}$',
 	# r'$\tilde{x} \, \sigma(y)$',
 	r'$\tilde{y} \, y$',
-	r'$\tilde{x} \, x$',
-	r'$\tilde{y}^2$',
-	r'$\tilde{x}^2$',
+	# r'$\tilde{x} \, x$',
+	# r'$\tilde{y}^2$',
+	# r'$\tilde{x}^2$',
 
 	r'w',
-	r'$w y$',
-	r'$w x$',
-	r'$w x \, y$',
+	# r'$w y$',
+	# r'$w x$',
+	# r'$w x \, y$',
 	# r'$w \sigma(y)$',
 	# r'$w \sigma(x)$',
 	# r'$w x \sigma(y)$',
@@ -107,9 +107,9 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	# r'$w \sigma(x) \, \tilde{y}$',
 	# r'$w \tilde{x} \, \sigma(y)$',
 	r'$w \tilde{y} \, y$',
-	r'$w \tilde{x} \, x$',
-	r'$w \tilde{y}^2$',
-	r'$w \tilde{x}^2$',
+	# r'$w \tilde{x} \, x$',
+	# r'$w \tilde{y}^2$',
+	# r'$w \tilde{x}^2$',
 ]
 
 rule_names = [
@@ -425,7 +425,7 @@ def simulate_single_network(index, x, train, calibrate, track_params=True):
 				'syn_effects': all_effects,
 			}
 
-		if i in [n_inner_loop_iters - 1 - 1 * k for k in range(12)]:
+		if i in [n_inner_loop_iters - 1 - 5 * k for k in range(12)]:
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -490,10 +490,10 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	if eval_tracker is not None:
 		if train:
 			if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss'] or eval_tracker['file_prefix'] == 'CAL':
-				if eval_tracker['evals'] > 0:
-					eval_tracker['best_loss'] = loss
-					eval_tracker['best_changed'] = True
-					eval_tracker['params'] = copy(x)
+				# if eval_tracker['evals'] > 0:
+				eval_tracker['best_loss'] = loss
+				eval_tracker['best_changed'] = True
+				eval_tracker['params'] = copy(x)
 				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
 			eval_tracker['evals'] += 1
 		else:
@@ -675,27 +675,38 @@ if __name__ == '__main__':
 	# print('scale_factors:', scale_factors)
 	# print(args.std_expl)
 
+	# rule_mapping_contingencies = np.array([
+	# 	[0],
+	# 	[1],
+	# 	[2],
+	# 	[3],
+	# 	[4, 20],
+	# 	[5, 21],
+	# 	[6, 22],
+	# 	[7, 23],
+	# 	[8, 24],
+	# 	[9, 25],
+	# 	[10],
+	# 	[11],
+	# 	[12],
+	# 	[13],
+	# 	[14, 26],
+	# 	[15, 27],
+	# 	[16, 28],
+	# 	[17, 29],
+	# 	[18, 30],
+	# 	[19, 31],
+	# ])
+
 	rule_mapping_contingencies = np.array([
 		[0],
-		[1],
-		[2],
-		[3],
-		[4, 20],
-		[5, 21],
-		[6, 22],
-		[7, 23],
-		[8, 24],
-		[9, 25],
-		[10],
-		[11],
-		[12],
-		[13],
-		[14, 26],
-		[15, 27],
-		[16, 28],
-		[17, 29],
-		[18, 30],
-		[19, 31],
+		[1, 8],
+		[2, 9],
+		[3, 10],
+		[4],
+		[5, 11],
+		[6, 12],
+		[7, 13],
 	])
 
 	x0 = np.zeros(N_RULES + N_TIMECONSTS + 1)
@@ -708,6 +719,7 @@ if __name__ == '__main__':
 		step_params = []
 		step_iters = []
 		considered_rule_idxs = np.arange(N_RULES)[~rules_active_mask]
+		print('considered_rules:', considered_rule_idxs)
 
 		for rule_idx in considered_rule_idxs:
 			print('rule idx:', rule_idx)
