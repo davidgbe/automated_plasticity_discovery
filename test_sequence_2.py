@@ -562,7 +562,7 @@ def load_best_avg_params(file_names, n_plasticity_coefs, n_time_constants, batch
 
 	for file_name in file_names:
 		test_data_path = f'./sims_out/{file_name}/test_data.csv'
-		df_ttest = read_csv(test_data_path, read_header=False)
+		df_test = read_csv(test_data_path, read_header=False)
 
 		syn_effect_start = 2 + batch_size + n_plasticity_coefs + n_time_constants
 		syn_effect_end = 2 + batch_size + n_plasticity_coefs + n_time_constants + n_plasticity_coefs
