@@ -556,13 +556,38 @@ def eval_all(X, eval_tracker=None, train=True):
 
 	return losses
 
-def process_params_str(s):
-	params = []
-	for x in s.split(' '):
-		x = x.replace('\n', '')
-		if x != '':
-			params.append(float(x))
-	return np.array(params)
+def load_best_avg_params(file_names, n_plasticity_coefs, n_time_constants, batch_size):
+	all_best_syn_effects = []
+	all_best_coefs = []
+
+	for file_name in file_names:
+		test_data_path = f'./sims_out/{file_name}/test_data.csv'
+		df_ttest = read_csv(test_data_path, read_header=False)
+
+		syn_effect_start = 2 + batch_size + n_plasticity_coefs + n_time_constants
+		syn_effect_end = 2 + batch_size + n_plasticity_coefs + n_time_constants + n_plasticity_coefs
+		plasticity_coefs_start = 2 + batch_size
+		plasticity_coefs_end = 2 + batch_size + n_plasticity_coefs + n_time_constants
+
+		x = np.arange(df_test.shape[0])
+		losses_test = df_test[df_test.columns[1]]
+		x_best_min_test = np.argmin(losses_test)
+
+		final_syn_effects = []
+		for i in range(syn_effect_start, syn_effect_end):
+			final_syn_effects.append(df_test[df_test.columns[i]][x_best_min_test])
+		final_syn_effects = np.array(final_syn_effects)
+
+		final_coefs = []
+		for i in range(plasticity_coefs_start, plasticity_coefs_end):
+			final_coefs.append(df_test[df_test.columns[i]][x_best_min_test])
+		final_coefs = np.array(final_coefs)
+
+		all_best_syn_effects.append(final_syn_effects)
+		all_best_coefs.append(final_coefs)
+
+	return np.mean(np.stack(all_best_syn_effects), axis=0), np.mean(np.stack(all_best_coefs), axis=0)
+
 
 if __name__ == '__main__':
 	mp.set_start_method('fork')
@@ -576,9 +601,8 @@ if __name__ == '__main__':
 	### NOTE: use BATCH_SIZE of 1
 
 	file_names = [
-		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6000_2023-05-31_10:27:28.126331',
-		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6001_2023-05-31_10:27:27.894879',
-		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6002_2023-06-02_22:59:05.788902',
+		'decoder_ee_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8000_2023-08-24_15:13:49.370832',
+		'decoder_ee_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8002_2023-08-24_15:13:49.676998',
 	]
 
 	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
