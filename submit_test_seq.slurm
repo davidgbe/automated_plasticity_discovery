@@ -3,11 +3,11 @@
 ## Presets
 #SBATCH --job-name=seq_cmaes
 
-#SBATCH -p compute-bigmem
-#SBATCH -A labfairhall
+#SBATCH -p compute
+#SBATCH -A stf
 
 #SBATCH --nodes=1
-#SBATCH --time=00:45:00
+#SBATCH --time=02:00:00
 #SBATCH --ntasks=20
 #SBATCH --mem=20G
 
@@ -20,7 +20,7 @@ echo $CURRDIR
 ## Commands to run
 source python-env/bin/activate
 
-python test_sequence.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.001 --seed 500
+python test_sequence_2.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0 --seed 500
 
 deactivate
 
