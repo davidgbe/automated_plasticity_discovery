@@ -62,14 +62,15 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 20
 N_TIMECONSTS = 12
+REPEATS = 100
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 25 # Number excitatory cells in sequence (also length of sequence)
 n_i = 8 # Number inhibitory cells
-train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
-test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
+train_seeds = np.random.randint(0, 1e7, size=REPEATS)
+test_seeds = np.random.randint(0, 1e7, size=REPEATS)
 
 layer_colors = get_ordered_colors('gist_rainbow', 15)
 np.random.shuffle(layer_colors)
@@ -612,14 +613,12 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	repeats = 100
-
-	eval_all([x_test] * repeats, eval_tracker=eval_tracker)
+	eval_all([x_test] * REPEATS, eval_tracker=eval_tracker)
 
 	for i in range(len(syn_effects_test)):
 		x_test_reduced = copy(x_test)
 		x_test_reduced[i] = 0
 		print(x_test_reduced)
 
-		eval_all([x_test_reduced] * repeats, eval_tracker=eval_tracker)
+		eval_all([x_test_reduced] * REPEATS, eval_tracker=eval_tracker)
 
