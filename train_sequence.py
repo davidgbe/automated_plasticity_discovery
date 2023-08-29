@@ -351,6 +351,7 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	if FIXED_DATA:
 		if train:
+			print(train_seeds[index])
 			np.random.seed(train_seeds[index])
 		else:
 			np.random.seed(test_seeds[index])
@@ -358,6 +359,8 @@ def simulate_single_network(index, x, train, track_params=True):
 		np.random.seed()
 
 	w_initial = make_network() # make a new, distorted sequence
+
+	print(np.mean(w_initial))
 
 	decode_start = 3e-3/dt
 	decode_end = 65e-3/dt
@@ -570,7 +573,7 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	eval_all([x0], eval_tracker=eval_tracker)
+	# eval_all([x0], eval_tracker=eval_tracker)
 
 	options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),

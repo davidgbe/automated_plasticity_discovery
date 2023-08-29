@@ -62,7 +62,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 20
 N_TIMECONSTS = 12
-REPEATS = 100
+REPEATS = 10
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -204,15 +204,9 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 	X_test = np.concatenate(stacked_activities_test, axis=0)
 	y_test = np.stack([test_times for j in range(r.shape[0] - 6)]).flatten()
 
-	# print('X SHAPE', X.shape)
-	# print('y SHAPE', y.shape)
-
-	print(X_train)
-	print(y_train)
-
 	reg = LinearRegression().fit(X_train, y_train)
 
-	print(np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100)
+	# print(np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100)
 
 	loss = 1000 * (1 - reg.score(X_test, y_test)) + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100
 
@@ -360,6 +354,7 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	if FIXED_DATA:
 		if train:
+			print(train_seeds[index])
 			np.random.seed(train_seeds[index])
 		else:
 			np.random.seed(test_seeds[index])
@@ -492,7 +487,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 					eval_tracker['best_loss'] = loss
 					eval_tracker['best_changed'] = True
 					eval_tracker['params'] = copy(x)
-				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
+			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
 			eval_tracker['evals'] += 1
 		else:
 			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=False)
@@ -515,15 +510,6 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 # 	return loss
 
 
-def load_best_params(file_name):
-	file_path = f'./sims_out/{file_name}/outcmaes/xrecentbest.dat'
-	df_params = read_csv(file_path, read_header=False)
-	x = np.arange(df_params.shape[0])
-	min_loss_idx = np.argmin([df_params.iloc[i][4] for i in x])
-	best_params = df_params.iloc[min_loss_idx][5:]
-	return np.array(best_params)
-
-
 def simulate_single_network_wrapper(tup):
 	return simulate_single_network(*tup)
 
@@ -536,7 +522,7 @@ def eval_all(X, eval_tracker=None, train=True):
 
 	task_vars = []
 	for i_x, x in enumerate(X):
-			task_vars.append((i_x, x, train))
+		task_vars.append((i_x, x, train))
 	results = pool.map(simulate_single_network_wrapper, task_vars)
 
 	pool.close()
@@ -602,10 +588,12 @@ if __name__ == '__main__':
 
 	file_names = [
 		'decoder_ee_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8000_2023-08-24_15:13:49.370832',
-		'decoder_ee_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8002_2023-08-24_15:13:49.676998',
+		# 'decoder_ee_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8002_2023-08-24_15:13:49.676998',
 	]
 
 	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
+
+	print(x_test)
 
 	eval_tracker = {
 		'evals': 0,
