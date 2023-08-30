@@ -103,7 +103,7 @@ def simulate_inner_loop(
         r_exp_filtered[:, i+1, :] = r_exp_filtered[:, i, :] * (1 - dt / int_time_consts) + r[i, :] * (dt / int_time_consts)
 
         r_0_pow = np.ones(n_e + n_i)
-        r_1_pow = r[i+1, :] / 0.1
+        r_1_pow = r[i+1, :] / 0.02
         r_2_pow = np.square(r[i+1, :]) / 0.01
         r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.01
 
