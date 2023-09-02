@@ -62,15 +62,14 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 20
 N_TIMECONSTS = 12
-REPEATS = 100
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 25 # Number excitatory cells in sequence (also length of sequence)
 n_i = 8 # Number inhibitory cells
-train_seeds = np.random.randint(0, 1e7, size=REPEATS)
-test_seeds = np.random.randint(0, 1e7, size=REPEATS)
+train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
+test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 
 layer_colors = get_ordered_colors('gist_rainbow', 15)
 np.random.shuffle(layer_colors)
@@ -502,7 +501,8 @@ def eval_all(X, eval_tracker=None, train=True):
 
 	task_vars = []
 	for i_x, x in enumerate(X):
-		task_vars.append((i_x, x, train))
+		for i_batch in range(BATCH_SIZE):
+			task_vars.append((i_batch, x, train))
 	results = pool.map(simulate_single_network_wrapper, task_vars)
 
 	pool.close()
