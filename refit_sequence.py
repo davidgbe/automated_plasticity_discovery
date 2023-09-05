@@ -590,7 +590,7 @@ if __name__ == '__main__':
 	]
 
 
-	for k in range(3, 15):
+	for k in range(5, 7):
 		# Make subdirectory for this particular experiment
 		out_dir = f'sims_out/refit_ee_only_{k}_terms_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 		os.mkdir(out_dir)
@@ -627,7 +627,7 @@ if __name__ == '__main__':
 				[-10] * k + [0.5e-3] * (len(x0) - k),
 				[10] * k + [40e-3] * (len(x0) - k),
 			],
-			'maxfevals': 200,
+			'maxfevals': k * 250,
 		}
 
 		es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
