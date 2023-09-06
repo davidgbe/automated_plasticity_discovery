@@ -592,7 +592,7 @@ if __name__ == '__main__':
 
 	for k in range(N_TERMS_TO_FIT, N_TERMS_TO_FIT + 1):
 		# Make subdirectory for this particular experiment
-		out_dir = f'sims_out/refit_ee_only_{k}_terms_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+		out_dir = f'sims_out/refit_ee_ss_{k}_terms_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 		os.mkdir(out_dir)
 
 		# Make subdirectory for outputting CMAES info
