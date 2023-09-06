@@ -10,7 +10,6 @@ import matplotlib.gridspec as gridspec
 from datetime import datetime
 import multiprocessing as mp
 import argparse
-import cma
 from numba import njit
 from scipy.sparse import csc_matrix
 from sklearn.linear_model import LinearRegression
@@ -41,7 +40,7 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (399, 400) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (4999, 5000) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -52,8 +51,8 @@ ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
-N_RULES = 20
-N_TIMECONSTS = 12
+N_RULES = 4
+N_TIMECONSTS = 4
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -67,35 +66,35 @@ layer_colors = get_ordered_colors('gist_rainbow', 15)
 np.random.shuffle(layer_colors)
 
 rule_names = [ # Define labels for all rules to be run during simulations
-	r'',
-	r'$y$',
-	r'$x$',
+	# r'',
+	# r'$y$',
+	# r'$x$',
 	# r'$y^2$',
 	# r'$x^2$',
-	r'$x \, y$',
-	r'$\tilde{y}$',
+	# r'$x \, y$',
+	# r'$\tilde{y}$',
 	r'$x \, \tilde{y}$',
-	r'$\tilde{x}$',
+	# r'$\tilde{x}$',
 	r'$\tilde{x} \, y$',
 	# r'$x_{int} \, y^2$',
-	r'$\tilde{y} \, y$',
-	r'$\tilde{x} \, x$',
+	# r'$\tilde{y} \, y$',
+	# r'$\tilde{x} \, x$',
 	# r'$\tilde{y}^2$',
 	# r'$\tilde{x}^2$',
 
-	r'$w$',
-	r'$w y$',
-	r'$w x$',
+	# r'$w$',
+	# r'$w y$',
+	# r'$w x$',
 	# r'$y^2$',
 	# r'$x^2$',
-	r'$w x \, y$',
-	r'$w \tilde{y}$',
+	# r'$w x \, y$',
+	# r'$w \tilde{y}$',
 	r'$w x \, \tilde{y}$',
-	r'$w \tilde{x}$',
+	# r'$w \tilde{x}$',
 	r'$w \tilde{x} \, y$',
 	# r'$x_{int} \, y^2$',
-	r'$w \tilde{y} \, y$',
-	r'$w \tilde{x} \, x$',
+	# r'$w \tilde{y} \, y$',
+	# r'$w \tilde{x} \, x$',
 	# r'$w \tilde{y}^2$',
 	# r'$w \tilde{x}^2$',
 
@@ -129,7 +128,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/decoder_ee_rollback_rescaled_b_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/ila_network_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -160,7 +159,7 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 
-	w_initial[:n_e, :n_e] = 0.05 * w_e_e * (0.2 + 0.8 * np.random.rand(n_e, n_e))
+	w_initial[:n_e, :n_e] = 0.02 * w_e_e * (0.2 + 0.8 * np.random.rand(n_e, n_e)) # changed from 0.05 to 0.02
 
 	# w_initial[:n_e, :n_e] = np.diag(np.ones(n_e - 1), k=-1) * w_e_e * 0.7
 
@@ -347,7 +346,8 @@ def simulate_single_network(index, x, train, track_params=True):
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
 	plasticity_coefs = x[:N_RULES]
-	rule_time_constants = x[N_RULES:]
+	rule_time_constants = x[N_RULES:(N_RULES + N_TIMECONSTS)]
+	weight_bounds = x[(N_RULES + N_TIMECONSTS):]
 
 	if FIXED_DATA:
 		if train:
@@ -411,7 +411,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, weight_bounds, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
 		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e, :n_e]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
 			return {
@@ -461,7 +461,8 @@ def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coef
 
 def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	plasticity_coefs = x[:N_RULES]
-	rule_time_constants = x[N_RULES:]
+	rule_time_constants = x[N_RULES:(N_RULES + N_TIMECONSTS)]
+	weight_bounds = x[(N_RULES + N_TIMECONSTS):]
 
 	if np.any(np.array([res['blew_up'] for res in results])):
 		if eval_tracker is not None:
@@ -562,10 +563,7 @@ def process_params_str(s):
 if __name__ == '__main__':
 	mp.set_start_method('fork')
 
-	if args.load_initial is not None:
-		x0 = load_best_params(args.load_initial)
-	else:
-		x0 = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
+	x_ila = np.concatenate([1.5 * np.array([-0.015, 0.01, -0.015, 0.01]), 15e-3 * np.ones(N_TIMECONSTS), [2.5, 5]])
 
 	eval_tracker = {
 		'evals': 0,
@@ -573,34 +571,4 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	# eval_all([x0], eval_tracker=eval_tracker)
-
-	options = {
-		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-		# 'popsize': 15,
-		'bounds': [
-			[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
-			[10] * N_RULES + [40e-3] * N_TIMECONSTS,
-		],
-	}
-
-	es = None
-	for k in range(200):
-		if k == 0:
-			es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
-			options['popsize'] = es.opts['popsize']
-		else:
-			options['popsize'] = 2 * options['popsize']
-			es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
-
-		print(es.opts)
-
-		while not es.stop():
-			X = es.ask()
-			es.tell(X, eval_all(X, eval_tracker=eval_tracker))
-			if eval_tracker['best_changed']:
-				eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
-			es.disp()
-
-
-		# options['popsize'] += 2
+	eval_all([x_ila], eval_tracker=eval_tracker)
