@@ -621,12 +621,15 @@ if __name__ == '__main__':
 			'best_changed': False,
 		}
 
+		coefs_lower_bounds = [(-10 * int(x0[coef_idx] < 0)) for coef_idx in range(k)]
+		coefs_upper_bounds = [(10 * int(x0[coef_idx] >= 0)) for coef_idx in range(k)]
+
 		options = {
 			'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
 			# 'popsize': 15,
 			'bounds': [
-				[-10] * k + [0.5e-3] * (len(x0) - k),
-				[10] * k + [40e-3] * (len(x0) - k),
+				coefs_lower_bounds + [0.5e-3] * (len(x0) - k),
+				coefs_upper_bounds + [40e-3] * (len(x0) - k),
 			],
 		}
 
