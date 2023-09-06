@@ -556,10 +556,10 @@ if __name__ == '__main__':
 	### NOTE: use BATCH_SIZE of 1
 
 	file_names = [
-    	'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_10:15:00.155072',
-    	# 'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_10:17:00.379851',
-    	# 'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_10:17:01.105619',
-    	# 'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_12:07:49.829874',
+    	    'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_10:15:00.155072',
+    	    # 'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_10:17:00.379851',
+    	    # 'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_10:17:01.105619',
+    	    # 'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_12:07:49.829874',
 	]
 
 	x_full_model = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 1)
@@ -590,7 +590,7 @@ if __name__ == '__main__':
 	]
 
 
-	for k in range(5, 7):
+	for k in range(2, 3):
 		# Make subdirectory for this particular experiment
 		out_dir = f'sims_out/refit_ee_only_{k}_terms_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 		os.mkdir(out_dir)
