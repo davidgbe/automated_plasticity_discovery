@@ -40,6 +40,7 @@ parser.add_argument('--load_initial', metavar='li', type=str, help='File from wh
 parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
 parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
+parser.add_argument('--n_terms', metavar='N', type=int)
 
 args = parser.parse_args()
 print(args)
@@ -62,6 +63,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 20
 N_TIMECONSTS = 12
+N_TERMS_TO_FIT = args.n_terms
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -553,7 +555,6 @@ if __name__ == '__main__':
 	# 3. Arange by average total synaptic change
 	# 4. Take only N largest terms in terms of synaptic change, drop rest, simulate 100 networks
 
-	### NOTE: use BATCH_SIZE of 1
 
 	file_names = [
     	'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_10:15:00.155072',
@@ -590,7 +591,7 @@ if __name__ == '__main__':
 	]
 
 
-	for k in range(5, 7):
+	for k in range(N_TERMS_TO_FIT, N_TERMS_TO_FIT + 1):
 		# Make subdirectory for this particular experiment
 		out_dir = f'sims_out/refit_ee_only_{k}_terms_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 		os.mkdir(out_dir)
@@ -627,7 +628,6 @@ if __name__ == '__main__':
 				[-10] * k + [0.5e-3] * (len(x0) - k),
 				[10] * k + [40e-3] * (len(x0) - k),
 			],
-			'maxfevals': k * 250,
 		}
 
 		es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
