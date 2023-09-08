@@ -40,7 +40,7 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (499, 500) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (999, 1000) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -50,17 +50,18 @@ ACTIVITY_LOSS_COEF = 6 if bool(args.asp) else 0
 ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
-INPUT_RATE_PER_CELL = 2
+INPUT_RATE_PER_CELL = 80
 N_RULES = 4
 N_TIMECONSTS = 4
+REPEATS = 3
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 40 # Number excitatory cells in sequence (also length of sequence)
 n_i = 8 # Number inhibitory cells
-train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
-test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
+train_seeds = np.random.randint(0, 1e7, size=REPEATS)
+test_seeds = np.random.randint(0, 1e7, size=REPEATS)
 
 layer_colors = get_ordered_colors('gist_rainbow', 15)
 np.random.shuffle(layer_colors)
@@ -392,12 +393,12 @@ def simulate_single_network(index, x, train, track_params=True):
 	surviving_synapse_mask = np.ones((n_e, n_e)).astype(bool)
 
 	fixed_inputs_spks = np.zeros((len(t), int(n_e/2) + n_i))
-	fixed_inputs_spks[:3, 0] = 1
-	fixed_inputs_spks[3:int(65e-3/dt), 1:int(n_e/2) + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 3, int(n_e/2) - 1 + n_i))
+	fixed_inputs_spks[:10, 0] = 1
+	fixed_inputs_spks[10:int(65e-3/dt), 1:int(n_e/2) + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 10, int(n_e/2) - 1 + n_i))
 
 	for i in range(n_inner_loop_iters):
 		random_inputs_poisson = np.zeros((len(t), int(n_e/2) + n_i))
-		random_inputs_poisson[3:int(65e-3/dt), :int(n_e/2) + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 3, int(n_e/2) + n_i))
+		random_inputs_poisson[10:int(65e-3/dt), :int(n_e/2) + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 10, int(n_e/2) + n_i))
 		random_inputs_poisson[:, 0] = 0
 
 		r_in_spks = np.zeros((len(t), n_e + n_i))
@@ -409,10 +410,10 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
 
 
-		r_in[:, :n_e] = 0.03 * r_in[:, :n_e]
-		r_in[:, -n_i:] = 0.01 * r_in[:, -n_i:]
+		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
+		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		if i <= 400:
+		if i >= 400 and i < 800:
 			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
 			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
@@ -424,7 +425,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, weight_bounds, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=10, track_params=track_params)
+		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, weight_bounds, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
 		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e, :n_e]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
 			return {
@@ -432,7 +433,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			}
 			
 
-		if i in [n_inner_loop_iters - 1 - 5 * k for k in range(12)]:
+		if i in [370, 375, 380, 385, 390, 395, 970, 975, 980, 985, 990, 995]:
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -500,7 +501,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 					eval_tracker['best_loss'] = loss
 					eval_tracker['best_changed'] = True
 					eval_tracker['params'] = copy(x)
-				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
+			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
 			eval_tracker['evals'] += 1
 		else:
 			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=False)
@@ -543,9 +544,9 @@ def eval_all(X, eval_tracker=None, train=True):
 	pool = mp.Pool(POOL_SIZE)
 
 	task_vars = []
-	for x in X:
+	for i_x, x in enumerate(X):
 		for idx in indices:
-			task_vars.append((idx, x, train))
+			task_vars.append((i_x, x, train))
 	results = pool.map(simulate_single_network_wrapper, task_vars)
 
 	pool.close()
@@ -578,7 +579,7 @@ if __name__ == '__main__':
 
 	# np.array([-0.002, 0.002, -0.01, 0.01])
 
-	x_ila = np.concatenate([20 * np.array([0, 0, 0, 0]), 15e-3 * np.ones(N_TIMECONSTS), [4, 8]])
+	x_ila = np.concatenate([0.3 * np.array([-0.002, 0.002, -0.01, 0.01]), 15e-3 * np.ones(N_TIMECONSTS), [3.5, 7]])
 
 	eval_tracker = {
 		'evals': 0,
@@ -586,4 +587,4 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	eval_all([x_ila], eval_tracker=eval_tracker)
+	eval_all([x_ila] * REPEATS, eval_tracker=eval_tracker)
