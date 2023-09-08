@@ -40,7 +40,7 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (4999, 5000) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (499, 500) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -50,14 +50,14 @@ ACTIVITY_LOSS_COEF = 6 if bool(args.asp) else 0
 ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
-INPUT_RATE_PER_CELL = 80
+INPUT_RATE_PER_CELL = 2
 N_RULES = 4
 N_TIMECONSTS = 4
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
-n_e = 25 # Number excitatory cells in sequence (also length of sequence)
+n_e = 40 # Number excitatory cells in sequence (also length of sequence)
 n_i = 8 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
@@ -152,6 +152,13 @@ w_e_i = 0.5e-4 / dt
 w_i_e = -0.3e-4 / dt
 w_e_e_added = 0.05 * w_e_e * 0.2
 
+def make_chain(size, width):
+	w = np.zeros((size, size))
+	n_links = int(size/width)
+	for link_idx in range(n_links - 1):
+		w[width * (link_idx + 1):width * (link_idx + 2), width * link_idx:width * (link_idx + 1)] = 1
+	return w
+
 def make_network():
 	'''
 	Generates an excitatory chain with recurrent inhibition and weak recurrent excitation. Weights that form sequence are distored randomly.
@@ -160,6 +167,7 @@ def make_network():
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 
 	w_initial[:n_e, :n_e] = 0.02 * w_e_e * (0.2 + 0.8 * np.random.rand(n_e, n_e)) # changed from 0.05 to 0.02
+	w_initial[:n_e, :n_e] += 0.4 * w_e_e * make_chain(n_e, 2)
 
 	# w_initial[:n_e, :n_e] = np.diag(np.ones(n_e - 1), k=-1) * w_e_e * 0.7
 
@@ -268,10 +276,10 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		vbound = np.maximum(vmax, np.abs(vmin))
 		vbound = 5
 
-		mappable = axs[2 * i + 1][0].matshow(sorted_w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
+		mappable = axs[2 * i + 1][0].matshow(w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][0])
 
-		mappable = axs[2 * i + 1][1].matshow(sorted_w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
+		mappable = axs[2 * i + 1][1].matshow(w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][1])
 
 		axs[2 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
@@ -383,21 +391,26 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	surviving_synapse_mask = np.ones((n_e, n_e)).astype(bool)
 
-	fixed_inputs_spks = np.zeros((len(t), n_e + n_i))
-	fixed_inputs_spks[:10, 0] = 1
-	fixed_inputs_spks[10:int(65e-3/dt), 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 10, n_e - 1 + n_i))
+	fixed_inputs_spks = np.zeros((len(t), int(n_e/2) + n_i))
+	fixed_inputs_spks[:3, 0] = 1
+	fixed_inputs_spks[3:int(65e-3/dt), 1:int(n_e/2) + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 3, int(n_e/2) - 1 + n_i))
 
 	for i in range(n_inner_loop_iters):
-		# Define input for activation of the network
-		r_in = np.zeros((len(t), n_e + n_i))
-
-		random_inputs_poisson = np.zeros((len(t), n_e + n_i))
-		random_inputs_poisson[10:int(65e-3/dt), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 10, n_e + n_i))
+		random_inputs_poisson = np.zeros((len(t), int(n_e/2) + n_i))
+		random_inputs_poisson[3:int(65e-3/dt), :int(n_e/2) + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 3, int(n_e/2) + n_i))
 		random_inputs_poisson[:, 0] = 0
 
-		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
-		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
-		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
+		r_in_spks = np.zeros((len(t), n_e + n_i))
+		for shared_e_input_idx in range(0, n_e, 2):
+			r_in_spks[:, shared_e_input_idx] = (fixed_inputs_spks + random_inputs_poisson)[:, int(shared_e_input_idx / 2)]
+			r_in_spks[:, shared_e_input_idx + 1] = (fixed_inputs_spks + random_inputs_poisson)[:, int(shared_e_input_idx / 2)]
+		r_in_spks[:, n_e:n_e + n_i] = (fixed_inputs_spks + random_inputs_poisson)[:, int(n_e/2):int(n_e/2) + n_i]
+
+		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
+
+
+		r_in[:, :n_e] = 0.03 * r_in[:, :n_e]
+		r_in[:, -n_i:] = 0.01 * r_in[:, -n_i:]
 
 		if i <= 400:
 			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
@@ -411,7 +424,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, weight_bounds, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, weight_bounds, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=10, track_params=track_params)
 
 		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e, :n_e]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
 			return {
@@ -563,7 +576,9 @@ def process_params_str(s):
 if __name__ == '__main__':
 	mp.set_start_method('fork')
 
-	x_ila = np.concatenate([1.5 * np.array([-0.015, 0.01, -0.015, 0.01]), 15e-3 * np.ones(N_TIMECONSTS), [2.5, 5]])
+	# np.array([-0.002, 0.002, -0.01, 0.01])
+
+	x_ila = np.concatenate([20 * np.array([0, 0, 0, 0]), 15e-3 * np.ones(N_TIMECONSTS), [4, 8]])
 
 	eval_tracker = {
 		'evals': 0,
