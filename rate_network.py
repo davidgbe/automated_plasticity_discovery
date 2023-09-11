@@ -28,7 +28,7 @@ def threshold_power(s : np.ndarray, v_th : float, p : float):
     return np.power(threshold_linear(s, v_th), p)
 
 ### Simulate dynamics
-def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, rule_time_constants : np.ndarray, weight_bounds : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, tau_e=5e-3, tau_i=5e-3, dt=1e-6, g=1, w_u=1, track_params=False):    
+def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, rule_time_constants : np.ndarray, weight_growth_bound : float, w : np.ndarray, w_plastic : np.ndarray, tau_e=5e-3, tau_i=5e-3, dt=1e-6, g=1, w_u=1, track_params=False):    
     len_t = len(t)
 
     inh_activity = np.zeros((len_t))
@@ -44,7 +44,7 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_
 
     n_params = len(plasticity_coefs)
 
-    w_copy, effects_e_e, effects_e_i, effects_i_e = simulate_inner_loop(t, n_e, n_i, inp, plasticity_coefs, rule_time_constants, weight_bounds, w, w_plastic, dt, g, w_u, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
+    w_copy, effects_e_e, effects_e_i, effects_i_e = simulate_inner_loop(t, n_e, n_i, inp, plasticity_coefs, rule_time_constants, weight_growth_bound, w, w_plastic, dt, g, w_u, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
 
     if track_params:
         return r, s, v, w_copy, np.concatenate([effects_e_e, effects_e_i, effects_i_e]), r_exp_filtered
@@ -59,7 +59,7 @@ def simulate_inner_loop(
     inp : np.ndarray,
     plasticity_coefs : np.ndarray,
     rule_time_constants : np.ndarray,
-    weight_bounds : np.ndarray,
+    weight_growth_bound : float,
     w : np.ndarray,
     w_plastic : np.ndarray,
     dt : float,
@@ -86,9 +86,6 @@ def simulate_inner_loop(
     effects_i_e = np.zeros((one_third_n_params))
 
     int_time_consts = rule_time_constants.reshape(rule_time_constants.shape[0], 1) * np.ones((rule_time_constants.shape[0], n_e + n_i))
-
-    single_synapse_ee_bound = weight_bounds[0]
-    summed_synapse_ee_bound = weight_bounds[1]
 
     for i in range(0, len(t) - 1):
         v[i+1, :] = w_u * inp[i, :] + np.dot(w_copy, r[i, :].T) # calculate input to synaptic conductance equation
@@ -220,9 +217,8 @@ def simulate_inner_loop(
 
         w_copy[:n_e, :n_e] += (0.0005 * dw_e_e)
         # print(np.multiply(np.ones((n_e, n_e)), np.maximum(w_copy[:n_e, :n_e].sum(axis=1) - summed_synapse_ee_bound, np.zeros((n_e)))))
-        w_copy[:n_e, :n_e] -= 0.01 * np.multiply(np.ones((n_e, n_e)), np.maximum(w_copy[:n_e, :n_e].sum(axis=0) - summed_synapse_ee_bound, np.zeros((n_e))))
-        w_copy[:n_e, :n_e] -= 0.01 * np.multiply(np.ones((n_e, n_e)), np.maximum(w_copy[:n_e, :n_e].sum(axis=1) - summed_synapse_ee_bound, np.zeros((n_e)))).T
-        w_copy[:n_e, :n_e] = np.minimum(w_copy[:n_e, :n_e], single_synapse_ee_bound)
+        w_copy[:n_e, :n_e] -= weight_growth_bound * np.multiply(np.ones((n_e, n_e)), (0.0005 * np.maximum(dw_e_e, np.zeros((n_e, n_e))) * w_copy[:n_e, :n_e]).sum(axis=0)) 
+        w_copy[:n_e, :n_e] -= weight_growth_bound * np.multiply(np.ones((n_e, n_e)), (0.0005 * np.maximum(dw_e_e, np.zeros((n_e, n_e))) * w_copy[:n_e, :n_e]).sum(axis=1)).T 
 
         # w_copy[n_e:n_e + n_i, :n_e] += (0.0005 * dw_e_i)
         # w_copy[:n_e, n_e:n_e + n_i] += (0.0005 * dw_i_e)

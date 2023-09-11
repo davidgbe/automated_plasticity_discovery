@@ -53,7 +53,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 4
 N_TIMECONSTS = 4
-REPEATS = 100
+REPEATS = 4
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -356,7 +356,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	'''
 	plasticity_coefs = x[:N_RULES]
 	rule_time_constants = x[N_RULES:(N_RULES + N_TIMECONSTS)]
-	weight_bounds = x[(N_RULES + N_TIMECONSTS):]
+	weight_growth_bound = x[(N_RULES + N_TIMECONSTS)]
 
 	if FIXED_DATA:
 		if train:
@@ -425,7 +425,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, weight_bounds, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, weight_growth_bound, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
 		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e, :n_e]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
 			return {
@@ -433,7 +433,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			}
 			
 
-		if i in [370, 375, 380, 385, 390, 395, 970, 975, 980, 985, 990, 995]:
+		if i in np.arange(88, 100): #[370, 375, 380, 385, 390, 395, 970, 975, 980, 985, 990, 995]:
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -476,7 +476,7 @@ def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coef
 def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	plasticity_coefs = x[:N_RULES]
 	rule_time_constants = x[N_RULES:(N_RULES + N_TIMECONSTS)]
-	weight_bounds = x[(N_RULES + N_TIMECONSTS):]
+	weight_growth_bound= x[(N_RULES + N_TIMECONSTS)]
 
 	if np.any(np.array([res['blew_up'] for res in results])):
 		if eval_tracker is not None:
@@ -579,7 +579,7 @@ if __name__ == '__main__':
 
 	# np.array([-0.002, 0.002, -0.01, 0.01])
 
-	x_ila = np.concatenate([0.3 * np.array([-0.002, 0.002, -0.01, 0.01]), 15e-3 * np.ones(N_TIMECONSTS), [3.5, 7]])
+	x_ila = np.concatenate([0.05 * np.array([-0.002, 0.002, -0.01, 0.01]), 15e-3 * np.ones(N_TIMECONSTS), [0.05]])
 
 	eval_tracker = {
 		'evals': 0,
