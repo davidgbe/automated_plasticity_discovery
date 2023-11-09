@@ -9,3 +9,5 @@ cmaes_test/**/*
 figures/**/*
 **/*.zip
 data/**/*
+**/*.svg
+**/*.csv

@@ -3,8 +3,8 @@
 ## Presets
 #SBATCH --job-name=seq_cmaes
 
-#SBATCH -p compute
-#SBATCH -A stf
+#SBATCH -p compute-bigmem
+#SBATCH -A labfairhall
 
 #SBATCH --nodes=1
 #SBATCH --time=02:00:00
@@ -20,7 +20,7 @@ echo $CURRDIR
 ## Commands to run
 source python-env/bin/activate
 
-python seq_stress_test.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.00072 --seed 700
+python seq_stress_test.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0 --seed 700
 
 deactivate
 
