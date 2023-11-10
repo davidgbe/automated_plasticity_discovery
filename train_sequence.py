@@ -58,8 +58,9 @@ N_TIMECONSTS = 12
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
-n_e = 25 # Number excitatory cells in sequence (also length of sequence)
-n_i = 8 # Number inhibitory cells
+n_e_pool = 25 # Number excitatory cells in sequence (also length of sequence)
+n_e_side = 15
+n_i = 1 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 
@@ -149,8 +150,13 @@ write_csv(test_data_path, header)
 
 
 w_e_e = 0.8e-3 / dt
-w_e_i = 0.5e-4 / dt
+
+w_pool_side = -0.8e-3 / dt
+w_side_pool = 0.8e-3 / dt
+
+w_e_i = 5e-4 / dt
 w_i_e = -0.3e-4 / dt
+
 w_e_e_added = 0.05 * w_e_e * 0.2
 
 def make_network():
@@ -158,16 +164,18 @@ def make_network():
 	Generates an excitatory chain with recurrent inhibition and weak recurrent excitation. Weights that form sequence are distored randomly.
 
 	'''
-	w_initial = np.zeros((n_e + n_i, n_e + n_i))
+	w_initial = np.zeros((n_e_pool + 2 * n_e_side + n_i, n_e_pool + 2 * n_e_side + n_i))
 
-	w_initial[:n_e, :n_e] = 0.05 * w_e_e * (0.2 + 0.8 * np.random.rand(n_e, n_e))
+	w_initial[:n_e_pool, :n_e_pool] = 0.05 * w_e_e * (0.2 + 0.8 * np.random.rand(n_e_pool, n_e_pool))
+	
+	w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = gaussian_if_under_val(1, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
+	w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = gaussian_if_under_val(1, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
 
-	# w_initial[:n_e, :n_e] = np.diag(np.ones(n_e - 1), k=-1) * w_e_e * 0.7
+	w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = gaussian_if_under_val(1, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
+	w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = gaussian_if_under_val(1, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
 
-	w_initial[n_e:, :n_e] = gaussian_if_under_val(0.8, (n_i, n_e), w_e_i, 0.3 * w_e_i)
-	w_initial[n_e:, :n_e] = np.where(w_initial[n_e:, :n_e] < 0, 0, w_initial[n_e:, :n_e])
-	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
-	w_initial[:n_e, n_e:] = np.where(w_initial[:n_e, n_e:] > 0, 0, w_initial[:n_e, n_e:])
+	w_initial[-n_i:, :n_e_side] = w_e_i * np.ones((n_e_side))
+	w_initial[:n_e_side, -n_i:] = w_i_e * np.ones((n_e_side))
 
 	np.fill_diagonal(w_initial, 0)
 	return w_initial
@@ -198,16 +206,9 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 	# print('X SHAPE', X.shape)
 	# print('y SHAPE', y.shape)
 
-	print(X_train)
-	print(y_train)
-
 	reg = LinearRegression().fit(X_train, y_train)
 
-	print(np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100)
-
 	loss = 1000 * (1 - reg.score(X_test, y_test)) + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100
-
-	print('loss:', loss)
 
 	return loss
 
@@ -242,7 +243,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 			r = rs_for_loss[trial_idx, ...]
 
 			for l_idx in range(r.shape[1]):
-				if l_idx < n_e:
+				if l_idx < n_e_pool:
 					if l_idx % 1 == 0:
 						axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
 						# axs[2 * i][0].plot(t, all_r_targets[loss_min_idx, :, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
@@ -251,17 +252,17 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 				else:
 					axs[2 * i][1].plot(t, r[:, l_idx], c='black') # graph inh activity
 
-		r_exc = r[:, :n_e]
+		r_exc = r[:, :n_e_pool]
 		r_summed = np.sum(r_exc, axis=0)
 		r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
 		r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
 		r_normed = r_exc / r_summed_safe_divide
 		t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
-		t_ordering = np.argsort(t_means)
-		t_ordering = np.concatenate([t_ordering, np.arange(n_e, n_e + n_i)])
+		# t_ordering = np.argsort(t_means)
+		# t_ordering = np.concatenate([t_ordering, np.arange(n_e, n_e + n_i)])
 
-		sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
-		sorted_w = w[t_ordering, :][:, t_ordering]
+		# sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
+		# sorted_w = w[t_ordering, :][:, t_ordering]
 
 		vmin = np.min([w_initial.min(), w.min()])
 		vmax = np.max([w_initial.max(), w.max()])
@@ -269,10 +270,10 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		vbound = np.maximum(vmax, np.abs(vmin))
 		vbound = 5
 
-		mappable = axs[2 * i + 1][0].matshow(sorted_w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
+		mappable = axs[2 * i + 1][0].matshow(w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][0])
 
-		mappable = axs[2 * i + 1][1].matshow(sorted_w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
+		mappable = axs[2 * i + 1][1].matshow(w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][1])
 
 		axs[2 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
@@ -360,8 +361,6 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	w_initial = make_network() # make a new, distorted sequence
 
-	print(np.mean(w_initial))
-
 	decode_start = 3e-3/dt
 	decode_end = 65e-3/dt
 	train_times = (decode_start + np.random.rand(500) * (decode_end - decode_start - 1)).astype(int) # 500
@@ -381,21 +380,21 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	blew_up = False
 
-	surviving_synapse_mask = np.ones((n_e, n_e)).astype(bool)
+	surviving_synapse_mask = np.ones((n_e_pool, n_e_pool)).astype(bool)
 
-	fixed_inputs_spks = np.zeros((len(t), n_e + n_i))
-	fixed_inputs_spks[:10, 0] = 1
-	fixed_inputs_spks[10:int(65e-3/dt), 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 10, n_e - 1 + n_i))
+	fixed_inputs_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
+	fixed_inputs_spks = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(T/dt), n_e_pool + 2 * n_e_side + n_i))
 
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
 
-		random_inputs_poisson = np.zeros((len(t), n_e + n_i))
-		random_inputs_poisson[10:int(65e-3/dt), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 10, n_e + n_i))
-		random_inputs_poisson[:, 0] = 0
+		random_input_spks = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(T/dt), n_e_pool + 2 * n_e_side + n_i))
+		random_inputs_poisson = poisson_arrivals_to_inputs(random_input_spks, 3e-3)
 
-		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
+		right_input_spks = HEREASKDJ
+		left_input_spks = 
+
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
