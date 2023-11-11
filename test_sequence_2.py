@@ -60,8 +60,8 @@ ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
-N_RULES = 20
-N_TIMECONSTS = 12
+N_RULES = 60
+N_TIMECONSTS = 36
 REPEATS = 100
 
 T = 0.11 # Total duration of one network simulation
@@ -587,21 +587,13 @@ if __name__ == '__main__':
 	### NOTE: use BATCH_SIZE of 1
 
 	# unperturbed file names
-	# file_names = [
-    # 	'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8000_2023-08-29_23:47:23.365282',
-    # 	# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8001_2023-08-29_23:48:26.168644',
-    # 	# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8002_2023-08-29_23:48:44.153583',
-    # 	# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8003_2023-08-29_23:49:09.077896',
-	# ]
-
-	# perturbed file names
 	file_names = [
-	    'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8000_2023-09-04_07:13:27.589319',
-	    # 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8001_2023-09-04_07:13:33.739864',
-	    # 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8002_2023-09-04_07:13:46.762137',
-	    # 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8003_2023-09-04_07:13:41.637903',
-	    # 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8004_2023-09-04_07:15:46.827837',
+		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8000_2023-09-06_00:24:17.357308',
+		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8001_2023-09-06_00:24:46.620527',
+		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8002_2023-09-06_00:25:25.221655',
+		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8003_2023-09-06_00:26:10.584744',
 	]
+
 
 	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 
