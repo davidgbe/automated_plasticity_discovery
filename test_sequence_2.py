@@ -26,6 +26,7 @@ new_rc_params = {
 matplotlib.rcParams.update(new_rc_params)
 
 plt.rcParams['font.size'] = 15
+plt.rcParams['axes.linewidth'] = 2.0
 
 ### Parse arguments 
 
@@ -332,6 +333,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		fig.savefig(f'{out_dir}/{zero_padding}{evals}.svg')
 	else:
 		fig.savefig(f'{out_dir}/{zero_padding}{evals}_test.png')
+		fig.savefig(f'{out_dir}/{zero_padding}{evals}_test.svg')
 	plt.close('all')
 
 
@@ -610,6 +612,7 @@ if __name__ == '__main__':
 
 	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 
+	x_test[:20] = 0
 
 	print(x_test)
 
