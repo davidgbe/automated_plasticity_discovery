@@ -53,7 +53,7 @@ CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 500
 N_RULES = 60
-N_TIMECONSTS = 36
+N_TIMECONSTS = 
 
 T = 0.5 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -631,9 +631,9 @@ if __name__ == '__main__':
 
 	eval_all([x0], eval_tracker=eval_tracker, train=False)
 
-	# while not es.stop():
-	# 	X = es.ask()
-	# 	es.tell(X, eval_all(X, eval_tracker=eval_tracker))
-	# 	if eval_tracker['best_changed']:
-	# 		eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
-	# 	es.disp()
+	while not es.stop():
+		X = es.ask()
+		es.tell(X, eval_all(X, eval_tracker=eval_tracker))
+		if eval_tracker['best_changed']:
+			eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
+		es.disp()
