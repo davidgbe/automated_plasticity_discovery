@@ -52,8 +52,8 @@ ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 500
-N_RULES = 20
-N_TIMECONSTS = 12
+N_RULES = 60
+N_TIMECONSTS = 36
 
 T = 0.5 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -117,8 +117,8 @@ rule_names = [ # Define labels for all rules to be run during simulations
 
 rule_names = [
 	[r'$E \rightarrow E$ ' + r_name for r_name in rule_names],
-	# [r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
-	# [r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
+	[r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
+	[r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
 ]
 rule_names = np.array(rule_names).flatten()
 
@@ -149,10 +149,9 @@ test_data_path = os.path.join(out_dir, 'test_data.csv')
 write_csv(test_data_path, header)
 
 
-w_e_e = 0.6e-4 / dt
-
-w_pool_side = -0.1e-4 / dt
-w_side_pool = 0.2e-4 / dt
+w_e_e = 0.05 * 0.6e-4 / dt
+w_pool_side = 0.2 * -0.1e-4 / dt
+w_side_pool = 0.2 * 0.2e-4 / dt
 
 w_e_i = 2.5e-4 / dt / n_e_pool
 w_i_e = -1e-4 / dt / n_i
@@ -179,28 +178,28 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e_pool + 2 * n_e_side + n_i, n_e_pool + 2 * n_e_side + n_i))
 
-	# w_initial[:n_e_pool, :n_e_pool] = w_e_e * (0.2 + 0.8 * np.random.rand(n_e_pool, n_e_pool))
+	w_initial[:n_e_pool, :n_e_pool] = w_e_e * (0.2 + 0.8 * np.random.rand(n_e_pool, n_e_pool))
 
-	ring_connectivity = w_e_e * 0.5 * (1 + np.cos(2 * np.pi / n_e_pool * np.arange(n_e_pool)))
-	for r_idx in np.arange(n_e_pool):
-		w_initial[r_idx:n_e_pool, r_idx] = ring_connectivity[:(n_e_pool - r_idx)]
-		w_initial[0:r_idx, r_idx] = ring_connectivity[(n_e_pool - r_idx):]
+	# ring_connectivity = w_e_e * 0.5 * (1 + np.cos(2 * np.pi / n_e_pool * np.arange(n_e_pool)))
+	# for r_idx in np.arange(n_e_pool):
+	# 	w_initial[r_idx:n_e_pool, r_idx] = ring_connectivity[:(n_e_pool - r_idx)]
+	# 	w_initial[0:r_idx, r_idx] = ring_connectivity[(n_e_pool - r_idx):]
 	
-	# w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = gaussian_if_under_val(1, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
-	# w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = gaussian_if_under_val(1, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
+	w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = gaussian_if_under_val(1, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
+	w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = gaussian_if_under_val(1, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
 
-	w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=3)
-	w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=-3)
+	# w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=3)
+	# w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=-3)
 
-	# w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = gaussian_if_under_val(1, (n_e_side, n_e_pool), w_side_pool, 0.3 * np.abs(w_side_pool))
-	# w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = gaussian_if_under_val(1, (n_e_side, n_e_pool), w_side_pool, 0.3 * np.abs(w_side_pool))
+	w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = gaussian_if_under_val(1, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
+	w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = gaussian_if_under_val(1, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
 
-	left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=3) + create_shift_matrix(n_e_side, k=-3)))
-	np.fill_diagonal(left_input_cells, 0)
-	right_input_cells = copy(left_input_cells)
+	# left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=3) + create_shift_matrix(n_e_side, k=-3)))
+	# np.fill_diagonal(left_input_cells, 0)
+	# right_input_cells = copy(left_input_cells)
 
-	w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = left_input_cells
-	w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = right_input_cells
+	# w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = left_input_cells
+	# w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = right_input_cells
 
 	w_initial[-n_i:, :n_e_pool] = gaussian_if_under_val(1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
 	w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, 0 * np.abs(w_i_e))
