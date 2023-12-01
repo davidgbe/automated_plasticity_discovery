@@ -390,8 +390,8 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
-	decoder_train_trial_nums = (0, 80)
-	decoder_test_trial_nums = (80, 100)
+	decoder_train_trial_nums = (70, 90)
+	decoder_test_trial_nums = (90, 100)
 	input_start = int(100e-3/dt)
 	input_end = int(400e-3/dt)
 	input_len = input_end - input_start
