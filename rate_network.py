@@ -28,23 +28,24 @@ def threshold_power(s : np.ndarray, v_th : float, p : float):
     return np.power(threshold_linear(s, v_th), p)
 
 ### Simulate dynamics
-def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, rule_time_constants : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, tau_e=5e-3, tau_i=5e-3, dt=1e-6, g=1, w_u=1, track_params=False):    
+def simulate(t : np.ndarray, n_e_pool : int, n_e_side : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, rule_time_constants : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, tau_e=5e-3, tau_i=5e-3, dt=1e-6, g=1, w_u=1, track_params=False):    
     len_t = len(t)
 
     inh_activity = np.zeros((len_t))
-    r = np.zeros((len_t, n_e + n_i))
-    s = np.zeros((len_t, n_e + n_i))
-    v = np.zeros((len_t, n_e + n_i))
-    r_exp_filtered = np.zeros((len(rule_time_constants), len_t, n_e + n_i))
+    network_size = n_e_pool + 2 * n_e_side + n_i
+    r = np.zeros((len_t, network_size))
+    s = np.zeros((len_t, network_size))
+    v = np.zeros((len_t, network_size))
+    r_exp_filtered = np.zeros((len(rule_time_constants), len_t, network_size))
 
     sign_w = np.where(w >= 0, 1, -1).astype(int)
     inf_w = np.where(sign_w >= 0, 1e-6, -1e-6)
 
-    tau = np.concatenate([tau_e * np.ones(n_e), tau_i * np.ones(n_i)])
+    tau = np.concatenate([tau_e * np.ones(n_e_pool + 2 * n_e_side), tau_i * np.ones(n_i)])
 
     n_params = len(plasticity_coefs)
 
-    w_copy, effects_e_e, effects_e_i, effects_i_e = simulate_inner_loop(t, n_e, n_i, inp, plasticity_coefs, rule_time_constants, w, w_plastic, dt, g, w_u, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
+    w_copy, effects_e_e, effects_e_i, effects_i_e = simulate_inner_loop(t, n_e_pool, n_e_side, n_i, inp, plasticity_coefs, rule_time_constants, w, w_plastic, dt, g, w_u, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
 
     if track_params:
         return r, s, v, w_copy, np.concatenate([effects_e_e, effects_e_i, effects_i_e]), r_exp_filtered
@@ -54,7 +55,8 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_
 @njit
 def simulate_inner_loop(
     t : np.ndarray,
-    n_e : int,
+    n_e_pool : int,
+    n_e_side : int,
     n_i : int,
     inp : np.ndarray,
     plasticity_coefs : np.ndarray,
@@ -76,8 +78,10 @@ def simulate_inner_loop(
     tau : np.ndarray,
     n_params : int):
 
+    n_e = n_e_pool + 2 * n_e_side
+
     one_third_n_params = int(n_params)
-    pop_slices = [slice(0, n_e), slice(n_e, n_e + n_i)]
+    pop_slices = [slice(0, n_e_pool), slice(n_e_pool, n_e_pool + 2 * n_e_side)]
 
     w_copy = np.copy(w)
     effects_e_e = np.zeros((one_third_n_params))
@@ -93,9 +97,9 @@ def simulate_inner_loop(
         # firing rates are calculated as normalized synaptic conductances
         shifted_s_e = s[i, :n_e] - 0.1
         shifted_s_e[shifted_s_e < 0] = 0
-        r[i+1, :n_e] = g * shifted_s_e
+        r[i+1, :n_e] = g * np.tanh(shifted_s_e)
 
-        shifted_s_i = s[i, n_e:] - 0.1
+        shifted_s_i = s[i, n_e:]# - 0.1
         shifted_s_i[shifted_s_i < 0] = 0
         r[i+1, n_e:] = g * shifted_s_i
         
@@ -107,9 +111,9 @@ def simulate_inner_loop(
         r_2_pow = np.square(r[i+1, :]) / 0.01
         r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.01
 
-        r_0_pow_split = [r_0_pow[:n_e], r_0_pow[n_e:n_e + n_i]]
-        r_1_pow_split = [r_1_pow[:n_e], r_1_pow[n_e:n_e + n_i]]
-        r_exp_filtered_curr_split = [r_exp_filtered_curr[:, :n_e], r_exp_filtered_curr[:, n_e:n_e + n_i]]
+        r_0_pow_split = [r_0_pow[s] for s in pop_slices]
+        r_1_pow_split = [r_1_pow[s] for s in pop_slices]
+        r_exp_filtered_curr_split = [r_exp_filtered_curr[:, s] for s in pop_slices]
 
         # find outer products of zeroth, first powers of firing rates to compute updates due to plasticity rules
         r_0_r_0 = np.outer(r_0_pow, r_0_pow)
@@ -124,7 +128,7 @@ def simulate_inner_loop(
 
         w_updates_unweighted = []
 
-        for k, pop_indices in enumerate([[0, 0]]): # [[0, 0], [0, 1], [1, 0]]
+        for k, pop_indices in enumerate([[0, 0],]): #[[0, 0], [0, 1], [1, 0]]
             p_i = pop_indices[0]
             p_j = pop_indices[1]
 
@@ -190,7 +194,7 @@ def simulate_inner_loop(
         w_not_almost_zero = np.where(np.abs(w) > 2e-6, 1, 0)
 
         if track_params:
-            dw_e_e_unsummed = plasticity_coefs[:one_third_n_params].reshape(one_third_n_params, 1, 1) * (w_updates_unweighted[0] * w_plastic[:n_e, :n_e] * w_not_almost_zero[:n_e, :n_e])
+            dw_e_e_unsummed = plasticity_coefs[:one_third_n_params].reshape(one_third_n_params, 1, 1) * (w_updates_unweighted[0] * w_plastic[:n_e_pool, :n_e_pool] * w_not_almost_zero[:n_e_pool, :n_e_pool])
             effects_e_e_delta = np.sum(np.abs(dw_e_e_unsummed), axis=1)
             effects_e_e_delta = np.sum(effects_e_e_delta, axis=1)
             effects_e_e += effects_e_e_delta
@@ -214,7 +218,7 @@ def simulate_inner_loop(
             # dw_e_i = np.sum(plasticity_coefs[one_third_n_params:2*one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[1], axis=0) * w_plastic[n_e:n_e + n_i, :n_e]
             # dw_i_e = np.sum(plasticity_coefs[2 * one_third_n_params:].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[2], axis=0) * w_plastic[:n_e, n_e:n_e + n_i]
 
-        w_copy[:n_e, :n_e] += (0.0005 * dw_e_e)
+        w_copy[:n_e_pool, :n_e_pool] += (0.0005 * dw_e_e)
         # w_copy[n_e:n_e + n_i, :n_e] += (0.0005 * dw_e_i)
         # w_copy[:n_e, n_e:n_e + n_i] += (0.0005 * dw_i_e)
 
