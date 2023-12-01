@@ -55,7 +55,7 @@ INPUT_RATE_PER_CELL = 500
 N_RULES = 20
 N_TIMECONSTS = 12
 
-T = 1 # Total duration of one network simulation
+T = 0.5 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
@@ -152,7 +152,7 @@ write_csv(test_data_path, header)
 w_e_e = 0.6e-4 / dt
 
 w_pool_side = -0.1e-4 / dt
-w_side_pool = 0.25e-4 / dt
+w_side_pool = 0.2e-4 / dt
 
 w_e_i = 2.5e-4 / dt / n_e_pool
 w_i_e = -1e-4 / dt / n_i
@@ -235,7 +235,7 @@ def calc_loss(r : np.ndarray, train_diff_drives : np.ndarray, test_diff_drives :
 
 	reg = LinearRegression().fit(X_train, y_train)
 
-	loss = 1000 * (1 - reg.score(X_test, y_test)) + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100
+	loss = (1 - reg.score(X_test, y_test))
 
 	return loss
 
@@ -391,19 +391,21 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
-	decoder_train_trial_nums = (0, 20)
+	decoder_train_trial_nums = (0, 80)
 	decoder_test_trial_nums = (80, 100)
-	input_start = int(200e-3/dt)
-	input_end = int(600e-3/dt)
+	input_start = int(100e-3/dt)
+	input_end = int(400e-3/dt)
 	input_len = input_end - input_start
 	rnd_walk_right_probs = np.random.rand(n_inner_loop_iters)
 	rnd_walk_steps = [2 * (0.5 - (np.random.rand(input_len) < p).astype(float)) for p in rnd_walk_right_probs]
-	rnd_walk_diffs = np.array([np.sum(a) for a in rnd_walk_steps])
+	rnd_walk_diffs = np.array([np.sum(a) / input_len for a in rnd_walk_steps])
 
 	train_diffs = rnd_walk_diffs[decoder_train_trial_nums[0]:decoder_train_trial_nums[1]]
 	test_diffs = rnd_walk_diffs[decoder_test_trial_nums[0]:decoder_test_trial_nums[1]]
-	periodic_train_diffs = 1 + np.cos(np.pi * train_diffs)
-	periodic_test_diffs = 1 + np.cos(np.pi * test_diffs)
+	periodic_train_diffs = np.sin(2 * np.pi * train_diffs)
+	periodic_test_diffs = np.sin(2 * np.pi * test_diffs)
+
+	print(periodic_train_diffs)
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
