@@ -60,7 +60,7 @@ dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
 n_e_side = 15
-n_i = 10 # Number inhibitory cells
+n_i = 1 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 
@@ -234,7 +234,7 @@ def calc_loss(r : np.ndarray, train_diff_drives : np.ndarray, test_diff_drives :
 
 	reg = LinearRegression().fit(X_train, y_train)
 
-	loss = (1 - reg.score(X_test, y_test))
+	loss = 1000 * (1 - reg.score(X_test, y_test))
 
 	return loss
 
