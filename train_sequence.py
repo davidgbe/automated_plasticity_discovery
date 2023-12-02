@@ -149,9 +149,9 @@ test_data_path = os.path.join(out_dir, 'test_data.csv')
 write_csv(test_data_path, header)
 
 
-w_e_e = 0.05 * 0.6e-4 / dt
-w_pool_side = 0.2 * -0.1e-4 / dt
-w_side_pool = 0.2 * 0.2e-4 / dt
+w_e_e = 0.5e-4 / dt
+w_pool_side = -1e-4 / dt
+w_side_pool = 1.5e-4 / dt
 
 w_e_i = 2.5e-4 / dt / n_e_pool
 w_i_e = -1e-4 / dt / n_i
@@ -178,21 +178,21 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e_pool + 2 * n_e_side + n_i, n_e_pool + 2 * n_e_side + n_i))
 
-	w_initial[:n_e_pool, :n_e_pool] = w_e_e * (0.2 + 0.8 * np.random.rand(n_e_pool, n_e_pool))
+	w_initial[:n_e_pool, :n_e_pool] = gaussian_if_under_val(0.5, (n_e_pool, n_e_pool), w_e_e, 0.3 * w_e_e)
 
 	# ring_connectivity = w_e_e * 0.5 * (1 + np.cos(2 * np.pi / n_e_pool * np.arange(n_e_pool)))
 	# for r_idx in np.arange(n_e_pool):
 	# 	w_initial[r_idx:n_e_pool, r_idx] = ring_connectivity[:(n_e_pool - r_idx)]
 	# 	w_initial[0:r_idx, r_idx] = ring_connectivity[(n_e_pool - r_idx):]
 	
-	w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = gaussian_if_under_val(1, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
-	w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = gaussian_if_under_val(1, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
+	w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = gaussian_if_under_val(0.2, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
+	w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = gaussian_if_under_val(0.2, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
 
 	# w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=3)
 	# w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=-3)
 
-	w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = gaussian_if_under_val(1, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
-	w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = gaussian_if_under_val(1, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
+	w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = gaussian_if_under_val(0.2, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
+	w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = gaussian_if_under_val(0.2, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
 
 	# left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=3) + create_shift_matrix(n_e_side, k=-3)))
 	# np.fill_diagonal(left_input_cells, 0)
@@ -275,7 +275,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 					pass
 					# if l_idx % 1 == 0:
 					# 	axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
-				elif l_idx > (r.shape[1] - n_i):
+				elif l_idx >= (r.shape[1] - n_i):
 					axs[2 * i][1].plot(t, r[:, l_idx], c='black') # graph inh activity
 
 			axs[2 * i][0].matshow(r[:, :n_e_pool + 2 * n_e_side].T, aspect=1/0.01)
@@ -424,7 +424,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
-		r_in_spks[:int(20e-3/dt), :3] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(20e-3/dt), 3))
+		r_in_spks[:int(20e-3/dt), :8] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(20e-3/dt), 8))
 
 		rnd_walk_steps_i = np.stack([rnd_walk_steps[i] for l in range(n_e_side)]).T
 		input_spks = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_len, n_e_side))
