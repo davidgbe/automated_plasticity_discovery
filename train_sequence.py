@@ -41,7 +41,7 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (100, 101) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (200, 201) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -149,9 +149,9 @@ test_data_path = os.path.join(out_dir, 'test_data.csv')
 write_csv(test_data_path, header)
 
 
-w_e_e = 0.5e-4 / dt
-w_pool_side = -1e-4 / dt
-w_side_pool = 1.5e-4 / dt
+w_e_e = 0.6e-4 / dt
+w_pool_side = -0.2e-4 / dt
+w_side_pool = 0.2e-4 / dt
 
 w_e_i = 2.5e-4 / dt / n_e_pool
 w_i_e = -1e-4 / dt / n_i
@@ -185,14 +185,14 @@ def make_network():
 	# 	w_initial[r_idx:n_e_pool, r_idx] = ring_connectivity[:(n_e_pool - r_idx)]
 	# 	w_initial[0:r_idx, r_idx] = ring_connectivity[(n_e_pool - r_idx):]
 	
-	w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = gaussian_if_under_val(0.2, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
-	w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = gaussian_if_under_val(0.2, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
+	w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = gaussian_if_under_val(0.5, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
+	w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = gaussian_if_under_val(0.5, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
 
 	# w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=3)
 	# w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=-3)
 
-	w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = gaussian_if_under_val(0.2, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
-	w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = gaussian_if_under_val(0.2, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
+	w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = gaussian_if_under_val(0.5, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
+	w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = gaussian_if_under_val(0.5, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
 
 	# left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=3) + create_shift_matrix(n_e_side, k=-3)))
 	# np.fill_diagonal(left_input_cells, 0)
@@ -218,7 +218,7 @@ def calc_loss(r : np.ndarray, train_diff_drives : np.ndarray, test_diff_drives :
 	stacked_activities_train = []
 	stacked_activities_test = []
 
-	end_of_trial_timepoints = np.arange(int((T - 20 * dt)/dt), int(T/dt))
+	end_of_trial_timepoints = np.arange(int((T - 1 * dt)/dt), int(T/dt))
 
 	for i in range(r.shape[0]):
 		if i < train_diff_drives.shape[0]:
@@ -229,10 +229,15 @@ def calc_loss(r : np.ndarray, train_diff_drives : np.ndarray, test_diff_drives :
 	X_train = np.stack(stacked_activities_train)
 	y_train = train_diff_drives
 
+	print(X_train)
+	print(y_train)
+
 	X_test = np.stack(stacked_activities_test)
 	y_test = test_diff_drives
 
 	reg = LinearRegression().fit(X_train, y_train)
+
+	print(reg.coef_)
 
 	loss = 1000 * (1 - reg.score(X_test, y_test))
 
@@ -390,21 +395,19 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
-	decoder_train_trial_nums = (70, 90)
-	decoder_test_trial_nums = (90, 100)
+	decoder_train_trial_nums = (100, 180)
+	decoder_test_trial_nums = (180, 200)
 	input_start = int(100e-3/dt)
 	input_end = int(400e-3/dt)
 	input_len = input_end - input_start
 	rnd_walk_right_probs = np.random.rand(n_inner_loop_iters)
 	rnd_walk_steps = [2 * (0.5 - (np.random.rand(input_len) < p).astype(float)) for p in rnd_walk_right_probs]
-	rnd_walk_diffs = np.array([np.sum(a) / input_len for a in rnd_walk_steps])
+	rnd_walk_diffs = np.array([np.sum(a[a < 0]) / input_len for a in rnd_walk_steps])
 
 	train_diffs = rnd_walk_diffs[decoder_train_trial_nums[0]:decoder_train_trial_nums[1]]
 	test_diffs = rnd_walk_diffs[decoder_test_trial_nums[0]:decoder_test_trial_nums[1]]
 	periodic_train_diffs = np.sin(2 * np.pi * train_diffs)
 	periodic_test_diffs = np.sin(2 * np.pi * test_diffs)
-
-	print(periodic_train_diffs)
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
@@ -429,13 +432,13 @@ def simulate_single_network(index, x, train, track_params=True):
 		rnd_walk_steps_i = np.stack([rnd_walk_steps[i] for l in range(n_e_side)]).T
 		input_spks = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_len, n_e_side))
 
-		right_input_spks = np.logical_and(input_spks, rnd_walk_steps_i > 0)
+		# right_input_spks = np.logical_and(input_spks, rnd_walk_steps_i > 0)
 		left_input_spks = np.logical_and(input_spks, rnd_walk_steps_i < 0)
 
-		print(np.count_nonzero(right_input_spks) - np.count_nonzero(left_input_spks))
+		print(np.count_nonzero(left_input_spks))
 		print(rnd_walk_diffs[i])
 
-		r_in_spks[input_start:input_end, n_e_pool:n_e_pool + n_e_side] = right_input_spks
+		# r_in_spks[input_start:input_end, n_e_pool:n_e_pool + n_e_side] = right_input_spks
 		r_in_spks[input_start:input_end, n_e_pool + n_e_side:n_e_pool + 2 * n_e_side] = left_input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
 
@@ -477,7 +480,7 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	if i == n_inner_loop_iters - 1:
 		rs_for_loss = np.stack(rs_for_loss)
-		normed_loss = calc_loss(rs_for_loss, periodic_train_diffs, periodic_test_diffs)
+		normed_loss = calc_loss(rs_for_loss, train_diffs, test_diffs)
 
 	return {
 		'loss': normed_loss,
