@@ -445,6 +445,8 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
 		r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]  = 0.1 * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
 
+		r_in[int(20e-3/dt):, :n_e_pool] = 0.02 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(len(t) - int(20e-3/dt), n_e_pool)), 3e-3)
+
 		# if i <= 400:
 		# 	synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
