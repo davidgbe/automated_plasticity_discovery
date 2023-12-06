@@ -63,7 +63,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 20
 N_TIMECONSTS = 12
-REPEATS = 3
+REPEATS = 5
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -242,11 +242,12 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 
 		all_effects.append(effects)
 
-		for trial_idx in range(rs_for_loss.shape[0]):
+		for trial_idx in range(rs_for_loss.shape[0] - 3, rs_for_loss.shape[0]):
 			r = rs_for_loss[trial_idx, ...]
 
 			for l_idx in range(r.shape[1]):
 				if l_idx < n_e:
+
 					if l_idx % 1 == 0:
 						axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
 						# axs[2 * i][0].plot(t, all_r_targets[loss_min_idx, :, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
@@ -612,8 +613,6 @@ if __name__ == '__main__':
 
 	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 
-	x_test[:20] = 0
-
 	print(x_test)
 
 	eval_tracker = {
@@ -621,6 +620,8 @@ if __name__ == '__main__':
 		'best_loss': np.nan,
 		'best_changed': False,
 	}
+
+	# x_test[:20] = 0
 
 	eval_all([x_test] * REPEATS, eval_tracker=eval_tracker)
 
