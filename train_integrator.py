@@ -152,7 +152,7 @@ write_csv(test_data_path, header)
 
 
 w_e_e = 0.6e-4 / dt
-w_pool_side = 0 #-0.2e-4 / dt
+w_pool_side = -0.2e-4 / dt
 w_side_pool = 0.2e-4 / dt
 
 w_e_i = 2.5e-4 / dt / n_e_pool
