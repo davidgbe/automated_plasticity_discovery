@@ -42,6 +42,8 @@ SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
 N_INNER_LOOP_RANGE = (200, 201) # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (0, 180)
+decoder_test_trial_nums = (180, 200)
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -150,7 +152,7 @@ write_csv(test_data_path, header)
 
 
 w_e_e = 0.6e-4 / dt
-w_pool_side = -0.2e-4 / dt
+w_pool_side = 0 #-0.2e-4 / dt
 w_side_pool = 0.2e-4 / dt
 
 w_e_i = 2.5e-4 / dt / n_e_pool
@@ -248,12 +250,12 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	scale = 3
 	n_res_to_show = BATCH_SIZE
 
-	gs = gridspec.GridSpec(2 * n_res_to_show + 3, 2)
-	fig = plt.figure(figsize=(4  * scale, (2 * n_res_to_show + 3) * scale), tight_layout=True)
-	axs = [[fig.add_subplot(gs[i, 0]), fig.add_subplot(gs[i, 1])] for i in range(2 * n_res_to_show)]
-	axs += [fig.add_subplot(gs[2 * n_res_to_show, :])]
-	axs += [fig.add_subplot(gs[2 * n_res_to_show + 1, :])]
-	axs += [fig.add_subplot(gs[2 * n_res_to_show + 2, :])]
+	gs = gridspec.GridSpec(4 * n_res_to_show + 3, 2)
+	fig = plt.figure(figsize=(4  * scale, (4 * n_res_to_show + 3) * scale), tight_layout=True)
+	axs = [[fig.add_subplot(gs[i, 0]), fig.add_subplot(gs[i, 1])] for i in range(4 * n_res_to_show)]
+	axs += [fig.add_subplot(gs[4 * n_res_to_show, :])]
+	axs += [fig.add_subplot(gs[4 * n_res_to_show + 1, :])]
+	axs += [fig.add_subplot(gs[4 * n_res_to_show + 2, :])]
 
 	all_effects = []
 
@@ -270,8 +272,10 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 
 		all_effects.append(effects)
 
+		plotted_trial_count = 0
+
 		for trial_idx in range(rs_for_loss.shape[0]):
-			if trial_idx > 0:
+			if trial_idx < rs_for_loss.shape[0] - 3:
 				continue
 			r = rs_for_loss[trial_idx, ...]
 
@@ -281,9 +285,10 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 					# if l_idx % 1 == 0:
 					# 	axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
 				elif l_idx >= (r.shape[1] - n_i):
-					axs[2 * i][1].plot(t, r[:, l_idx], c='black') # graph inh activity
+					axs[4 * i + plotted_trial_count][1].plot(t, r[:, l_idx], c='black') # graph inh activity
 
-			axs[2 * i][0].matshow(r[:, :n_e_pool + 2 * n_e_side].T, aspect=1/0.01)
+			axs[4 * i + plotted_trial_count][0].matshow(r[:, :n_e_pool + 2 * n_e_side].T, aspect=1/0.01)
+			plotted_trial_count += 1
 
 		r_exc = r[:, :n_e_pool]
 		r_summed = np.sum(r_exc, axis=0)
@@ -302,51 +307,51 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 
 		vbound = np.max(w)
 
-		mappable = axs[2 * i + 1][0].matshow(w_initial, vmin=-vbound, vmax=vbound, cmap='bwr') # plot initial weight matrix
-		plt.colorbar(mappable, ax=axs[2 * i + 1][0])
+		mappable = axs[4 * i + 3][0].matshow(w_initial, vmin=-vbound, vmax=vbound, cmap='bwr') # plot initial weight matrix
+		plt.colorbar(mappable, ax=axs[4 * i + 3][0])
 
-		mappable = axs[2 * i + 1][1].matshow(w, vmin=-vbound, vmax=vbound, cmap='bwr') # plot final weight matrix
-		plt.colorbar(mappable, ax=axs[2 * i + 1][1])
+		mappable = axs[4 * i + 3][1].matshow(w, vmin=-vbound, vmax=vbound, cmap='bwr') # plot final weight matrix
+		plt.colorbar(mappable, ax=axs[4 * i + 3][1])
 
-		axs[2 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
+		axs[4 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
 		for i_axs in range(2):
 			axs[2 * i][i_axs].set_xlabel('Time (s)')
 			axs[2 * i][i_axs].set_ylabel('Firing rate')
 
-		axs[2 * n_res_to_show + 2].plot(np.arange(len(all_weight_deltas)), np.log(all_weight_deltas), label=f'{i}')
+		axs[4 * n_res_to_show + 2].plot(np.arange(len(all_weight_deltas)), np.log(all_weight_deltas), label=f'{i}')
 
 	partial_rules_len = int(len(plasticity_coefs))
 
 	all_effects = np.array(all_effects)
 	effects = np.mean(all_effects, axis=0)
 
-	axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
+	axs[4 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
 	effects_argsort = []
 	for l in range(1):
 		effects_partial = effects[l * partial_rules_len: (l+1) * partial_rules_len]
 		effects_argsort_partial = np.flip(np.argsort(effects_partial))
 		effects_argsort.append(effects_argsort_partial + l * partial_rules_len)
 		x = np.arange(len(effects_argsort_partial)) + l * partial_rules_len
-		axs[2 * n_res_to_show + 1].bar(x, effects_partial[effects_argsort_partial], zorder=0)
+		axs[4 * n_res_to_show + 1].bar(x, effects_partial[effects_argsort_partial], zorder=0)
 		for i_e in x:
-			axs[2 * n_res_to_show + 1].scatter(i_e * np.ones(all_effects.shape[0]), all_effects[:, effects_argsort_partial][:, i_e], c='black', zorder=1, s=3)
-	axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
-	axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
+			axs[4 * n_res_to_show + 1].scatter(i_e * np.ones(all_effects.shape[0]), all_effects[:, effects_argsort_partial][:, i_e], c='black', zorder=1, s=3)
+	axs[4 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
+	axs[4 * n_res_to_show + 1].set_xlim(-1, len(effects))
 
 	true_loss = np.sum(true_losses)
 	syn_effect_penalty = np.sum(syn_effect_penalties)
-	axs[2 * n_res_to_show].set_title(f'Loss: {true_loss + syn_effect_penalty}, {true_loss}, {syn_effect_penalty}')
+	axs[4 * n_res_to_show].set_title(f'Loss: {true_loss + syn_effect_penalty}, {true_loss}, {syn_effect_penalty}')
 
 	# plot the coefficients assigned to each plasticity rule (unsorted by size)
 	for l in range(1):
-		axs[2 * n_res_to_show].bar(np.arange(partial_rules_len) + l * partial_rules_len, plasticity_coefs[l * partial_rules_len: (l+1) * partial_rules_len])
-	axs[2 * n_res_to_show].set_xticks(np.arange(len(plasticity_coefs)))
-	axs[2 * n_res_to_show].set_xticklabels(rule_names, rotation=60, ha='right')
-	axs[2 * n_res_to_show].set_xlim(-1, len(plasticity_coefs))
+		axs[4 * n_res_to_show].bar(np.arange(partial_rules_len) + l * partial_rules_len, plasticity_coefs[l * partial_rules_len: (l+1) * partial_rules_len])
+	axs[4 * n_res_to_show].set_xticks(np.arange(len(plasticity_coefs)))
+	axs[4 * n_res_to_show].set_xticklabels(rule_names, rotation=60, ha='right')
+	axs[4 * n_res_to_show].set_xlim(-1, len(plasticity_coefs))
 
-	axs[2 * n_res_to_show + 2].set_xlabel('Epochs')
-	axs[2 * n_res_to_show + 2].set_ylabel('log(delta W)')
-	axs[2 * n_res_to_show + 2].legend()
+	axs[4 * n_res_to_show + 2].set_xlabel('Epochs')
+	axs[4 * n_res_to_show + 2].set_ylabel('log(delta W)')
+	axs[4 * n_res_to_show + 2].legend()
 
 	pad = 4 - len(str(eval_tracker['evals']))
 	zero_padding = '0' * pad
@@ -395,19 +400,12 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
-	decoder_train_trial_nums = (100, 180)
-	decoder_test_trial_nums = (180, 200)
-	input_start = int(100e-3/dt)
-	input_end = int(400e-3/dt)
+	input_start = int(20e-3/dt)
+	input_end = int(320e-3/dt)
 	input_len = input_end - input_start
-	rnd_walk_right_probs = np.random.rand(n_inner_loop_iters)
-	rnd_walk_steps = [2 * (0.5 - (np.random.rand(input_len) < p).astype(float)) for p in rnd_walk_right_probs]
-	rnd_walk_diffs = np.array([np.sum(a[a < 0]) / input_len for a in rnd_walk_steps])
 
-	train_diffs = rnd_walk_diffs[decoder_train_trial_nums[0]:decoder_train_trial_nums[1]]
-	test_diffs = rnd_walk_diffs[decoder_test_trial_nums[0]:decoder_test_trial_nums[1]]
-	periodic_train_diffs = np.sin(2 * np.pi * train_diffs)
-	periodic_test_diffs = np.sin(2 * np.pi * test_diffs)
+	input_signal_transition_probs = np.random.rand(n_inner_loop_iters, 2) * 0.1 + 0.9
+	input_signal_totals = np.zeros((n_inner_loop_iters,))
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
@@ -427,25 +425,34 @@ def simulate_single_network(index, x, train, track_params=True):
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
-		r_in_spks[:int(20e-3/dt), :8] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(20e-3/dt), 8))
+		# r_in_spks[:int(20e-3/dt), :8] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(20e-3/dt), 8))
 
-		rnd_walk_steps_i = np.stack([rnd_walk_steps[i] for l in range(n_e_side)]).T
 		input_spks = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_len, n_e_side))
+		input_signal_transition_probs_i = input_signal_transition_probs[i, :]
+		markov_state = np.zeros((input_len,)).astype(int)
+		markov_state[0] = 1
+		for k in range(input_len - 1):
+			if input_signal_transition_probs_i[markov_state[k]] > np.random.rand():
+				markov_state[k+1] = markov_state[k]
+			else:
+				markov_state[k+1] = 1 - markov_state[k]
+
+		input_signal_totals[i] = np.mean(markov_state)
 
 		# right_input_spks = np.logical_and(input_spks, rnd_walk_steps_i > 0)
-		left_input_spks = np.logical_and(input_spks, rnd_walk_steps_i < 0)
+		input_spks[np.nonzero(1 - markov_state)[0], :] = 0
 
-		print(np.count_nonzero(left_input_spks))
-		print(rnd_walk_diffs[i])
+		print('input spikes', np.sum(input_spks))
+		print('input diffs', input_signal_totals[i])
 
 		# r_in_spks[input_start:input_end, n_e_pool:n_e_pool + n_e_side] = right_input_spks
-		r_in_spks[input_start:input_end, n_e_pool + n_e_side:n_e_pool + 2 * n_e_side] = left_input_spks
+		r_in_spks[input_start:input_end, n_e_pool + n_e_side:n_e_pool + 2 * n_e_side] = input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
 
 		r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
-		r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]  = 0.1 * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
+		r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = 0.1 * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
 
-		r_in[int(20e-3/dt):, :n_e_pool] = 0.02 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(len(t) - int(20e-3/dt), n_e_pool)), 3e-3)
+		r_in[:, :n_e_pool] += 0.02 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(len(t), n_e_pool)), 3e-3)
 
 		# if i <= 400:
 		# 	synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
@@ -480,9 +487,11 @@ def simulate_single_network(index, x, train, track_params=True):
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
-	if i == n_inner_loop_iters - 1:
-		rs_for_loss = np.stack(rs_for_loss)
-		normed_loss = calc_loss(rs_for_loss, train_diffs, test_diffs)
+	train_diffs = input_signal_totals[decoder_train_trial_nums[0]:decoder_train_trial_nums[1]]
+	test_diffs = input_signal_totals[decoder_test_trial_nums[0]:decoder_test_trial_nums[1]]
+
+	rs_for_loss = np.stack(rs_for_loss)
+	normed_loss = calc_loss(rs_for_loss, train_diffs, test_diffs)
 
 	return {
 		'loss': normed_loss,
