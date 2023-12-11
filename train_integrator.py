@@ -468,7 +468,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
-		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e_pool, :n_e_pool]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
+		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e_pool, :n_e_pool]) < 1.5e-6).all() or (np.abs(w_out[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)]) < 1.5e-6).all() or (np.abs(w_out[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
 			return {
 				'blew_up': True,
 			}
