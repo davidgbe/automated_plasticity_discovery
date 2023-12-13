@@ -49,9 +49,10 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (899, 900) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_RANGE = (450, 500)
-DECODER_TEST_RANGE = (850, 900)
+N_INNER_LOOP_RANGE = (500, 501) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_RANGE = (400, 450)
+DECODER_TEST_RANGE = (450, 500)
+FREEZE_WEIGHTS_TRIAL = 400
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -164,16 +165,22 @@ w_e_i = 0.5e-4 / dt
 w_i_e = -0.3e-4 / dt
 w_e_e_added = 0.05 * w_e_e * 0.2
 
-def create_shift_matrix(size, k=1):
+def create_shift_matrix(size, k=1, weighting=[]):
 	w = np.zeros((size, size))
 	if k >= 1:
 		for k_p in np.arange(1, k+1):
-			w += np.diag(np.ones((size - k_p,)), k=k_p)
+			a = 1
+			if len(weighting) == k:
+				a = weighting[k_p - 1]
+			w += a * np.diag(np.ones((size - k_p,)), k=k_p)
 			# w[(size - k_p):, k - k_p] = 1
 
 	elif k <= -1:
 		for k_p in np.arange(1, -k+1):
-			w += np.diag(np.ones((size - k_p,)), k=-k_p)
+			a = 1
+			if len(weighting) == -k:
+				a = weighting[k_p - 1]
+			w += a * np.diag(np.ones((size - k_p,)), k=-k_p)
 			# w[-k - k_p, (size - k_p):] = 1
 	return w
 
@@ -186,7 +193,7 @@ def make_network():
 
 	w_initial[:n_e, :n_e] = w_e_e * (0.05 * (0.2 + 0.8 * np.random.rand(n_e, n_e)) + 0.25 * create_shift_matrix(n_e, k=-4))
 
-	# w_initial[:n_e, :n_e][np.random.rand(n_e, n_e) >= 0.9] = 0
+	w_initial[:n_e, :n_e][np.random.rand(n_e, n_e) >= 0.8] = 0
 
 	# w_initial[:n_e, :n_e] = np.diag(np.ones(n_e - 1), k=-1) * w_e_e * 0.7
 
@@ -421,19 +428,23 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, 1:n_e] = 0.03 * r_in[:, 1:n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		if i >= 500 and i < 650:
-			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
+		# if i >= 500 and i < 650:
+		# 	synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
-			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
-			birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
+		# 	drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
+		# 	birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
 
-			surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
+		# 	surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
 
-			w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
-			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
+		# 	w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
+		# 	w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+		if i >= FREEZE_WEIGHTS_TRIAL:
+			pcs = np.zeros((len(plasticity_coefs)))
+		else:
+			pcs = plasticity_coefs
+		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, pcs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
 		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e, :n_e]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
 			return {
@@ -616,13 +627,14 @@ if __name__ == '__main__':
 	]
 
 
-	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
+	syn_effects_test, x_loaded = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 
+	x_test = copy(x_loaded)
 	x_test[:N_RULES] *= 0
-	# x_test[:7] *= 0
-	# x_test[8:18] *= 0
-	# x_test[19:N_RULES] *= 0
-	# x_test[:N_RULES] *= 0.2
+	x_test[7] = x_loaded[7]
+	x_test[18] = x_loaded[18]
+	x_test[40] = -x_loaded[40]
+	x_test[48] = x_loaded[48]
 
 	# x_test = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
 
