@@ -396,7 +396,7 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	w_initial = make_network() # make a new ring attractor
 	num_readouts = decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]
-	readout_times = (((T - 0.05) + 0.05 * np.random.rand(num_readouts)) / dt).astype(int)
+	readout_times = (((T - 0.1) + 0.1 * np.random.rand(num_readouts)) / dt).astype(int)
 
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
