@@ -57,7 +57,7 @@ INPUT_RATE_PER_CELL = 500
 N_RULES = 60
 N_TIMECONSTS = 36
 
-T = 0.5 # Total duration of one network simulation
+T = 0.55 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
@@ -210,7 +210,7 @@ def make_network():
 	return w_initial
 
 
-def calc_loss(r : np.ndarray, train_diff_drives : np.ndarray, test_diff_drives : np.ndarray):
+def calc_loss(r : np.ndarray, train_diff_drives : np.ndarray, test_diff_drives : np.ndarray, readout_times : np.ndarray):
 
 	if np.isnan(r).any():
 		return 10000
@@ -220,13 +220,11 @@ def calc_loss(r : np.ndarray, train_diff_drives : np.ndarray, test_diff_drives :
 	stacked_activities_train = []
 	stacked_activities_test = []
 
-	end_of_trial_timepoints = np.arange(int((T - 1 * dt)/dt), int(T/dt))
-
 	for i in range(r.shape[0]):
 		if i < train_diff_drives.shape[0]:
-			stacked_activities_train.append(r_readout[i, end_of_trial_timepoints, :].flatten())
+			stacked_activities_train.append(r_readout[i, readout_times[i], :].flatten())
 		else:
-			stacked_activities_test.append(r_readout[i, end_of_trial_timepoints, :].flatten())
+			stacked_activities_test.append(r_readout[i, readout_times[i], :].flatten())
 
 	X_train = np.stack(stacked_activities_train)
 	y_train = train_diff_drives
@@ -397,6 +395,8 @@ def simulate_single_network(index, x, train, track_params=True):
 		np.random.seed()
 
 	w_initial = make_network() # make a new ring attractor
+	num_readouts = decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]
+	readout_times = (((T - 0.05) + 0.05 * np.random.rand(num_readouts)) / dt).astype(int)
 
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
@@ -491,7 +491,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	test_diffs = input_signal_totals[decoder_test_trial_nums[0]:decoder_test_trial_nums[1]]
 
 	rs_for_loss = np.stack(rs_for_loss)
-	normed_loss = calc_loss(rs_for_loss, train_diffs, test_diffs)
+	normed_loss = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
 
 	return {
 		'loss': normed_loss,
