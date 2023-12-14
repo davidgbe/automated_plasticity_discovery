@@ -41,12 +41,14 @@ parser.add_argument('--load_initial', metavar='li', type=str, help='File from wh
 parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
 parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
+parser.add_argument('--root_file_name', metavar='rfn', type=str)
 
 args = parser.parse_args()
 print(args)
 
 np.random.seed(args.seed)
 
+ROOT_FILE_NAME = args.root_file_name
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
@@ -595,7 +597,7 @@ if __name__ == '__main__':
 	### NOTE: use BATCH_SIZE of 1
 
 	# unperturbed file names
-	file_names = [
+	# file_names = [
     	# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8000_2023-08-29_23:47:23.365282',
     	# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8001_2023-08-29_23:48:26.168644',
     	# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8002_2023-08-29_23:48:44.153583',
@@ -613,7 +615,7 @@ if __name__ == '__main__':
 		# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8012_2023-12-06_04:22:29.292289',
 		# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8013_2023-12-06_04:47:17.666729',
 		# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8014_2023-12-06_04:47:17.612728',
-	]
+	# ]
 
 	# perturbed file names
 	# file_names = [
@@ -624,6 +626,7 @@ if __name__ == '__main__':
 	#     # 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8004_2023-09-04_07:15:46.827837',
 	# ]
 
+	file_names = [ROOT_FILE_NAME]
 	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 
 	print(x_test)
