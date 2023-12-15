@@ -3,13 +3,13 @@
 ## Presets
 #SBATCH --job-name=int_cmaes
 
-#SBATCH -p compute-hugemem
+#SBATCH -p compute
 #SBATCH -A stf
 
 #SBATCH --nodes=1
-#SBATCH --time=20:00:00
+#SBATCH --time=80:00:00
 #SBATCH --ntasks=30
-#SBATCH --mem=30G
+#SBATCH --mem=40G
 
 #SBATCH --chdir=.
 
