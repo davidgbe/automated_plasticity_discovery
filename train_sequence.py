@@ -228,7 +228,6 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	for i in np.arange(BATCH_SIZE):
 		# for each network in the batch, graph its excitatory, inhibitory activity, as well as the target activity
 		res = results[i]
-		r = res['r']
 		r_exp_filtered = res['r_exp_filtered']
 		w = res['w']
 		w_initial = res['w_initial']
@@ -238,19 +237,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 
 		all_effects.append(effects)
 
-		for trial_idx in range(rs_for_loss.shape[0]):
-			r = rs_for_loss[trial_idx, ...]
-
-			for l_idx in range(r.shape[1]):
-				if l_idx < n_e:
-					if l_idx % 1 == 0:
-						axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
-						# axs[2 * i][0].plot(t, all_r_targets[loss_min_idx, :, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
-
-						# axs[2 * i][0].plot(t, 4 * r_exp_filtered[:, l_idx], '-.', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
-				else:
-					axs[2 * i][1].plot(t, r[:, l_idx], c='black') # graph inh activity
-
+		r = rs_for_loss[-1, ...]
 		r_exc = r[:, :n_e]
 		r_summed = np.sum(r_exc, axis=0)
 		r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
@@ -259,6 +246,23 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
 		t_ordering = np.argsort(t_means)
 		t_ordering = np.concatenate([t_ordering, np.arange(n_e, n_e + n_i)])
+
+
+		for trial_idx in range(rs_for_loss.shape[0]):
+			r = rs_for_loss[trial_idx, ...]
+
+			axs[2 * i][0].matshow(r[:, :n_e][:, t_ordering[:n_e]], cmap='hot')
+			axs[2 * i][1].matshow(r[:, n_e:], cmap='hot') # graph inh activity
+
+			# for l_idx in range(r.shape[1]):
+			# 	if l_idx < n_e:
+			# 		if l_idx % 1 == 0:
+			# 			axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
+			# 			# axs[2 * i][0].plot(t, all_r_targets[loss_min_idx, :, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
+
+			# 			# axs[2 * i][0].plot(t, 4 * r_exp_filtered[:, l_idx], '-.', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
+			# 	else:
+			# 		axs[2 * i][1].plot(t, r[:, l_idx], c='black') # graph inh activity
 
 		sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
 		sorted_w = w[t_ordering, :][:, t_ordering]

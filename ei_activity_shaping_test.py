@@ -49,9 +49,9 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (500, 501) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_RANGE = (400, 450)
-DECODER_TEST_RANGE = (450, 500)
+N_INNER_LOOP_RANGE = (100, 101) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_RANGE = (0, 50)
+DECODER_TEST_RANGE = (50, 100)
 FREEZE_WEIGHTS_TRIAL = 400
 STD_EXPL = args.std_expl
 DW_LAG = 5
@@ -160,9 +160,9 @@ test_data_path = os.path.join(out_dir, 'test_data.csv')
 write_csv(test_data_path, header)
 
 
-w_e_e = 0.8e-3 / dt
+w_e_e = 0.3e-3 / dt
 w_e_i = 0.5e-4 / dt
-w_i_e = -0.3e-4 / dt
+w_i_e = -1e-4 / dt
 w_e_e_added = 0.05 * w_e_e * 0.2
 
 def create_shift_matrix(size, k=1, weighting=[]):
@@ -191,9 +191,9 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 
-	w_initial[:n_e, :n_e] = w_e_e * (0.05 * (0.2 + 0.8 * np.random.rand(n_e, n_e)) + 0.25 * create_shift_matrix(n_e, k=-4))
+	w_initial[:n_e, :n_e] = w_e_e * create_shift_matrix(n_e, k=-4) # (0.05 * (0.2 + 0.8 * np.random.rand(n_e, n_e)) + 0.25 * create_shift_matrix(n_e, k=-4))
 
-	w_initial[:n_e, :n_e][np.random.rand(n_e, n_e) >= 0.8] = 0
+	# w_initial[:n_e, :n_e][np.random.rand(n_e, n_e) >= 0.8] = 0
 
 	# w_initial[:n_e, :n_e] = np.diag(np.ones(n_e - 1), k=-1) * w_e_e * 0.7
 
@@ -234,7 +234,7 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 
 	# print(np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100)
 
-	loss = 1000 * (1 - reg.score(X_test, y_test)) + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100
+	loss = 1000 * (1 - reg.score(X_test, y_test)) # + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100
 
 	print('loss:', loss)
 
@@ -510,7 +510,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	for i in range(1):
 		syn_effect_penalties += L1_PENALTIES[i] * np.sum(np.abs(syn_effects[:, i * one_third_len:(i+1) * one_third_len]), axis=1)
 
-	losses = true_losses + syn_effect_penalties
+	losses = true_losses # + syn_effect_penalties
 	loss = np.sum(losses)
 
 	if eval_tracker is not None:
@@ -623,23 +623,21 @@ if __name__ == '__main__':
 	file_names = [
 		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8000_2023-09-06_00:24:17.357308',
 		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8001_2023-09-06_00:24:46.620527',
-		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8002_2023-09-06_00:25:25.221655',
-		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8003_2023-09-06_00:26:10.584744',
+		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8002_2023-09-06_00:25:25.221655',
+		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8003_2023-09-06_00:26:10.584744',
 	]
 
 
 	syn_effects_test, x_loaded = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 
 	x_test = copy(x_loaded)
-	x_test[:N_RULES] *= 0.2
+	x_test[:N_RULES] *= 0
 	# x_test[7] = x_loaded[7]
 	# x_test[18] = x_loaded[18]
 	# x_test[40] = -x_loaded[40]
 	# x_test[48] = x_loaded[48]
 
 	# x_test = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
-
-
 
 	print(x_test)
 
