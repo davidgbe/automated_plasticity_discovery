@@ -40,6 +40,9 @@ parser.add_argument('--load_initial', metavar='li', type=str, help='File from wh
 parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
 parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
+parser.add_argument('--w_ee', metavar='wee', type=float)
+parser.add_argument('--w_ie', metavar='wie', type=float)
+
 
 args = parser.parse_args()
 print(args)
@@ -160,9 +163,9 @@ test_data_path = os.path.join(out_dir, 'test_data.csv')
 write_csv(test_data_path, header)
 
 
-w_e_e = 0.3e-3 / dt
+w_e_e = args.w_ee / dt
 w_e_i = 0.5e-4 / dt
-w_i_e = -1e-4 / dt
+w_i_e = args.w_ie / dt
 w_e_e_added = 0.05 * w_e_e * 0.2
 
 def create_shift_matrix(size, k=1, weighting=[]):
