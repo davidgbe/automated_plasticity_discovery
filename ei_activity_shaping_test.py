@@ -245,12 +245,13 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	scale = 3
 	n_res_to_show = BATCH_SIZE
 
-	gs = gridspec.GridSpec(2 * n_res_to_show + 3, 2)
-	fig = plt.figure(figsize=(4  * scale, (2 * n_res_to_show + 3) * scale), tight_layout=True)
+	gs = gridspec.GridSpec(2 * n_res_to_show + 4, 2)
+	fig = plt.figure(figsize=(4  * scale, (2 * n_res_to_show + 4) * scale), tight_layout=True)
 	axs = [[fig.add_subplot(gs[i, 0]), fig.add_subplot(gs[i, 1])] for i in range(2 * n_res_to_show)]
 	axs += [fig.add_subplot(gs[2 * n_res_to_show, :])]
 	axs += [fig.add_subplot(gs[2 * n_res_to_show + 1, :])]
 	axs += [fig.add_subplot(gs[2 * n_res_to_show + 2, :])]
+	axs += [fig.add_subplot(gs[2 * n_res_to_show + 3, :])]
 
 	all_effects = []
 
@@ -622,19 +623,19 @@ if __name__ == '__main__':
 	file_names = [
 		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8000_2023-09-06_00:24:17.357308',
 		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8001_2023-09-06_00:24:46.620527',
-		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8002_2023-09-06_00:25:25.221655',
-		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8003_2023-09-06_00:26:10.584744',
+		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8002_2023-09-06_00:25:25.221655',
+		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8003_2023-09-06_00:26:10.584744',
 	]
 
 
 	syn_effects_test, x_loaded = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 
 	x_test = copy(x_loaded)
-	x_test[:N_RULES] *= 0
-	x_test[7] = x_loaded[7]
-	x_test[18] = x_loaded[18]
-	x_test[40] = -x_loaded[40]
-	x_test[48] = x_loaded[48]
+	x_test[:N_RULES] *= 0.2
+	# x_test[7] = x_loaded[7]
+	# x_test[18] = x_loaded[18]
+	# x_test[40] = -x_loaded[40]
+	# x_test[48] = x_loaded[48]
 
 	# x_test = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
 

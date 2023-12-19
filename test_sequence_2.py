@@ -62,7 +62,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 60
 N_TIMECONSTS = 36
-REPEATS = 20
+REPEATS = 5
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -227,6 +227,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	axs += [fig.add_subplot(gs[2 * n_res_to_show + 2, :])]
 
 	all_effects = []
+	all_sorted_w = []
 
 	for i in np.arange(BATCH_SIZE):
 		# for each network in the batch, graph its excitatory, inhibitory activity, as well as the target activity
@@ -265,6 +266,9 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 
 		sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
 		sorted_w = w[t_ordering, :][:, t_ordering]
+
+		all_sorted_w.append(copy(sorted_w).flatten().tolist())
+		
 
 		vmin = np.min([w_initial.min(), w.min()])
 		vmax = np.max([w_initial.max(), w.max()])
@@ -321,6 +325,8 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	pad = 4 - len(str(eval_tracker['evals']))
 	zero_padding = '0' * pad
 	evals = eval_tracker['evals']
+
+	write_csv(os.path.join(out_dir, 'weight_matrices.csv'), all_sorted_w)
 
 	fig.tight_layout()
 	if train:
@@ -590,8 +596,8 @@ if __name__ == '__main__':
 	file_names = [
 		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8000_2023-09-06_00:24:17.357308',
 		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8001_2023-09-06_00:24:46.620527',
-		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8002_2023-09-06_00:25:25.221655',
-		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8003_2023-09-06_00:26:10.584744',
+		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8002_2023-09-06_00:25:25.221655',
+		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8003_2023-09-06_00:26:10.584744',
 	]
 
 
@@ -604,8 +610,6 @@ if __name__ == '__main__':
 		'best_loss': np.nan,
 		'best_changed': False,
 	}
-
-	x_test[48] = 0
 
 	eval_all([x_test] * REPEATS, eval_tracker=eval_tracker)
 
