@@ -62,7 +62,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 60
 N_TIMECONSTS = 36
-REPEATS = 5
+REPEATS = 25
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -603,7 +603,7 @@ if __name__ == '__main__':
 
 
 	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
-
+	x_test[:N_RULES] = 0
 	print(x_test)
 
 	eval_tracker = {
