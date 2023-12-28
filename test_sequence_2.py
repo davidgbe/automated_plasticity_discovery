@@ -232,6 +232,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	axs += [fig.add_subplot(gs[2 * n_res_to_show + 2, :])]
 
 	all_effects = []
+	all_sorted_w = []
 
 	for i in np.arange(BATCH_SIZE):
 		# for each network in the batch, graph its excitatory, inhibitory activity, as well as the target activity
@@ -271,6 +272,8 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 
 		sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
 		sorted_w = w[t_ordering, :][:, t_ordering]
+
+		all_sorted_w.append(copy(sorted_w).flatten().tolist())
 
 		vmin = np.min([w_initial.min(), w.min()])
 		vmax = np.max([w_initial.max(), w.max()])
@@ -331,6 +334,8 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	pad = 4 - len(str(eval_tracker['evals']))
 	zero_padding = '0' * pad
 	evals = eval_tracker['evals']
+
+	write_csv(os.path.join(out_dir, 'weight_matrices.csv'), all_sorted_w)
 
 	fig.tight_layout()
 	if train:
