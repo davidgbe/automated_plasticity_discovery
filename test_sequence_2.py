@@ -65,7 +65,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 20
 N_TIMECONSTS = 12
-REPEATS = 100
+REPEATS = 25
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -618,15 +618,15 @@ if __name__ == '__main__':
 	# ]
 
 	# perturbed file names
-	# file_names = [
-	#     # 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8000_2023-09-04_07:13:27.589319',
-	#     # 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8001_2023-09-04_07:13:33.739864',
-	#     # 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8002_2023-09-04_07:13:46.762137',
-	#     'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8003_2023-09-04_07:13:41.637903',
-	#     # 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8004_2023-09-04_07:15:46.827837',
-	# ]
+	file_names = [
+		# 'decoder_ee_rollback_mixed_syn_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8000_2023-12-26_11:28:08.640240',
+		# 'decoder_ee_rollback_mixed_syn_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8001_2023-12-26_12:45:57.120065',
+		'decoder_ee_rollback_mixed_syn_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8002_2023-12-26_12:45:57.080822',
+		# 'decoder_ee_rollback_mixed_syn_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8003_2023-12-26_12:45:57.086077',
+		# 'decoder_ee_rollback_mixed_syn_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8004_2023-12-26_13:35:32.813518',
+	]
 
-	file_names = [ROOT_FILE_NAME]
+	# file_names = [ROOT_FILE_NAME]
 	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 
 	print(x_test)
@@ -639,10 +639,10 @@ if __name__ == '__main__':
 
 	eval_all([x_test] * REPEATS, eval_tracker=eval_tracker)
 
-	for i in range(len(syn_effects_test)):
-		x_test_reduced = copy(x_test)
-		x_test_reduced[i] = 0
-		print(x_test_reduced)
+	# for i in range(len(syn_effects_test)):
+	# 	x_test_reduced = copy(x_test)
+	# 	x_test_reduced[i] = 0
+	# 	print(x_test_reduced)
 
-		eval_all([x_test_reduced] * REPEATS, eval_tracker=eval_tracker)
+	# 	eval_all([x_test_reduced] * REPEATS, eval_tracker=eval_tracker)
 
