@@ -417,17 +417,18 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		# BEGIN synaptic perturbation code
-		synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
+		if i >= 400 and i < 550:
+			# BEGIN synaptic perturbation code
+			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
-		drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
-		birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
+			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
+			birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
 
-		surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
+			surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
 
-		w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
-		w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
-		# END synaptic perturbation code
+			w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
+			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
+			# END synaptic perturbation code
 
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
