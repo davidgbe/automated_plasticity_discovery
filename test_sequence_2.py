@@ -52,9 +52,9 @@ ROOT_FILE_NAME = args.root_file_name
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (499, 500) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (599, 600) # Number of times to simulate network and plasticity rules per loss function evaluation
 DECODER_TRAIN_ITERS = (394, 400)
-DECODER_TEST_ITERS = (494, 500)
+DECODER_TEST_ITERS = (594, 600)
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -433,7 +433,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			}
 			
 
-		if (i >= DECODER_TRAIN_ITERS[0] and i < DECODER_TRAIN_ITERS[1]) or (i >= DECODER_TEST_ITERS[0] and i < DECODER_TEST_ITERS[1]):
+		if (i >= DECODER_TRAIN_ITERS[0] and i < DECODER_TRAIN_ITERS[1]) or (i >= DECODER_TEST_ITERS[0] and i < DECODER_TEST_ITERS[1])	:
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
