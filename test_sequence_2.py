@@ -64,7 +64,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 60
 N_TIMECONSTS = 36
-REPEATS = 25
+REPEATS = 5
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -246,6 +246,8 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 
 		for trial_idx in range(rs_for_loss.shape[0]):
 			r = rs_for_loss[trial_idx, ...]
+
+			write_csv(os.path.join(out_dir, f'all_r_{trial_idx}.csv'), r[:, :n_e])
 
 			for l_idx in range(r.shape[1]):
 				if l_idx < n_e:
