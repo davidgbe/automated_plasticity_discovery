@@ -52,7 +52,7 @@ ROOT_FILE_NAME = args.root_file_name
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (599, 600) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (600, 601) # Number of times to simulate network and plasticity rules per loss function evaluation
 DECODER_TRAIN_ITERS = (394, 400)
 DECODER_TEST_ITERS = (594, 600)
 STD_EXPL = args.std_expl
@@ -247,7 +247,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 
 		all_effects.append(effects)
 
-		for trial_idx in range(rs_for_loss.shape[0] - 3, rs_for_loss.shape[0]):
+		for trial_idx in range(rs_for_loss.shape[0]):
 			r = rs_for_loss[trial_idx, ...]
 
 			write_csv(os.path.join(out_dir, f'all_r_{trial_idx}.csv'), r[:, :n_e])
