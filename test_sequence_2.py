@@ -3,7 +3,7 @@ import numpy as np
 import os
 import time
 from functools import partial
-from disp import get_ordered_colors
+from disp import get_ordered_colors, zero_pad
 from aux import gaussian_if_under_val, exp_if_under_val, rev_argsort, set_smallest_n_zero
 import matplotlib
 import matplotlib.pyplot as plt
@@ -64,7 +64,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 60
 N_TIMECONSTS = 36
-REPEATS = 5
+REPEATS = 30
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -237,6 +237,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		r = res['r']
 		r_exp_filtered = res['r_exp_filtered']
 		w = res['w']
+		all_w = res['all_w']
 		w_initial = res['w_initial']
 		effects = res['syn_effects']
 		all_weight_deltas = res['all_weight_deltas']
@@ -271,9 +272,14 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
 		sorted_w = w[t_ordering, :][:, t_ordering]
 
-		all_sorted_w.append(copy(sorted_w).flatten().tolist())
+		# for i_w in range(len(all_w)):
+		# 	fig_w, axs_w = plt.subplots(1, 1, figsize=(4 * scale, 4 * scale))
+		# 	axs_w.matshow(all_w[i_w][t_ordering, :][:, t_ordering], cmap='coolwarm', vmin=-5, vmax=5)
+		# 	evals_s = zero_pad(eval_tracker['evals'], 3)
+		# 	i_s = zero_pad(i_w, 3)
+		# 	fig_w.savefig(os.path.join(out_dir, f'weight_matrices_{evals_s}_{i_s}.png'))
+		# 	plt.close(fig_w)
 		
-
 		vmin = np.min([w_initial.min(), w.min()])
 		vmax = np.max([w_initial.max(), w.max()])
 
@@ -330,7 +336,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	zero_padding = '0' * pad
 	evals = eval_tracker['evals']
 
-	write_csv(os.path.join(out_dir, 'weight_matrices.csv'), all_sorted_w)
+	# write_csv(os.path.join(out_dir, 'weight_matrices.csv'), all_sorted_w)
 
 	fig.tight_layout()
 	if train:
@@ -385,6 +391,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	all_effects = np.zeros(plasticity_coefs.shape)
 	normed_loss = 10000
 	rs_for_loss = []
+	all_w = []
 
 	w_hist = []
 	all_weight_deltas = []
@@ -446,6 +453,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			all_effects += effects[:N_RULES]
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
+		# all_w.append(copy(w))
 
 	if i == n_inner_loop_iters - 1:
 		rs_for_loss = np.stack(rs_for_loss)
@@ -458,6 +466,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		'rs_for_loss': rs_for_loss,
 		'r_exp_filtered': r_exp_filtered,
 		'w': w,
+		'all_w': all_w,
 		'w_initial': w_initial,
 		'syn_effects': all_effects,
 		'all_weight_deltas': all_weight_deltas,
@@ -601,8 +610,8 @@ if __name__ == '__main__':
 
 	# unperturbed file names
 	file_names = [
-		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8002_2023-12-19_20:38:37.868671',
-		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8003_2023-12-19_20:41:15.347403',
+		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8002_2023-12-19_20:38:37.868671',
+		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8003_2023-12-19_20:41:15.347403',
 	]
 
 
