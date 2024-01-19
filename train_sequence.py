@@ -41,7 +41,9 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (399, 400) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (500, 501) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = (294, 300)
+DECODER_TEST_ITERS = (494, 500)
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -399,7 +401,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		if index % 2 == 0 and i <= 400:
+		if index % 2 == 0 and i >= 300 and i < 450:
 			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
 			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
@@ -417,9 +419,8 @@ def simulate_single_network(index, x, train, track_params=True):
 			return {
 				'blew_up': True,
 			}
-			
 
-		if i in [n_inner_loop_iters - 1 - 5 * k for k in range(12)]:
+		if (i >= DECODER_TRAIN_ITERS[0] and i < DECODER_TRAIN_ITERS[1]) or (i >= DECODER_TEST_ITERS[0] and i < DECODER_TEST_ITERS[1]):
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
