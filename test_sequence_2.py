@@ -52,7 +52,9 @@ ROOT_FILE_NAME = args.root_file_name
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (399, 400) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (600, 601) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = (394, 400)
+DECODER_TEST_ITERS = (594, 600)
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -141,7 +143,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/decoder_ee_rollback_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/decoder_ee_mixed_test_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -230,6 +232,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	axs += [fig.add_subplot(gs[2 * n_res_to_show + 2, :])]
 
 	all_effects = []
+	all_sorted_w = []
 
 	for i in np.arange(BATCH_SIZE):
 		# for each network in the batch, graph its excitatory, inhibitory activity, as well as the target activity
@@ -244,8 +247,10 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 
 		all_effects.append(effects)
 
-		for trial_idx in range(rs_for_loss.shape[0] - 3, rs_for_loss.shape[0]):
+		for trial_idx in range(rs_for_loss.shape[0]):
 			r = rs_for_loss[trial_idx, ...]
+
+			write_csv(os.path.join(out_dir, f'all_r_{trial_idx}.csv'), r[:, :n_e])
 
 			for l_idx in range(r.shape[1]):
 				if l_idx < n_e:
@@ -270,11 +275,12 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
 		sorted_w = w[t_ordering, :][:, t_ordering]
 
+		all_sorted_w.append(copy(sorted_w).flatten().tolist())
+
 		vmin = np.min([w_initial.min(), w.min()])
 		vmax = np.max([w_initial.max(), w.max()])
 
 		vbound = np.maximum(vmax, np.abs(vmin))
-		vbound = 1
 
 		mappable = axs[2 * i + 1][0].matshow(sorted_w_initial, vmin=-vbound, vmax=vbound, cmap='bwr') # plot initial weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][0])
@@ -329,6 +335,8 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	pad = 4 - len(str(eval_tracker['evals']))
 	zero_padding = '0' * pad
 	evals = eval_tracker['evals']
+
+	write_csv(os.path.join(out_dir, 'weight_matrices.csv'), all_sorted_w)
 
 	fig.tight_layout()
 	if train:
@@ -410,7 +418,8 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		if i <= 400:
+		if i >= 400 and i < 550:
+			# BEGIN synaptic perturbation code
 			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
 			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
@@ -420,6 +429,7 @@ def simulate_single_network(index, x, train, track_params=True):
 
 			w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
 			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
+			# END synaptic perturbation code
 
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
@@ -430,7 +440,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			}
 			
 
-		if i in [n_inner_loop_iters - 1 - 5 * k for k in range(12)]:
+		if (i >= DECODER_TRAIN_ITERS[0] and i < DECODER_TRAIN_ITERS[1]) or (i >= DECODER_TEST_ITERS[0] and i < DECODER_TEST_ITERS[1])	:
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -618,15 +628,9 @@ if __name__ == '__main__':
 	# ]
 
 	# perturbed file names
-	# file_names = [
-	#     # 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8000_2023-09-04_07:13:27.589319',
-	#     # 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8001_2023-09-04_07:13:33.739864',
-	#     # 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8002_2023-09-04_07:13:46.762137',
-	#     'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8003_2023-09-04_07:13:41.637903',
-	#     # 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8004_2023-09-04_07:15:46.827837',
-	# ]
-
 	file_names = [ROOT_FILE_NAME]
+
+	# file_names = [ROOT_FILE_NAME]
 	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 
 	print(x_test)
@@ -639,10 +643,10 @@ if __name__ == '__main__':
 
 	eval_all([x_test] * REPEATS, eval_tracker=eval_tracker)
 
-	for i in range(len(syn_effects_test)):
-		x_test_reduced = copy(x_test)
-		x_test_reduced[i] = 0
-		print(x_test_reduced)
+	# for i in range(len(syn_effects_test)):
+	# 	x_test_reduced = copy(x_test)
+	# 	x_test_reduced[i] = 0
+	# 	print(x_test_reduced)
 
-		eval_all([x_test_reduced] * REPEATS, eval_tracker=eval_tracker)
+	# 	eval_all([x_test_reduced] * REPEATS, eval_tracker=eval_tracker)
 
