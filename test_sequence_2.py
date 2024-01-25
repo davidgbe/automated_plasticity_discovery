@@ -67,7 +67,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 20
 N_TIMECONSTS = 12
-REPEATS = 30
+REPEATS = 100
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -143,7 +143,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/decoder_ee_rollback_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/decoder_ee_mixed_test_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -281,7 +281,6 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		vmax = np.max([w_initial.max(), w.max()])
 
 		vbound = np.maximum(vmax, np.abs(vmin))
-		vbound = 1
 
 		mappable = axs[2 * i + 1][0].matshow(sorted_w_initial, vmin=-vbound, vmax=vbound, cmap='bwr') # plot initial weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][0])
@@ -629,13 +628,7 @@ if __name__ == '__main__':
 	# ]
 
 	# perturbed file names
-	file_names = [
-		# 'decoder_ee_rollback_mixed_syn_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8000_2023-12-26_11:28:08.640240',
-		# 'decoder_ee_rollback_mixed_syn_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8001_2023-12-26_12:45:57.120065',
-		'decoder_ee_rollback_mixed_syn_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8002_2023-12-26_12:45:57.080822',
-		# 'decoder_ee_rollback_mixed_syn_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8003_2023-12-26_12:45:57.086077',
-		# 'decoder_ee_rollback_mixed_syn_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8004_2023-12-26_13:35:32.813518',
-	]
+	file_names = [ROOT_FILE_NAME]
 
 	# file_names = [ROOT_FILE_NAME]
 	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
