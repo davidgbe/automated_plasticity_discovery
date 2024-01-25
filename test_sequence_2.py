@@ -59,12 +59,13 @@ L1_PENALTIES = args.l1_pen
 CALC_TEST_SET_LOSS_FREQ = 11
 ACTIVITY_LOSS_COEF = 6 if bool(args.asp) else 0
 ACTIVITY_JITTER_COEF = 60
-CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
+CHANGE_PROB_PER_ITER = args.syn_change_prob # (1 - single_trial_removal_prob)^num_trials = total_survival_prob
+											# single_trial_removal_prob = 1 - total_survival_prob^(1 / num_trials)
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 60
 N_TIMECONSTS = 36
-REPEATS = 30
+REPEATS = 100
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -610,8 +611,8 @@ if __name__ == '__main__':
 
 	# unperturbed file names
 	file_names = [
-		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8002_2023-12-19_20:38:37.868671',
-		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8003_2023-12-19_20:41:15.347403',
+		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8002_2023-12-19_20:38:37.868671',
+		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8003_2023-12-19_20:41:15.347403',
 	]
 
 
