@@ -53,7 +53,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 4
 N_TIMECONSTS = 4
-REPEATS = 100
+REPEATS = 1
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -153,11 +153,23 @@ w_e_i = 0.5e-4 / dt
 w_i_e = -0.3e-4 / dt
 w_e_e_added = 0.05 * w_e_e * 0.2
 
-def make_chain(size, width):
+def create_shift_matrix(size, k=1, weighting=[]):
 	w = np.zeros((size, size))
-	n_links = int(size/width)
-	for link_idx in range(n_links - 1):
-		w[width * (link_idx + 1):width * (link_idx + 2), width * link_idx:width * (link_idx + 1)] = 1
+	if k >= 1:
+		for k_p in np.arange(1, k+1):
+			a = 1
+			if len(weighting) == k:
+				a = weighting[k_p - 1]
+			w += a * np.diag(np.ones((size - k_p,)), k=k_p)
+			# w[(size - k_p):, k - k_p] = 1
+
+	elif k <= -1:
+		for k_p in np.arange(1, -k+1):
+			a = 1
+			if len(weighting) == -k:
+				a = weighting[k_p - 1]
+			w += a * np.diag(np.ones((size - k_p,)), k=-k_p)
+			# w[-k - k_p, (size - k_p):] = 1
 	return w
 
 def make_network():
@@ -167,14 +179,15 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 
-	w_initial[:n_e, :n_e] = 0.02 * w_e_e * (0.2 + 0.8 * np.random.rand(n_e, n_e)) # changed from 0.05 to 0.02
-	w_initial[:n_e, :n_e] += 0.4 * w_e_e * make_chain(n_e, 2)
+	w_initial[:n_e, :n_e] = w_e_e * (0.25 * 4/3 * create_shift_matrix(n_e, k=-3))
+
+	# w_initial[:n_e, :n_e][np.random.rand(n_e, n_e) >= 0.8] = 0
 
 	# w_initial[:n_e, :n_e] = np.diag(np.ones(n_e - 1), k=-1) * w_e_e * 0.7
 
-	w_initial[n_e:, :n_e] = gaussian_if_under_val(0.8, (n_i, n_e), w_e_i, 0.3 * w_e_i)
+	w_initial[n_e:, :n_e] = gaussian_if_under_val(1, (n_i, n_e), w_e_i, 0 * w_e_i)
 	w_initial[n_e:, :n_e] = np.where(w_initial[n_e:, :n_e] < 0, 0, w_initial[n_e:, :n_e])
-	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
+	w_initial[:n_e, n_e:] = gaussian_if_under_val(1, (n_e, n_i), w_i_e, 0 * np.abs(w_i_e))
 	w_initial[:n_e, n_e:] = np.where(w_initial[:n_e, n_e:] > 0, 0, w_initial[:n_e, n_e:])
 
 	np.fill_diagonal(w_initial, 0)
@@ -394,12 +407,12 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	fixed_inputs_spks = np.zeros((len(t), int(n_e/2) + n_i))
 	fixed_inputs_spks[:10, 0] = 1
-	fixed_inputs_spks[10:int(65e-3/dt), 1:int(n_e/2) + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 10, int(n_e/2) - 1 + n_i))
+	# fixed_inputs_spks[10:int(65e-3/dt), 1:int(n_e/2) + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 10, int(n_e/2) - 1 + n_i))
 
 	for i in range(n_inner_loop_iters):
 		random_inputs_poisson = np.zeros((len(t), int(n_e/2) + n_i))
-		random_inputs_poisson[10:int(65e-3/dt), :int(n_e/2) + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 10, int(n_e/2) + n_i))
-		random_inputs_poisson[:, 0] = 0
+		# random_inputs_poisson[10:int(65e-3/dt), :int(n_e/2) + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 10, int(n_e/2) + n_i))
+		# random_inputs_poisson[:, 0] = 0
 
 		r_in_spks = np.zeros((len(t), n_e + n_i))
 		for shared_e_input_idx in range(0, n_e, 2):
@@ -579,7 +592,9 @@ if __name__ == '__main__':
 
 	# np.array([-0.002, 0.002, -0.01, 0.01])
 
-	x_ila = np.concatenate([0.3 * np.array([-0.002, 0.002, -0.01, 0.01]), 15e-3 * np.ones(N_TIMECONSTS), [3.5, 7]])
+	# -0.0001, 0.0001, -0.005, 0.005
+
+	x_ila = np.concatenate([0.3 * np.array([-0.03, 0.03, 0, 0]), 3e-3 * np.ones(N_TIMECONSTS), [7.5, 7.5]])
 
 	eval_tracker = {
 		'evals': 0,
