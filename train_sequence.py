@@ -41,9 +41,9 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (400, 401) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_ITERS = (294, 300)
-DECODER_TEST_ITERS = (394, 400)
+N_INNER_LOOP_RANGE = (500, 501) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = (394, 400)
+DECODER_TEST_ITERS = (494, 500)
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -131,7 +131,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/decoder_ei_mixed_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/decoder_ei_mixed_long{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
