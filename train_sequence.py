@@ -40,7 +40,7 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (999, 1000) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (5999, 6000) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -51,8 +51,8 @@ ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
-N_RULES = 4
-N_TIMECONSTS = 4
+N_RULES = 6
+N_TIMECONSTS = 6
 REPEATS = 1
 
 T = 0.11 # Total duration of one network simulation
@@ -78,7 +78,7 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	# r'$\tilde{x}$',
 	r'$\tilde{x} \, y$',
 	# r'$x_{int} \, y^2$',
-	# r'$\tilde{y} \, y$',
+	r'$\tilde{y} \, y$',
 	# r'$\tilde{x} \, x$',
 	# r'$\tilde{y}^2$',
 	# r'$\tilde{x}^2$',
@@ -94,7 +94,7 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	# r'$w \tilde{x}$',
 	r'$w \tilde{x} \, y$',
 	# r'$x_{int} \, y^2$',
-	# r'$w \tilde{y} \, y$',
+	r'$w \tilde{y} \, y$',
 	# r'$w \tilde{x} \, x$',
 	# r'$w \tilde{y}^2$',
 	# r'$w \tilde{x}^2$',
@@ -411,8 +411,8 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	for i in range(n_inner_loop_iters):
 		random_inputs_poisson = np.zeros((len(t), int(n_e/2) + n_i))
-		# random_inputs_poisson[10:int(65e-3/dt), :int(n_e/2) + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 10, int(n_e/2) + n_i))
-		# random_inputs_poisson[:, 0] = 0
+		random_inputs_poisson[10:int(65e-3/dt), :int(n_e/2) + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 10, int(n_e/2) + n_i))
+		random_inputs_poisson[:, 0] = 0
 
 		r_in_spks = np.zeros((len(t), n_e + n_i))
 		for shared_e_input_idx in range(0, n_e, 2):
@@ -590,11 +590,27 @@ def process_params_str(s):
 if __name__ == '__main__':
 	mp.set_start_method('fork')
 
-	# np.array([-0.002, 0.002, -0.01, 0.01])
+	time_consts = np.array([3e-3, 3e-3, 3e-3, 3e-3, 0.5e-3, 0.5e-3])
 
-	# -0.0001, 0.0001, -0.005, 0.005
+	# w-STDP + summed weight bound
+	# x_ila = np.concatenate([0.3 * np.array([-0.0001, 0.0001, -0.005, 0.005, 0, 0]), time_consts, [7.5, 7.5]])
 
-	x_ila = np.concatenate([0.3 * np.array([-0.03, 0.03, 0, 0]), 3e-3 * np.ones(N_TIMECONSTS), [7.5, 7.5]])
+	# STDP + summed weight bound
+	# x_ila = np.concatenate([0.3 * np.array([-0.03, 0.03, 0, 0, 0, 0]), time_consts, [7.5, 7.5]])
+
+	# successful rules for STDP + firing rate bound
+	# x_ila = np.concatenate([0.3 * np.array([-0.03, 0.03, 0, 0, 0, -0.005]), time_consts, [1000, 1000]])
+
+	# successful rules for w-STDP + firing rate bound
+	# x_ila = np.concatenate([0.1 * np.array([0, 0, 0, -0.01, 0.01, -0.005]), time_consts, [1000, 1000]])
+
+
+	time_consts = np.array([6e-3, 6e-3, 6e-3, 6e-3, 0.5e-3, 0.5e-3])
+	x_ila = np.concatenate([0.1 * np.array([0, 0, 0, -0.01, 0.01, -0.005]), time_consts, [1000, 1000]])
+
+	# time_consts = np.array([6e-3, 6e-3, 6e-3, 6e-3, 0.5e-3, 0.5e-3])
+	# x_ila = np.concatenate([0.3 * np.array([-0.03, 0.03, 0, 0, 0, -0.005]), time_consts, [1000, 1000]])
+
 
 	eval_tracker = {
 		'evals': 0,

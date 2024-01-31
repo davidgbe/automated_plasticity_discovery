@@ -106,12 +106,12 @@ def simulate_inner_loop(
         # calculate exponential filtered of firing rate to use for STDP-like plasticity rules
         r_exp_filtered[:, i+1, :] = r_exp_filtered[:, i, :] * (1 - dt / int_time_consts) + r[i, :] * (dt / int_time_consts)
 
-        # r_0_pow = np.ones(n_e + n_i)
+        r_0_pow = np.ones(n_e + n_i)
         r_1_pow = r[i+1, :] / 0.02
         # r_2_pow = np.square(r[i+1, :]) / 0.01
         r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.01
 
-        # r_0_pow_split = [r_0_pow[:n_e], r_0_pow[n_e:n_e + n_i]]
+        r_0_pow_split = [r_0_pow[:n_e], r_0_pow[n_e:n_e + n_i]]
         r_1_pow_split = [r_1_pow[:n_e], r_1_pow[n_e:n_e + n_i]]
         r_exp_filtered_curr_split = [r_exp_filtered_curr[:, :n_e], r_exp_filtered_curr[:, n_e:n_e + n_i]]
 
@@ -136,17 +136,17 @@ def simulate_inner_loop(
             r_1_r_exp = np.outer(r_exp_filtered_curr_split[p_j][k, :], r_1_pow_split[p_i])
             # r_exp_r_0 = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 2, :])
             r_exp_r_1 = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 1, :])
-            # r_0_by_r_exp_r = np.outer(r_exp_filtered_curr_split[p_j][k + 4, :] * r_1_pow_split[p_j], r_0_pow_split[p_i])
+            r_0_by_r_exp_r = np.outer(r_exp_filtered_curr_split[p_j][k + 2, :] * r_1_pow_split[p_j], r_0_pow_split[p_i])
             # r_exp_r_by_r_0 = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 5, :] * r_1_pow_split[p_i])
             # r_0_by_r_exp_2 = np.outer(np.square(r_exp_filtered_curr_split[p_j][k + 6, :]), r_0_pow_split[p_i])
             # r_exp_2_by_r_0 = np.outer(r_0_pow_split[p_j], np.square(r_exp_filtered_curr_split[p_i][k + 7, :]))
 
 
             # r_0_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 6, :], r_0_pow_split[p_i])
-            r_1_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 2, :], r_1_pow_split[p_i])
+            r_1_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 3, :], r_1_pow_split[p_i])
             # r_exp_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 8, :])
-            r_exp_r_1_w = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 3, :])
-            # r_0_by_r_exp_r_w = np.outer(r_exp_filtered_curr_split[p_j][k + 10, :] * r_1_pow_split[p_j], r_0_pow_split[p_i])
+            r_exp_r_1_w = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 4, :])
+            r_0_by_r_exp_r_w = np.outer(r_exp_filtered_curr_split[p_j][k + 5, :] * r_1_pow_split[p_j], r_0_pow_split[p_i])
             # r_exp_r_by_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 11, :] * r_1_pow_split[p_i])
             # r_0_by_r_exp_2_w = np.outer(np.square(r_exp_filtered_curr_split[p_j][k + 14, :]), r_0_pow_split[p_i])
             # r_exp_2_by_r_0_w = np.outer(r_0_pow_split[p_j], np.square(r_exp_filtered_curr_split[p_i][k + 15, :]))
@@ -163,7 +163,7 @@ def simulate_inner_loop(
                 # r_exp_r_0,
                 r_exp_r_1,
                 # r_exp_r_2,
-                # r_0_by_r_exp_r,
+                r_0_by_r_exp_r,
                 # r_exp_r_by_r_0,
                 # r_0_by_r_exp_2,
                 # r_exp_2_by_r_0,
@@ -181,7 +181,7 @@ def simulate_inner_loop(
                 r_1_r_exp_w,
                 # r_exp_r_0_w,
                 r_exp_r_1_w,
-                # r_0_by_r_exp_r_w,
+                r_0_by_r_exp_r_w,
                 # r_exp_r_by_r_0_w,
                 # r_0_by_r_exp_2_w,
                 # r_exp_2_by_r_0_w,
