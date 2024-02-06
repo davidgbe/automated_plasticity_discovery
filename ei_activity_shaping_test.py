@@ -644,8 +644,8 @@ if __name__ == '__main__':
 	x_test[18] = -0.0035
 
 	### inh plasticity
-	x_test[48] = -0.001
-	x_test[50] = -0.001
+	# x_test[48] = -0.001
+	# x_test[50] = -0.001
 
 	### exc plasticity time constants
 	x_test[N_RULES + 3] = args.stdp_tau # 6e-3
