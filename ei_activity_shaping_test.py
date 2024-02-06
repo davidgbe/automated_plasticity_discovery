@@ -41,6 +41,11 @@ parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
 parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
 
+parser.add_argument('--stdp_coef', metavar='stc', type=float)
+parser.add_argument('--stdp_tau', metavar='stt', type=float)
+parser.add_argument('--fr_tau', metavar='frt', type=float)
+parser.add_argument('--w_ie', metavar='wie', type=float)
+
 args = parser.parse_args()
 print(args)
 
@@ -49,10 +54,10 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (500, 501) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_RANGE = (400, 450)
-DECODER_TEST_RANGE = (450, 500)
-FREEZE_WEIGHTS_TRIAL = 400
+N_INNER_LOOP_RANGE = (700, 701) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_RANGE = (596, 600)
+DECODER_TEST_RANGE = (696, 700)
+FREEZE_WEIGHTS_TRIAL = np.inf
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -70,7 +75,7 @@ REPEATS = 5
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
-n_e = 25 # Number excitatory cells in sequence (also length of sequence)
+n_e = 40 # Number excitatory cells in sequence (also length of sequence)
 n_i = 8 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=REPEATS)
 test_seeds = np.random.randint(0, 1e7, size=REPEATS)
@@ -141,7 +146,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/ei_plasticity_timing_model_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/param_sweep_STDP_COEF_{args.stdp_coef}_STDP_TAU_{args.stdp_tau}_FR_TAU_{args.fr_tau}_W_IE_{args.w_ie}_{BATCH_SIZE}_L1_PENALTY_{joined_l1}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -162,7 +167,7 @@ write_csv(test_data_path, header)
 
 w_e_e = 0.8e-3 / dt
 w_e_i = 0.5e-4 / dt
-w_i_e = -0.3e-4 / dt
+w_i_e = -1 * args.w_ie / dt # -0.3e-4 / dt
 w_e_e_added = 0.05 * w_e_e * 0.2
 
 def create_shift_matrix(size, k=1, weighting=[]):
@@ -191,9 +196,9 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 
-	w_initial[:n_e, :n_e] = w_e_e * (0.05 * (0.2 + 0.8 * np.random.rand(n_e, n_e)) + 0.25 * create_shift_matrix(n_e, k=-4))
+	w_initial[:n_e, :n_e] = w_e_e * (0.05 * (0.2 + 0.8 * np.random.rand(n_e, n_e)) + 0.25 * 4/3 * create_shift_matrix(n_e, k=-3))
 
-	w_initial[:n_e, :n_e][np.random.rand(n_e, n_e) >= 0.8] = 0
+	# w_initial[:n_e, :n_e][np.random.rand(n_e, n_e) >= 0.8] = 0
 
 	# w_initial[:n_e, :n_e] = np.diag(np.ones(n_e - 1), k=-1) * w_e_e * 0.7
 
@@ -234,8 +239,9 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 
 	# print(np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100)
 
-	loss = 1000 * (1 - reg.score(X_test, y_test)) + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100
+	loss = 1000 * (1 - reg.score(X_test, y_test))
 
+	print('activity loss:', np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100)
 	print('loss:', loss)
 
 	return loss
@@ -271,6 +277,8 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		for trial_idx in range(rs_for_loss.shape[0]):
 			r = rs_for_loss[trial_idx, ...]
 
+			write_csv(os.path.join(out_dir, f'all_r_{eval_tracker["evals"]}_{trial_idx}.csv'), r[:, :n_e], delimiter=',')
+
 			for l_idx in range(r.shape[1]):
 				if l_idx < n_e:
 					if l_idx % 1 == 0:
@@ -292,6 +300,8 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 
 		sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
 		sorted_w = w[t_ordering, :][:, t_ordering]
+
+		write_csv(os.path.join(out_dir, f'weight_mat_{eval_tracker["evals"]}.csv'), sorted_w, delimiter=',')
 
 		vmin = np.min([w_initial.min(), w.min()])
 		vmax = np.max([w_initial.max(), w.max()])
@@ -429,16 +439,16 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, 1:n_e] = 0.03 * r_in[:, 1:n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		# if i >= 500 and i < 650:
-		# 	synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
+		if i >= 400 and i < 450:
+			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
-		# 	drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
-		# 	birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
+			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
+			birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
 
-		# 	surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
+			surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
 
-		# 	w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
-		# 	w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
+			w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
+			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
 		if i >= FREEZE_WEIGHTS_TRIAL:
@@ -550,7 +560,6 @@ def simulate_single_network_wrapper(tup):
 def eval_all(X, eval_tracker=None, train=True):
 	start = time.time()
 
-	indices = np.arange(BATCH_SIZE)
 	pool = mp.Pool(POOL_SIZE)
 
 	task_vars = []
@@ -620,26 +629,27 @@ if __name__ == '__main__':
 	### NOTE: use BATCH_SIZE of 1
 
 	# unperturbed file names
-	file_names = [
-		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8000_2023-09-06_00:24:17.357308',
-		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8001_2023-09-06_00:24:46.620527',
-		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8002_2023-09-06_00:25:25.221655',
-		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8003_2023-09-06_00:26:10.584744',
-	]
+	# file_names = [
+	# 	# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8000_2023-09-06_00:24:17.357308',
+	# 	# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8001_2023-09-06_00:24:46.620527',
+	# 	# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8002_2023-09-06_00:25:25.221655',
+	# 	'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8003_2023-09-06_00:26:10.584744',
+	# ]
 
+	# syn_effects_test, x_loaded = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 
-	syn_effects_test, x_loaded = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
+	x_test = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
 
-	x_test = copy(x_loaded)
-	x_test[:N_RULES] *= 0.2
-	# x_test[7] = x_loaded[7]
-	# x_test[18] = x_loaded[18]
-	# x_test[40] = -x_loaded[40]
-	# x_test[48] = x_loaded[48]
+	x_test[7] = args.stdp_coef # 0.01
+	x_test[18] = -0.0035
 
-	# x_test = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
+	### inh plasticity
+	x_test[48] = -0.001
+	x_test[50] = -0.001
 
-
+	### exc plasticity time constants
+	x_test[N_RULES + 3] = args.stdp_tau # 6e-3
+	x_test[N_RULES + 10] = args.fr_tau # 1e-3
 
 	print(x_test)
 
@@ -650,11 +660,4 @@ if __name__ == '__main__':
 	}
 
 	eval_all([x_test] * REPEATS, eval_tracker=eval_tracker)
-
-	# for i in range(len(syn_effects_test)):
-	# 	x_test_reduced = copy(x_test)
-	# 	x_test_reduced[i] = 0
-	# 	print(x_test_reduced)
-
-	# 	eval_all([x_test_reduced] * REPEATS, eval_tracker=eval_tracker)
 
