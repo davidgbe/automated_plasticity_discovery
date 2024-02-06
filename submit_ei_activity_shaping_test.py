@@ -86,7 +86,7 @@ n_seeds = len(params['SEED'])
 for key in params.keys():
 	if key == 'SEED' or type(params[key][0]) is str:
 		continue
-	params[key] = [str(v[1]) for v in iter_range(params[key][0], params[key][1])]
+	params[key] = [str(v) for v in params[key]]
 
 all_values = cartesian(*(params.values()))
 n_scripts = len(all_values[0])
