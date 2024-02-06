@@ -40,6 +40,7 @@ parser.add_argument('--load_initial', metavar='li', type=str, help='File from wh
 parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
 parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
+parser.add_argument('--index', metavar='idx', type=int)
 
 parser.add_argument('--stdp_coef', metavar='stc', type=float)
 parser.add_argument('--stdp_tau', metavar='stt', type=float)
@@ -71,6 +72,7 @@ INPUT_RATE_PER_CELL = 80
 N_RULES = 60
 N_TIMECONSTS = 36
 REPEATS = 5
+INDEX = args.index
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -146,7 +148,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/param_sweep_STDP_COEF_{args.stdp_coef}_STDP_TAU_{args.stdp_tau}_FR_TAU_{args.fr_tau}_W_IE_{args.w_ie}_{BATCH_SIZE}_L1_PENALTY_{joined_l1}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/param_sweep_INDEX_{INDEX}_STDP_COEF_{args.stdp_coef}_STDP_TAU_{args.stdp_tau}_FR_TAU_{args.fr_tau}_W_IE_{args.w_ie}_{BATCH_SIZE}_L1_PENALTY_{joined_l1}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
