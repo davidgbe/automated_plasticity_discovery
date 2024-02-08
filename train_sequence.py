@@ -41,9 +41,9 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (700, 701) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_ITERS = (594, 600)
-DECODER_TEST_ITERS = (694, 700)
+N_INNER_LOOP_RANGE = (400, 401) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = [369, 364, 359, 354, 349, 344]
+DECODER_TEST_ITERS = [399, 394, 389, 384, 379, 374]
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -186,19 +186,16 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 	stacked_activities_test = []
 
 	for i in range(r.shape[0]):
-		if i < 6:
+		if i < len(DECODER_TRAIN_ITERS):
 			stacked_activities_train.append(r_exc[i, train_times, :])
 		else:
 			stacked_activities_test.append(r_exc[i, test_times, :])
 
 	X_train = np.concatenate(stacked_activities_train, axis=0)
-	y_train = np.stack([train_times for j in range(6)]).flatten()
+	y_train = np.stack([train_times for j in range(len(DECODER_TRAIN_ITERS))]).flatten()
 
 	X_test = np.concatenate(stacked_activities_test, axis=0)
-	y_test = np.stack([test_times for j in range(r.shape[0] - 6)]).flatten()
-
-	# print('X SHAPE', X.shape)
-	# print('y SHAPE', y.shape)
+	y_test = np.stack([test_times for j in range(len(DECODER_TEST_ITERS))]).flatten()
 
 	print(X_train)
 	print(y_train)
@@ -420,7 +417,7 @@ def simulate_single_network(index, x, train, track_params=True):
 				'blew_up': True,
 			}
 
-		if (i >= DECODER_TRAIN_ITERS[0] and i < DECODER_TRAIN_ITERS[1]) or (i >= DECODER_TEST_ITERS[0] and i < DECODER_TEST_ITERS[1]):
+		if (i in DECODER_TRAIN_ITERS) or (i in DECODER_TEST_ITERS):
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
