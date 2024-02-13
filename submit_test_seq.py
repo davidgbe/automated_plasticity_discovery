@@ -75,7 +75,7 @@ def pad_zeros(to_pad, length):
 batch_size = 1
 
 params = OrderedDict()
-params['SEED'] = [str(1)]
+params['SEED'] = [str(500)]
 params['ROOT_FILE_NAME'] = [
 	# TO TEST
     # 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8000_2023-12-19_15:25:03.097712',
