@@ -40,6 +40,7 @@ parser.add_argument('--load_initial', metavar='li', type=str, help='File from wh
 parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
 parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
+parser.add_argument('--root_file_name', metavar='rfn', type=str)
 
 args = parser.parse_args()
 print(args)
@@ -49,9 +50,9 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (600, 601) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_ITERS = (394, 400)
-DECODER_TEST_ITERS = (594, 600)
+N_INNER_LOOP_RANGE = (400, 401) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = [369, 364, 359, 354, 349, 344]
+DECODER_TEST_ITERS = [399, 394, 389, 384, 379, 374]
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -65,7 +66,8 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 60
 N_TIMECONSTS = 36
-REPEATS = 100
+REPEATS = 20
+ROOT_FILE_NAME = args.root_file_name
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -418,8 +420,8 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		if i >= 400 and i < 550:
-			# BEGIN synapic perturbation code
+		# BEGIN synapic perturbation code
+		if index % 2 == 0 and i > 0 and i < 450:
 			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
 			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
@@ -429,7 +431,7 @@ def simulate_single_network(index, x, train, track_params=True):
 
 			w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
 			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
-			# END synapic perturbation code
+		# END synapic perturbation code
 
 
 		# below, simulate one activation of the network for the period T
@@ -441,7 +443,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			}
 			
 
-		if (i >= DECODER_TRAIN_ITERS[0] and i < DECODER_TRAIN_ITERS[1]) or (i >= DECODER_TEST_ITERS[0] and i < DECODER_TEST_ITERS[1]):
+		if (i in DECODER_TRAIN_ITERS) or (i in DECODER_TEST_ITERS):
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -609,12 +611,8 @@ if __name__ == '__main__':
 
 	### NOTE: use BATCH_SIZE of 1
 
-	# unperturbed file names
-	file_names = [
-		# 'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8002_2023-12-19_20:38:37.868671',
-		'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8003_2023-12-19_20:41:15.347403',
-	]
-
+	# Load learned synaptic rules from root_file_name
+	file_names = [ROOT_FILE_NAME]
 
 	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 	print(x_test)
@@ -626,11 +624,3 @@ if __name__ == '__main__':
 	}
 
 	eval_all([x_test] * REPEATS, eval_tracker=eval_tracker)
-
-	# for i in range(len(syn_effects_test)):
-	# 	x_test_reduced = copy(x_test)
-	# 	x_test_reduced[i] = 0
-	# 	print(x_test_reduced)
-
-	# 	eval_all([x_test_reduced] * REPEATS, eval_tracker=eval_tracker)
-
