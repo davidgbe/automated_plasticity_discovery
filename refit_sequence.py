@@ -619,7 +619,7 @@ if __name__ == '__main__':
 
 	x_loaded, loss_shifts, mean_non_dropped_loss = compute_loss_shifts(args.load_initial, N_RULES, N_TIMECONSTS, 1, 20)
 
-	rules_to_keep_mask = loss_shifts > 50
+	rules_to_keep_mask = loss_shifts > 30
 	activated_terms = np.sort(np.concatenate([(np.array(rule_contingency_map[r_idx % RULES_PER_CAT]) + int(r_idx / RULES_PER_CAT) * RULES_PER_CAT) for r_idx in np.arange(N_RULES)[rules_to_keep_mask]]))
 
 	x0 = copy(x_loaded)[activated_terms]
