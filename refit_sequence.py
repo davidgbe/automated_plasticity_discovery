@@ -58,6 +58,7 @@ N_RULES = 60
 N_TIMECONSTS = 36
 N_CATEGORIES = 3
 RULES_PER_CAT = int(N_RULES / N_CATEGORIES)
+TIMECONSTS_PER_CAT = int(N_TIMECONSTS / N_CATEGORIES)
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -620,7 +621,16 @@ if __name__ == '__main__':
 	x_loaded, loss_shifts, mean_non_dropped_loss = compute_loss_shifts(args.load_initial, N_RULES, N_TIMECONSTS, 1, 20)
 
 	rules_to_keep_mask = loss_shifts > 30
-	activated_terms = np.sort(np.concatenate([(np.array(rule_contingency_map[r_idx % RULES_PER_CAT]) + int(r_idx / RULES_PER_CAT) * RULES_PER_CAT) for r_idx in np.arange(N_RULES)[rules_to_keep_mask]]))
+
+	activated_terms = []
+	for r_idx in np.arange(N_RULES)[rules_to_keep_mask]:
+		category_idx = int(r_idx / RULES_PER_CAT)
+		activated_term = rule_contingency_map[r_idx % RULES_PER_CAT]
+		activated_terms.append([activated_term[0] + RULES_PER_CAT * category_idx])
+		if len(activated_term) > 1:
+			activated_terms.append([activated_term[1] + TIMECONSTS_PER_CAT * category_idx])
+
+	activated_terms = np.sort(np.concatenate(activated_terms))
 
 	x0 = copy(x_loaded)[activated_terms]
 	n_rules = np.count_nonzero(rules_to_keep_mask)
