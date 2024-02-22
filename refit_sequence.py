@@ -16,6 +16,7 @@ from scipy.sparse import csc_matrix
 from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
 from csv_writer import write_csv
+from pathlib import Path
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
