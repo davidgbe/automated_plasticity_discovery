@@ -44,6 +44,8 @@ parser.add_argument('--stdp_coef', metavar='stc', type=float)
 parser.add_argument('--stdp_tau', metavar='stt', type=float)
 parser.add_argument('--fr_tau', metavar='frt', type=float)
 parser.add_argument('--w_ie', metavar='wie', type=float)
+parser.add_argument('--w_ie_coef', metavar='wiec', type=float)
+parser.add_argument('--y2_ie_coef', metavar='y2iec', type=float)
 
 args = parser.parse_args()
 print(args)
@@ -143,7 +145,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/param_sweep_INDEX_{INDEX}_STDP_COEF_{args.stdp_coef}_STDP_TAU_{args.stdp_tau}_FR_TAU_{args.fr_tau}_W_IE_{args.w_ie}_{BATCH_SIZE}_L1_PENALTY_{joined_l1}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/param_sweep_inh_INDEX_{INDEX}_STDP_COEF_{args.stdp_coef}_STDP_TAU_{args.stdp_tau}_FR_TAU_{args.fr_tau}_W_IE_{args.w_ie}_{BATCH_SIZE}_L1_PENALTY_{joined_l1}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -642,8 +644,8 @@ if __name__ == '__main__':
 	x_test[18] = -0.0035
 
 	### inh plasticity
-	# x_test[48] = -0.001
-	# x_test[50] = -0.001
+	x_test[48] = -args.y2_ie_coef
+	x_test[50] = -args.w_ie_coef
 
 	### exc plasticity time constants
 	x_test[N_RULES + 1] = 2 * args.stdp_tau # 6e-3
