@@ -146,7 +146,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/param_sweep_ee_ie_{BATCH_SIZE}_INDEX_{INDEX}_STDP_COEF_{args.stdp_coef}_STDP_TAU_{args.stdp_tau}_CHANGEP_{CHANGE_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/param_sweep_ee_ie_{BATCH_SIZE}_INDEX_{INDEX}_STDP_COEF_{args.stdp_coef}_STDP_TAU_{args.stdp_tau}_C_EE_COEF_{args.c_ee_coef}_W_IE_COEF_{args.w_ie_coef}_Y2_IE_COEF_{args.y2_ie_coef}_CHANGEP_{CHANGE_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info

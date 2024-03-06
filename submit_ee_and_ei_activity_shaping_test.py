@@ -81,7 +81,7 @@ params['STDP_COEF'] = [0.02]
 params['STDP_TAU'] = [5e-3]
 params['FR_TAU'] = [1e-3]
 params['W_IE'] = [1e-4]
-params['CEE_COEF'] = [0, 0.1e-2, 0.2e-2]
+params['CEE_COEF'] = [0, 0.2e-2]
 params['WIE_COEF'] = [0, 1e-2, 1.5e-2, 2e-2, 2.5e-2, 3e-2]
 params['Y2_IE_COEF'] = [0, 1e-2, 1.5e-2, 2e-2, 2.5e-2, 3e-2]
 
