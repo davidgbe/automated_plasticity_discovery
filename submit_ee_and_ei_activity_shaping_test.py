@@ -76,7 +76,7 @@ batch_size = 1
 
 params = OrderedDict()
 params['SEED'] = [str(1)]
-params['SYN_CHANGE_PROB'] = [0, 0.001, 0.0015, 0.002]
+params['SYN_CHANGE_PROB'] = [0.0025, 0.003] #[0, 0.001, 0.0015, 0.002]
 params['STDP_COEF'] = [0.02]
 params['STDP_TAU'] = [5e-3]
 params['FR_TAU'] = [1e-3]
