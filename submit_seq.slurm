@@ -7,8 +7,8 @@
 #SBATCH -A stf
 
 #SBATCH --nodes=1
-#SBATCH --time=01:00:00
-#SBATCH --ntasks=20
+#SBATCH --time=00:30:00
+#SBATCH --ntasks=5
 #SBATCH --mem=20G
 
 #SBATCH --chdir=.
@@ -20,7 +20,7 @@ echo $CURRDIR
 ## Commands to run
 source python-env/bin/activate
 
-python train_sequence.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.00072 --seed 700
+python train_sequence.py --pool_size 5 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --frac_inputs_fixed 0.75 --syn_change_prob 0.0 --param_vec PARAM_VEC --seed 1000
 
 deactivate
 

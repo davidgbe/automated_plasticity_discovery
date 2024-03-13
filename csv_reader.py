@@ -41,14 +41,14 @@ class InFile(object):
 
         return line
     
-def read_csv(file_path, read_header=True):
+def read_csv(file_path, read_header=True, delimiter=','):
     columns = None
     data = []
 
     file = InFile(file_path)
 
-    for row_idx, row in enumerate(csv.reader(file, delimiter=',')):
-        if row_idx == 0:
+    for row_idx, row in enumerate(csv.reader(file, delimiter=delimiter)):
+        if row_idx == 0 and read_header:
             columns = row
         else:
             try:
