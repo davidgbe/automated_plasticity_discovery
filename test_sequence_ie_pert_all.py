@@ -275,6 +275,8 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
 		sorted_w = w[t_ordering, :][:, t_ordering]
 
+		write_csv(os.path.join(out_dir, f'weight_mat_eval_{eval_tracker["evals"]}_bidx_{i}.csv'), sorted_w, delimiter=',')
+
 		# for i_w in range(len(all_w)):
 		# 	fig_w, axs_w = plt.subplots(1, 1, figsize=(4 * scale, 4 * scale))
 		# 	axs_w.matshow(all_w[i_w][t_ordering, :][:, t_ordering], cmap='coolwarm', vmin=-5, vmax=5)
@@ -625,7 +627,7 @@ if __name__ == '__main__':
 
 	eval_all([x_test] * REPEATS, eval_tracker=eval_tracker)
 
-	x_test_reduced = copy(x_test)
-	x_test_reduced[int(2/3 * N_RULES):N_RULES] = 0
+	# x_test_reduced = copy(x_test)
+	# x_test_reduced[int(2/3 * N_RULES):N_RULES] = 0
 
-	eval_all([x_test_reduced] * REPEATS, eval_tracker=eval_tracker)
+	# eval_all([x_test_reduced] * REPEATS, eval_tracker=eval_tracker)
