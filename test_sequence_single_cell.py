@@ -146,6 +146,11 @@ joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
 out_dir = f'sims_out/stress_test_ie_pert_mixed_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
+out_dir_weights = os.path.join(out_dir, 'weights')
+os.mkdir(out_dir_weights)
+out_dir_dynamics = os.path.join(out_dir, 'dynamics')
+os.mkdir(out_dir_dynamics)
+
 # Make subdirectory for outputting CMAES info
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
@@ -251,8 +256,6 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		for trial_idx in range(rs_for_loss.shape[0]):
 			r = rs_for_loss[trial_idx, ...]
 
-			write_csv(os.path.join(out_dir, f'all_r_{trial_idx}.csv'), r[:, :n_e])
-
 			for l_idx in range(r.shape[1]):
 				if l_idx < n_e:
 					if l_idx % 1 == 0:
@@ -338,8 +341,6 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	pad = 4 - len(str(eval_tracker['evals']))
 	zero_padding = '0' * pad
 	evals = eval_tracker['evals']
-
-	# write_csv(os.path.join(out_dir, 'weight_matrices.csv'), all_sorted_w)
 
 	fig.tight_layout()
 	if train:
@@ -456,6 +457,11 @@ def simulate_single_network(index, x, train, track_params=True):
 
 		if (i in DECODER_TRAIN_ITERS) or (i in DECODER_TEST_ITERS):
 			rs_for_loss.append(r)
+			id_str = 'batch_{zero_pad(index, 2)}_activ_{zero_pad(i, 3)}'
+			# save weights
+			write_csv(os.path.join(out_dir_weights, f'weight_mat_{id_str}.csv'), w_out, delimiter=',')
+			# save dynamics
+			write_csv(os.path.join(out_dir_dynamics, f'r_{id_str}.csv'), r, delimiter=',')
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
 
