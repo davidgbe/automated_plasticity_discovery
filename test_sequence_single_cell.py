@@ -457,7 +457,7 @@ def simulate_single_network(index, x, train, track_params=True):
 
 		if (i in DECODER_TRAIN_ITERS) or (i in DECODER_TEST_ITERS):
 			rs_for_loss.append(r)
-			id_str = 'batch_{zero_pad(index, 2)}_activ_{zero_pad(i, 3)}'
+			id_str = f'batch_{zero_pad(index, 2)}_activ_{zero_pad(i, 3)}'
 			# save weights
 			write_csv(os.path.join(out_dir_weights, f'weight_mat_{id_str}.csv'), w_out, delimiter=',')
 			# save dynamics
