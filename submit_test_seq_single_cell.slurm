@@ -3,8 +3,8 @@
 ## Presets
 #SBATCH --job-name=seq_cmaes
 
-#SBATCH -p compute
-#SBATCH -A stf
+#SBATCH -p compute-bigmem
+#SBATCH -A labfairhall
 
 #SBATCH --nodes=1
 #SBATCH --time=0:30:00
