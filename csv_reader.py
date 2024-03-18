@@ -41,14 +41,18 @@ class InFile(object):
 
         return line
     
-def read_csv(file_path, read_header=True, delimiter=',', start=0):
+def read_csv(file_path, read_header=True, delimiter=',', start=None):
     columns = None
     data = []
 
     file = InFile(file_path)
 
-    if not read_header:
-        start = 1
+    if start is None:
+        if not read_header:
+            start = 1
+        else:
+            start = 0
+    
 
     for row_idx, row in enumerate(csv.reader(file, delimiter=delimiter)):
         if row_idx >= start:
