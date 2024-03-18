@@ -47,6 +47,9 @@ def read_csv(file_path, read_header=True, delimiter=',', start=0):
 
     file = InFile(file_path)
 
+    if not read_header:
+        start = 1
+
     for row_idx, row in enumerate(csv.reader(file, delimiter=delimiter)):
         if row_idx >= start:
             if read_header and row_idx == 0:
