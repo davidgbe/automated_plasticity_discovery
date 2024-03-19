@@ -420,7 +420,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		random_inputs_poisson[:, 0] = 0
 
 		if target_cell_idx is not None:
-			random_inputs_poisson[10:int(65e-3/dt), target_cell_idx] = np.random.poisson(lam=3 * INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=int(65e-3/dt) - 10)
+			random_inputs_poisson[10:int(65e-3/dt), target_cell_idx] = np.random.poisson(lam=10 * INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=int(65e-3/dt) - 10)
 
 		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
