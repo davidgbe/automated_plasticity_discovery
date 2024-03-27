@@ -5,7 +5,7 @@ import functools
 
 base_path = os.curdir
 scripts = [
-	'submit_test_seq.slurm',
+	'submit_test_seq_unpert.slurm',
 ]
 
 def replace_all(line, repl_dict):
