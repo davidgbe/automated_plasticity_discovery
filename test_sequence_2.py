@@ -209,10 +209,10 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 			stacked_activities_test.append(r_exc[i, test_times, :])
 
 	X_train = np.concatenate(stacked_activities_train, axis=0)
-	y_train = np.stack([train_times for j in range(6)]).flatten()
+	y_train = np.stack([train_times for j in range(len(DECODER_TRAIN_ITERS))]).flatten()
 
 	X_test = np.concatenate(stacked_activities_test, axis=0)
-	y_test = np.stack([test_times for j in range(r.shape[0] - 6)]).flatten()
+	y_test = np.stack([test_times for j in range(r.shape[0] - len(DECODER_TRAIN_ITERS))]).flatten()
 
 	reg = LinearRegression().fit(X_train, y_train)
 
@@ -441,7 +441,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			}
 			
 
-		if (i >= DECODER_TRAIN_ITERS[0] and i < DECODER_TRAIN_ITERS[1]) or (i >= DECODER_TEST_ITERS[0] and i < DECODER_TEST_ITERS[1])	:
+		if (i in DECODER_TRAIN_ITERS) or (i in DECODER_TEST_ITERS):
 			rs_for_loss.append(r)
 
 			id_str = f'batch_{zero_pad(index, 2)}_activ_{zero_pad(i, 3)}'
