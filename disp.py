@@ -82,3 +82,9 @@ def fast_fig(n_ax, ax_size, fig_w=15):
     
     fig, axs = plt.subplots(n_row, n_col, figsize=(fig_w, fig_h), tight_layout=True, squeeze=False)
     return fig, axs.flatten()
+
+def zero_pad(s, n):
+    s_str = str(s)
+    pad = n - len(s_str)
+    zero_padding = '0' * pad
+    return zero_padding + s_str
