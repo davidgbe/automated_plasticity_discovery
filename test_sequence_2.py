@@ -3,7 +3,7 @@ import numpy as np
 import os
 import time
 from functools import partial
-from disp import get_ordered_colors
+from disp import get_ordered_colors, zero_pad
 from aux import gaussian_if_under_val, exp_if_under_val, rev_argsort, set_smallest_n_zero
 import matplotlib
 import matplotlib.pyplot as plt
@@ -52,9 +52,9 @@ ROOT_FILE_NAME = args.root_file_name
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (600, 601) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_ITERS = (394, 400)
-DECODER_TEST_ITERS = (594, 600)
+N_INNER_LOOP_RANGE = (450, 451) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = [399, 394, 389, 384, 379, 374]
+DECODER_TEST_ITERS = [426, 421, 416, 411, 406, 401]
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -67,7 +67,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 20
 N_TIMECONSTS = 12
-REPEATS = 100
+REPEATS = 5
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -145,6 +145,11 @@ time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
 out_dir = f'sims_out/decoder_ee_mixed_test_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
+
+out_dir_weights = os.path.join(out_dir, 'weights')
+os.mkdir(out_dir_weights)
+out_dir_dynamics = os.path.join(out_dir, 'dynamics')
+os.mkdir(out_dir_dynamics)
 
 # Make subdirectory for outputting CMAES info
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
@@ -250,8 +255,6 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		for trial_idx in range(rs_for_loss.shape[0]):
 			r = rs_for_loss[trial_idx, ...]
 
-			write_csv(os.path.join(out_dir, f'all_r_{trial_idx}.csv'), r[:, :n_e])
-
 			for l_idx in range(r.shape[1]):
 				if l_idx < n_e:
 
@@ -335,8 +338,6 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	pad = 4 - len(str(eval_tracker['evals']))
 	zero_padding = '0' * pad
 	evals = eval_tracker['evals']
-
-	write_csv(os.path.join(out_dir, 'weight_matrices.csv'), all_sorted_w)
 
 	fig.tight_layout()
 	if train:
@@ -442,6 +443,12 @@ def simulate_single_network(index, x, train, track_params=True):
 
 		if (i >= DECODER_TRAIN_ITERS[0] and i < DECODER_TRAIN_ITERS[1]) or (i >= DECODER_TEST_ITERS[0] and i < DECODER_TEST_ITERS[1])	:
 			rs_for_loss.append(r)
+
+			id_str = f'batch_{zero_pad(index, 2)}_activ_{zero_pad(i, 3)}'
+			# save weights
+			write_csv(os.path.join(out_dir_weights, f'weight_mat_{id_str}.csv'), w_out, delimiter=',')
+			# save dynamics
+			write_csv(os.path.join(out_dir_dynamics, f'r_{id_str}.csv'), r, delimiter=',')
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
 
@@ -605,27 +612,6 @@ if __name__ == '__main__':
 	# 4. Take only N largest terms in terms of synaptic change, drop rest, simulate 100 networks
 
 	### NOTE: use BATCH_SIZE of 1
-
-	# unperturbed file names
-	# file_names = [
-    	# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8000_2023-08-29_23:47:23.365282',
-    	# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8001_2023-08-29_23:48:26.168644',
-    	# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8002_2023-08-29_23:48:44.153583',
-    	# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8003_2023-08-29_23:49:09.077896',
-
-		# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8003_2023-08-29_23:49:09.077896',
-		
-		# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8005_2023-12-05_17:47:42.563397',
-		# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8006_2023-12-05_19:55:27.149535',
-		# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8007_2023-12-05_19:55:27.014616',
-		# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8008_2023-12-05_21:35:10.287315',
-		# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8009_2023-12-05_21:35:09.973814',
-		# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8010_2023-12-05_21:35:10.274776',
-		# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8011_2023-12-05_21:35:17.791355',
-		# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8012_2023-12-06_04:22:29.292289',
-		# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8013_2023-12-06_04:47:17.666729',
-		# 'decoder_ee_rollback_rescaled_b_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_8014_2023-12-06_04:47:17.612728',
-	# ]
 
 	# perturbed file names
 	file_names = [ROOT_FILE_NAME]
