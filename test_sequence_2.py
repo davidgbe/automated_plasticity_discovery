@@ -619,7 +619,7 @@ if __name__ == '__main__':
 	# file_names = [ROOT_FILE_NAME]
 	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 
-	print(x_test)
+	x_test[:N_RULES] = 0
 
 	eval_tracker = {
 		'evals': 0,
