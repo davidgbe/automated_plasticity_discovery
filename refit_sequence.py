@@ -32,7 +32,6 @@ plt.rcParams['font.size'] = 15
 parser = argparse.ArgumentParser()
 parser.add_argument('--std_expl', metavar='std', type=float, help='Initial standard deviation for parameter search via CMA-ES')
 parser.add_argument('--l1_pen', metavar='l1', type=float, nargs=3, help='Prefactor for L1 penalties on loss function')
-parser.add_argument('--asp', metavar='asp', type=int, help="Flag for penalizing shape of neurons' activity ")
 parser.add_argument('--pool_size', metavar='ps', type=int, help='Number of processes to start for each loss function evaluation')
 parser.add_argument('--batch', metavar='b', type=int, help='Number of simulations that should be batched per loss function evaluation')
 parser.add_argument('--fixed_data', metavar='fd', type=int, help='')
@@ -56,7 +55,6 @@ DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
 CALC_TEST_SET_LOSS_FREQ = 11
-ACTIVITY_LOSS_COEF = 6 if bool(args.asp) else 0
 ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
@@ -381,7 +379,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		if i <= 400:
+		if index % 2 == 0 and i <= 400:
 			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
 			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
@@ -498,7 +496,6 @@ def simulate_single_network_wrapper(tup):
 def eval_all(X, eval_tracker=None, train=True):
 	start = time.time()
 
-	indices = np.arange(BATCH_SIZE)
 	pool = mp.Pool(POOL_SIZE)
 
 	task_vars = []
@@ -545,6 +542,40 @@ def load_best_avg_params(file_names, n_plasticity_coefs, n_time_constants, batch
 
 	return np.mean(np.stack(all_best_coefs), axis=0)
 
+def compute_kl_divs(file_name, n_plasticity_coefs, n_time_constants, batch_size, runs, n_categories=1):    
+    train_data_path = f'./sims_out/{file_name}/train_data.csv'
+    df_train = read_csv(train_data_path, read_header=False, start=1)
+
+    plasticity_coefs_start = 2 + batch_size
+    plasticity_coefs_end = 2 + batch_size + n_plasticity_coefs + n_time_constants
+	
+    final_coefs = []
+    for i in range(plasticity_coefs_start, plasticity_coefs_end):
+        final_coefs.append(df_train[df_train.columns[i]][0])
+    final_coefs = np.array(final_coefs)
+
+    losses = df_train[df_train.columns[1]]
+    
+    all_losses_for_dropouts = np.array([losses[i:i + runs] for i in range(0, (n_plasticity_coefs + 1) * runs, runs)])
+    
+    max_loss, min_loss = (2e8, 0)
+    bins = np.power(1.2, np.arange(100))
+    bins = (max_loss - min_loss) * (bins - bins.min()) / (bins - bins.min()).max() + min_loss
+    
+    null_dist, _ = np.histogram(all_losses_for_dropouts[0, :], bins=bins, density=True)
+    kl_divs = []
+    epsilon = 1e-10    
+    
+    for d_idx in np.arange(1, all_losses_for_dropouts.shape[0]):
+        term_dropped_dist, _ = np.histogram(all_losses_for_dropouts[d_idx, :], bins=bins, density=True)
+        if np.isnan(term_dropped_dist).any():
+            print(term_dropped_dist)
+            print(all_losses_for_dropouts[d_idx, :])
+        kl_divergence = np.sum((null_dist + epsilon) * np.log((null_dist + epsilon) / (term_dropped_dist + epsilon)))
+        kl_divs.append(kl_divergence)
+        
+    return np.array(kl_divs), np.mean(all_losses_for_dropouts[0]), final_coefs
+
 
 if __name__ == '__main__':
 	mp.set_start_method('fork')
@@ -556,24 +587,35 @@ if __name__ == '__main__':
 	# 4. Take only N largest terms in terms of synaptic change, drop rest, simulate 100 networks
 
 	# unperturbed files
-	# file_names = [
-	#    'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_10:15:00.155072',
-	# 'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_10:17:00.379851',
-	# 'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_10:17:01.105619',
-	# 'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_12:07:49.829874',
-	# ]
-
-	# perturbed file names
 	file_names = [
-	#    # 'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_500_2023-09-05_23:46:17.622618',
-	#    # 'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_500_2023-09-05_23:48:29.865431',
-	    'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_500_2023-09-05_23:49:03.521933',
-	#    # 'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_500_2023-09-05_23:49:37.657592',
+		'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_10:15:00.155072',
+		'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_10:17:00.379851',
+		'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_10:17:01.105619',
+		'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-08-31_12:07:49.829874',
+		'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-12-14_15:05:26.635227',
+		'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-12-14_15:06:31.988292',
+		'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-12-14_15:21:43.374771',
+		'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-12-14_15:22:54.088043',
+		'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-12-14_15:40:35.828201',
+		'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-12-14_15:51:46.367655',
+		'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-12-14_16:14:41.715701',
+		'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-12-14_16:16:41.213984',
+		'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-12-14_16:26:42.131598',
+		'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-12-14_16:28:16.398399',
+		'decoder_ee_rollback_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_500_2023-12-14_16:49:55.102012',
 	]
+ 
+	kl_divs = []
+	coefs = []
 
-	x_full_model = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 1)
-	df_rankings = read_csv(f'./sims_out/{file_names[0]}/rule_ranking.csv', read_header=False)
-	ranked_order = np.array(df_rankings.iloc[0]).astype(int)
+	for file_name in file_names:
+		kl_divs_file, mean_loss_non_drop, coefs_file = compute_kl_divs(file_name, N_RULES, N_TIMECONSTS, 1, 20)
+		kl_divs.append(kl_divs_file)
+		coefs.append(coefs_file)
+
+	kl_divs_mean = np.mean(kl_divs, axis=1)
+	x_full_model = np.mean(coefs, axis=1)
+	ranked_order = np.argsort(kl_divs_mean)
 
 	rule_contingency_map = [
 		[0],
@@ -600,7 +642,7 @@ if __name__ == '__main__':
 
 	for k in range(N_TERMS_TO_FIT, N_TERMS_TO_FIT + 1):
 		# Make subdirectory for this particular experiment
-		out_dir = f'sims_out/refit_ee_syn_ss_{k}_terms_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+		out_dir = f'sims_out/refit_ee_unpert_{k}_terms_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 		os.mkdir(out_dir)
 
 		# Make subdirectory for outputting CMAES info
