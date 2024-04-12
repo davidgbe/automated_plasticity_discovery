@@ -609,13 +609,16 @@ if __name__ == '__main__':
 	coefs = []
 
 	for file_name in file_names:
-		kl_divs_file, mean_loss_non_drop, coefs_file = compute_kl_divs(file_name, N_RULES, N_TIMECONSTS, 1, 20)
-		kl_divs.append(kl_divs_file)
-		coefs.append(coefs_file)
+		kl_divs_file, mean_loss_non_drop, coefs_file = compute_kl_divs(file_name, N_RULES, N_TIMECONSTS, 1, 100)
+		if mean_loss_non_drop < 80:
+			kl_divs.append(kl_divs_file)
+			coefs.append(coefs_file)
 
-	kl_divs_mean = np.mean(kl_divs, axis=1)
-	x_full_model = np.mean(coefs, axis=1)
-	ranked_order = np.argsort(kl_divs_mean)
+	kl_divs_mean = np.mean(kl_divs, axis=0)
+	print(kl_divs_mean)
+	x_full_model = np.mean(coefs, axis=0)
+	ranked_order = np.flip(np.argsort(kl_divs_mean))
+	print(ranked_order)
 
 	rule_contingency_map = [
 		[0],
@@ -661,6 +664,8 @@ if __name__ == '__main__':
 		write_csv(test_data_path, header)
 
 		clipped_rankings = ranked_order[:k]
+		for rn in rule_names[clipped_rankings]:
+			print(rn)
 		activated_terms = np.sort(np.concatenate([rule_contingency_map[r_idx] for r_idx in clipped_rankings]))
 		x0 = copy(x_full_model)[activated_terms]
 
