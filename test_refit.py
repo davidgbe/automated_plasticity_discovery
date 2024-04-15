@@ -3,7 +3,7 @@ import numpy as np
 import os
 import time
 from functools import partial
-from disp import get_ordered_colors
+from disp import get_ordered_colors, zero_pad
 from aux import gaussian_if_under_val, exp_if_under_val, rev_argsort, set_smallest_n_zero
 import matplotlib
 import matplotlib.pyplot as plt
@@ -26,6 +26,7 @@ new_rc_params = {
 matplotlib.rcParams.update(new_rc_params)
 
 plt.rcParams['font.size'] = 15
+plt.rcParams['axes.linewidth'] = 2.0
 
 ### Parse arguments 
 
@@ -40,16 +41,20 @@ parser.add_argument('--load_initial', metavar='li', type=str, help='File from wh
 parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
 parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
+parser.add_argument('--root_file_name', metavar='rfn', type=str)
 
 args = parser.parse_args()
 print(args)
 
 np.random.seed(args.seed)
 
+ROOT_FILE_NAME = args.root_file_name
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (399, 400) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (400, 401) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = [369, 364, 359, 354, 349, 344]
+DECODER_TEST_ITERS = [399, 394, 389, 384, 379, 374]
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -138,8 +143,13 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/refit_test_syn_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/decoder_ee_test_refit_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
+
+out_dir_weights = os.path.join(out_dir, 'weights')
+os.mkdir(out_dir_weights)
+out_dir_dynamics = os.path.join(out_dir, 'dynamics')
+os.mkdir(out_dir_dynamics)
 
 # Make subdirectory for outputting CMAES info
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
@@ -199,10 +209,10 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 			stacked_activities_test.append(r_exc[i, test_times, :])
 
 	X_train = np.concatenate(stacked_activities_train, axis=0)
-	y_train = np.stack([train_times for j in range(6)]).flatten()
+	y_train = np.stack([train_times for j in range(len(DECODER_TRAIN_ITERS))]).flatten()
 
 	X_test = np.concatenate(stacked_activities_test, axis=0)
-	y_test = np.stack([test_times for j in range(r.shape[0] - 6)]).flatten()
+	y_test = np.stack([test_times for j in range(r.shape[0] - len(DECODER_TRAIN_ITERS))]).flatten()
 
 	reg = LinearRegression().fit(X_train, y_train)
 
@@ -227,6 +237,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	axs += [fig.add_subplot(gs[2 * n_res_to_show + 2, :])]
 
 	all_effects = []
+	all_sorted_w = []
 
 	for i in np.arange(BATCH_SIZE):
 		# for each network in the batch, graph its excitatory, inhibitory activity, as well as the target activity
@@ -246,6 +257,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 
 			for l_idx in range(r.shape[1]):
 				if l_idx < n_e:
+
 					if l_idx % 1 == 0:
 						axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
 						# axs[2 * i][0].plot(t, all_r_targets[loss_min_idx, :, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
@@ -266,16 +278,17 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
 		sorted_w = w[t_ordering, :][:, t_ordering]
 
+		all_sorted_w.append(copy(sorted_w).flatten().tolist())
+
 		vmin = np.min([w_initial.min(), w.min()])
 		vmax = np.max([w_initial.max(), w.max()])
 
 		vbound = np.maximum(vmax, np.abs(vmin))
-		vbound = 5
 
-		mappable = axs[2 * i + 1][0].matshow(sorted_w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
+		mappable = axs[2 * i + 1][0].matshow(sorted_w_initial, vmin=-vbound, vmax=vbound, cmap='bwr') # plot initial weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][0])
 
-		mappable = axs[2 * i + 1][1].matshow(sorted_w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
+		mappable = axs[2 * i + 1][1].matshow(sorted_w, vmin=-vbound, vmax=vbound, cmap='bwr') # plot final weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][1])
 
 		axs[2 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
@@ -284,6 +297,10 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 			axs[2 * i][i_axs].set_ylabel('Firing rate')
 
 		axs[2 * n_res_to_show + 2].plot(np.arange(len(all_weight_deltas)), np.log(all_weight_deltas), label=f'{i}')
+
+		for axs_idx in range(2):
+			axs[2 * i][axs_idx].spines['right'].set_visible(False)
+			axs[2 * i][axs_idx].spines['top'].set_visible(False)
 
 	partial_rules_len = int(len(plasticity_coefs))
 
@@ -325,8 +342,10 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	fig.tight_layout()
 	if train:
 		fig.savefig(f'{out_dir}/{zero_padding}{evals}.png')
+		fig.savefig(f'{out_dir}/{zero_padding}{evals}.svg')
 	else:
 		fig.savefig(f'{out_dir}/{zero_padding}{evals}_test.png')
+		fig.savefig(f'{out_dir}/{zero_padding}{evals}_test.svg')
 	plt.close('all')
 
 
@@ -400,7 +419,8 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		if i <= 400:
+		if i > 0 and i < 400:
+			# BEGIN synaptic perturbation code
 			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
 			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
@@ -410,6 +430,7 @@ def simulate_single_network(index, x, train, track_params=True):
 
 			w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
 			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
+			# END synaptic perturbation code
 
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
@@ -420,8 +441,14 @@ def simulate_single_network(index, x, train, track_params=True):
 			}
 			
 
-		if i in [n_inner_loop_iters - 1 - 5 * k for k in range(12)]:
+		if (i in DECODER_TRAIN_ITERS) or (i in DECODER_TEST_ITERS):
 			rs_for_loss.append(r)
+
+			id_str = f'batch_{zero_pad(index, 2)}_activ_{zero_pad(i, 3)}'
+			# save weights
+			write_csv(os.path.join(out_dir_weights, f'weight_mat_{id_str}.csv'), w_out, delimiter=',')
+			# save dynamics
+			write_csv(os.path.join(out_dir_dynamics, f'r_{id_str}.csv'), r, delimiter=',')
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
 
@@ -548,7 +575,7 @@ def load_best_avg_params(file_names, n_plasticity_coefs, n_time_constants, batch
 
 	for file_name in file_names:
 		test_data_path = f'./sims_out/{file_name}/test_data.csv'
-		df_test = read_csv(test_data_path, read_header=False)
+		df_test = read_csv(test_data_path, read_header=False, start=1)
 
 		syn_effect_start = 2 + batch_size + n_plasticity_coefs + n_time_constants
 		syn_effect_end = 2 + batch_size + n_plasticity_coefs + n_time_constants + n_plasticity_coefs
@@ -587,25 +614,14 @@ if __name__ == '__main__':
 	### NOTE: use BATCH_SIZE of 1
 
 	# unperturbed refit file names
-	#file_names = [
-	#    'refit_ee_ss_1_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_501_2023-09-06_22:32:29.011316',
-	#    'refit_ee_ss_2_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_501_2023-09-06_22:33:28.698593',
-	#    'refit_ee_ss_3_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_501_2023-09-06_22:33:42.266508',
-	#    'refit_ee_ss_4_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_501_2023-09-06_22:34:54.550166',
-	#    'refit_ee_ss_5_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_501_2023-09-06_22:35:09.426952',
-	#    'refit_ee_ss_6_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_501_2023-09-06_22:37:03.370791',
-	#    'refit_ee_ss_7_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_501_2023-09-06_22:37:02.547151',
-	#]
-
-	# perturbed refit file names
 	file_names = [
-	    'refit_ee_syn_ss_1_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_503_2023-09-06_22:39:18.298247',
-	    'refit_ee_syn_ss_2_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_503_2023-09-06_22:39:41.917329',
-	    'refit_ee_syn_ss_3_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_503_2023-09-06_22:41:04.741016',
-	    'refit_ee_syn_ss_4_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_503_2023-09-06_22:42:02.842726',
-	    'refit_ee_syn_ss_5_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_503_2023-09-06_22:42:02.842713',
-	    'refit_ee_syn_ss_6_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_503_2023-09-06_22:43:24.946294',
-	    'refit_ee_syn_ss_7_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_503_2023-09-06_22:43:24.946342',
+		'refit_ee_unpert_1_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-04-12_12:50:29.059385',
+		'refit_ee_unpert_2_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-04-12_12:50:29.058336',
+		'refit_ee_unpert_3_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-04-12_13:36:35.128403',
+		'refit_ee_unpert_4_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-04-12_13:38:08.174390',
+		'refit_ee_unpert_5_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-04-12_13:38:08.344208',
+		'refit_ee_unpert_6_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-04-12_13:43:24.169194',
+		'refit_ee_unpert_7_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-04-12_14:08:37.123467',
 	]
 
 	eval_tracker = {
