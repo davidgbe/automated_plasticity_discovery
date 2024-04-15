@@ -20,11 +20,11 @@ echo $CURRDIR
 ## Commands to run
 source python-env/bin/activate
 
-python test_sequence_disruption_levels.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0 --seed SEED --root_file_name ROOT_FILE_NAME
-python test_sequence_disruption_levels.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0003 --seed SEED --root_file_name ROOT_FILE_NAME
-python test_sequence_disruption_levels.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0006 --seed SEED --root_file_name ROOT_FILE_NAME
-python test_sequence_disruption_levels.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0009 --seed SEED --root_file_name ROOT_FILE_NAME
-python test_sequence_disruption_levels.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0012 --seed SEED --root_file_name ROOT_FILE_NAME
+python test_sequence_disruption_levels.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0015 --seed SEED --root_file_name ROOT_FILE_NAME
+python test_sequence_disruption_levels.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0018 --seed SEED --root_file_name ROOT_FILE_NAME
+python test_sequence_disruption_levels.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0021 --seed SEED --root_file_name ROOT_FILE_NAME
+python test_sequence_disruption_levels.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0024 --seed SEED --root_file_name ROOT_FILE_NAME
+python test_sequence_disruption_levels.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0027 --seed SEED --root_file_name ROOT_FILE_NAME
 
 deactivate
 
