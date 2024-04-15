@@ -50,9 +50,9 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (400, 401) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_ITERS = [369, 364, 359, 354, 349, 344]
-DECODER_TEST_ITERS = [399, 394, 389, 384, 379, 374]
+N_INNER_LOOP_RANGE = (600, 601) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = [399, 394, 389, 384, 379, 374]
+DECODER_TEST_ITERS = [599, 594, 589, 584, 579, 574]
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -421,7 +421,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
 		# BEGIN synapic perturbation code
-		if i > 0 and i < 450:
+		if i > 0 and i < 602:
 			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
 			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
