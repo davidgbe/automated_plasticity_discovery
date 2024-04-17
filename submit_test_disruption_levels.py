@@ -5,7 +5,7 @@ import functools
 
 base_path = os.curdir
 scripts = [
-	'submit_seq.slurm',
+	'submit_test_disruption_levels.slurm',
 ]
 
 def replace_all(line, repl_dict):
@@ -75,14 +75,31 @@ def pad_zeros(to_pad, length):
 batch_size = 1
 
 params = OrderedDict()
-params['SEED'] = [str(s) for s in range(8009, 8020)]
+params['SEED'] = [str(1000)]
+params['ROOT_FILE_NAME'] = [
+	# TO TEST
+    'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8002_2023-12-19_20:38:37.868671',
+    'decoder_ei_rollback_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_8003_2023-12-19_20:41:15.347403',
+    'decoder_ei_mixed_long10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00073_FRACI_0.75_SEED_8005_2024-02-08_13:40:54.782819',
+    'decoder_ei_mixed_long10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00073_FRACI_0.75_SEED_8006_2024-02-08_17:21:35.152834',
+    'decoder_ei_mixed_long10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00073_FRACI_0.75_SEED_8007_2024-02-08_18:14:44.591173',
+    'decoder_ei_mixed_long10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00073_FRACI_0.75_SEED_8011_2024-02-08_20:20:42.029971',
+    'decoder_ei_mixed_long10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00073_FRACI_0.75_SEED_8013_2024-02-08_20:27:50.409418',
+    'decoder_ei_mixed_extra_long10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00073_FRACI_0.75_SEED_8018_2024-02-16_08:24:59.736918',
+    'decoder_ei_mixed_extra_long10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00073_FRACI_0.75_SEED_8019_2024-02-16_12:42:11.335319',
+    'decoder_ei_mixed_long10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00073_FRACI_0.75_SEED_8025_2024-02-21_19:13:34.486542',
+    'decoder_ei_mixed_long10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00073_FRACI_0.75_SEED_8032_2024-02-29_00:51:39.109290',
+    'decoder_ei_mixed_long10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00073_FRACI_0.75_SEED_8033_2024-02-29_01:45:44.919867',
+    'decoder_ei_mixed_long10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00073_FRACI_0.75_SEED_8034_2024-02-29_02:14:59.101181',
+    'decoder_ei_mixed_long10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00073_FRACI_0.75_SEED_8036_2024-02-29_04:35:22.590845',
+]
 
 n_seeds = len(params['SEED'])
 
 for key in params.keys():
 	if key == 'SEED' or type(params[key][0]) is str:
 		continue
-	params[key] = [str(v) for v in params[key]]
+	params[key] = [str(v[1]) for v in iter_range(params[key][0], params[key][1])]
 
 all_values = cartesian(*(params.values()))
 n_scripts = len(all_values[0])
