@@ -75,14 +75,25 @@ def pad_zeros(to_pad, length):
 batch_size = 1
 
 params = OrderedDict()
-params['SEED'] = [str(8000)]
+params['SEED'] = [str(555)]
 params['PARAM_VEC'] = [
-	'"-0.0001" 0.0001 "-0.005" 0.005 0 0 7.5 7.5',
-	'',
-	'',
-	'',
-	'',
-	'',
+	# w-STDP + summed weight bound + single synapse bound
+	'"-0.0001" 0.0001 0 "-0.005" 0.005 0 2.5 7.5 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 0 0 0 1 1 0 1 1',
+
+	# STDP + summed weight bound + single synapse bound
+	'"-0.03" 0.03 0 0 0 0 2.5 7.5 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 1 1 0 0 0 0 1 1',
+
+	# w-STDP + summed weight bound
+	'"-0.0001" 0.0001 0 "-0.005" 0.005 0 1000 7.5 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 0 0 0 1 1 0 0 1',
+
+	# STDP + summed weight bound
+	'"-0.03" 0.03 0 0 0 0 1000 7.5 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 1 1 0 0 0 0 0 1',
+
+	# w-STDP + firing rate bound
+	'0 0 0 "-0.01" 0.01 "-0.005" 1000 1000 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 0 0 0 1 1 1 0 0',
+
+	# STDP + firing rate bound
+	'"-0.03" 0.03 0 0 0 "-0.005" 1000 1000 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 1 1 0 0 0 1 0 0',
 ]
 
 n_seeds = len(params['SEED'])
@@ -117,7 +128,7 @@ for src_name in scripts:
 					for param_idx, v in enumerate(params.keys()):
 						augmented_params[v] = all_values[param_idx][script_num]
 
-					augmented_params['TITLE'] = format_title(augmented_params)
+					augmented_params['TITLE'] = str(int(n / n_seeds / batch_size))
 					augmented_params['INDEX'] = str(int(script_num / n_seeds))
 
 					line_replaced = replace_all(line, augmented_params)

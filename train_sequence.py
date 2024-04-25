@@ -2,7 +2,7 @@ from copy import deepcopy as copy
 import numpy as np
 import os
 import time
-from functools import partial
+import cma
 from disp import get_ordered_colors
 from aux import gaussian_if_under_val, exp_if_under_val, rev_argsort, set_smallest_n_zero
 import matplotlib.pyplot as plt
@@ -10,8 +10,6 @@ import matplotlib.gridspec as gridspec
 from datetime import datetime
 import multiprocessing as mp
 import argparse
-from numba import njit
-from scipy.sparse import csc_matrix
 from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
 from csv_writer import write_csv
@@ -21,6 +19,7 @@ from rate_network import simulate, tanh, generate_gaussian_pulse
 ### Parse arguments 
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--std_expl', metavar='std', type=float, help='Initial standard deviation for parameter search via CMA-ES')
 parser.add_argument('--l1_pen', metavar='l1', type=float, nargs=3, help='Prefactor for L1 penalties on loss function')
 parser.add_argument('--pool_size', metavar='ps', type=int, help='Number of processes to start for each loss function evaluation')
 parser.add_argument('--batch', metavar='b', type=int, help='Number of simulations that should be batched per loss function evaluation')
@@ -28,7 +27,7 @@ parser.add_argument('--fixed_data', metavar='fd', type=int, help='')
 parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
 parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
-# parser.add_argument('--param_vec', metavar='ps', type=float, nargs=8)
+parser.add_argument('--param_vec', metavar='ps', type=float, nargs=22)
 
 args = parser.parse_args()
 print(args)
@@ -38,7 +37,10 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (999, 1000) # Number of times to simulate network and plasticity rules per loss function evaluation
+N_INNER_LOOP_RANGE = (600, 601) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = [569, 564, 559, 554, 549, 544]
+DECODER_TEST_ITERS = [599, 594, 589, 584, 579, 574]
+STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
@@ -47,17 +49,21 @@ ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
-N_RULES = 6
+N_RULES = 8
 N_TIMECONSTS = 6
-REPEATS = 5
+ACTIVE_RULES = np.flip(np.sort(np.nonzero(args.param_vec[-N_RULES:])[0])).astype(int)
+
+print(ACTIVE_RULES)
+
 
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 40 # Number excitatory cells in sequence (also length of sequence)
 n_i = 8 # Number inhibitory cells
-train_seeds = np.random.randint(0, 1e7, size=REPEATS)
-test_seeds = np.random.randint(0, 1e7, size=REPEATS)
+train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
+test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
+x_base = np.array(args.param_vec[:(N_RULES + N_TIMECONSTS)])
 
 layer_colors = get_ordered_colors('gist_rainbow', 15)
 np.random.shuffle(layer_colors)
@@ -125,7 +131,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/kernel_test_discovered_3ms_stdp_{BATCH_SIZE}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/kernel_test_discovered_trial_{BATCH_SIZE}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -241,7 +247,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	axs += [fig.add_subplot(gs[2 * n_res_to_show + 2, :])]
 
 	all_effects = []
-
+ 
 	for i in np.arange(BATCH_SIZE):
 		# for each network in the batch, graph its excitatory, inhibitory activity, as well as the target activity
 		res = results[i]
@@ -368,9 +374,9 @@ def simulate_single_network(index, x, train, track_params=True):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
-	plasticity_coefs = x[:N_RULES]
+	plasticity_coefs = x[:N_RULES - 2]
+	weight_bounds = x[N_RULES - 2 : N_RULES]
 	rule_time_constants = x[N_RULES:(N_RULES + N_TIMECONSTS)]
-	weight_bounds = x[(N_RULES + N_TIMECONSTS):]
 
 	if FIXED_DATA:
 		if train:
@@ -445,7 +451,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			}
 			
 
-		if i in [370, 375, 380, 385, 390, 395, 970, 975, 980, 985, 990, 995]:
+		if (i in DECODER_TRAIN_ITERS) or (i in DECODER_TEST_ITERS):
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -455,7 +461,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			w_hist.pop(0)
 
 		if effects is not None:
-			all_effects += effects[:N_RULES]
+			all_effects += effects[:N_RULES - 2]
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
@@ -486,9 +492,9 @@ def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coef
 
 
 def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
-	plasticity_coefs = x[:N_RULES]
+	plasticity_coefs = x[:N_RULES - 2]
+	weight_bounds = x[N_RULES - 2:N_RULES]
 	rule_time_constants = x[N_RULES:(N_RULES + N_TIMECONSTS)]
-	weight_bounds = x[(N_RULES + N_TIMECONSTS):]
 
 	if np.any(np.array([res['blew_up'] for res in results])):
 		if eval_tracker is not None:
@@ -558,7 +564,7 @@ def eval_all(X, eval_tracker=None, train=True):
 	task_vars = []
 	for i_x, x in enumerate(X):
 		for idx in indices:
-			task_vars.append((i_x, x, train))
+			task_vars.append((idx, x, train))
 	results = pool.map(simulate_single_network_wrapper, task_vars)
 
 	pool.close()
@@ -588,8 +594,38 @@ def process_params_str(s):
 
 if __name__ == '__main__':
 	mp.set_start_method('fork')
+	
+	rule_contingency_map = [
+		[0, 8],
+		[1, 9],
+		[2, 10],
+		[3, 11],
+		[4, 12],
+		[5, 13],
+		[6],
+		[7],
+	]
 
-	time_consts = np.array([3e-3, 3e-3, 0.5e-3, 3e-3, 3e-3, 0.5e-3])
+	activated_terms = np.sort(np.concatenate([rule_contingency_map[r_idx] for r_idx in ACTIVE_RULES]))
+	x0 = copy(x_base)[activated_terms]
+
+	eval_tracker = {
+		'evals': 0,
+		'best_loss': np.nan,
+		'best_changed': False,
+	}
+
+	coefs_lower_bounds = [(-10 * int(x0[coef_idx] < 0)) for coef_idx in range(len(ACTIVE_RULES))]
+	coefs_upper_bounds = [(10 * int(x0[coef_idx] >= 0)) for coef_idx in range(len(ACTIVE_RULES))]
+
+	options = {
+		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+		# 'popsize': 15,
+		'bounds': [
+			coefs_lower_bounds + [0.5e-3] * (len(x0) - len(ACTIVE_RULES)),
+			coefs_upper_bounds + [40e-3] * (len(x0) - len(ACTIVE_RULES)),
+		],
+	}
 
 	# coefs = args.param_vec[:-2]
 	# bounds = args.param_vec[-2:]
@@ -603,7 +639,7 @@ if __name__ == '__main__':
 	# x = np.concatenate([0.3 * np.array([-0.03, 0.03, 0, 0, 0, 0]), time_consts, [7.5, 7.5]])
 
 	# successful rules for STDP + firing rate bound
-	x = np.concatenate([0.3 * np.array([-0.03, 0.03, 0, 0, 0, -0.005]), time_consts, [1000, 1000]])
+	# x = np.concatenate([0.3 * np.array([-0.03, 0.03, 0, 0, 0, -0.005]), time_consts, [1000, 1000]])
 
 	# successful rules for w-STDP + firing rate bound
 	# x = np.concatenate([0.1 * np.array([0, 0, 0, -0.01, 0.01, -0.005]), time_consts, [1000, 1000]])
@@ -625,4 +661,19 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	eval_all([x] * REPEATS, eval_tracker=eval_tracker)
+	es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
+	while not es.stop():
+		X = es.ask()
+		X_expanded = [copy(x_base) for k_sample in range(len(X))]
+
+		len(activated_terms)
+
+		for x_idx, x in enumerate(X):
+			X_expanded[x_idx][activated_terms] = x
+
+		print(X_expanded[0])
+
+		es.tell(X, eval_all(X_expanded, eval_tracker=eval_tracker))
+		if eval_tracker['best_changed']:
+			eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
+		es.disp()
