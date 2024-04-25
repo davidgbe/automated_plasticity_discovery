@@ -181,7 +181,7 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 
-	w_initial[:n_e, :n_e] = w_e_e * (0.05 * (0.2 + 0.8 * np.random.rand(n_e, n_e)) + 0.25 * 4/3 * create_shift_matrix(n_e, k=-3))
+	w_initial[:n_e, :n_e] = w_e_e * (0.05 * (0.2 + 0.8 * np.random.rand(n_e, n_e)))
 
 	# w_initial[:n_e, :n_e][np.random.rand(n_e, n_e) >= 0.8] = 0
 
@@ -410,24 +410,19 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	# surviving_synapse_mask = np.ones((n_e, n_e)).astype(bool)
 
-	fixed_inputs_spks = np.zeros((len(t), int(n_e/2) + n_i))
+	fixed_inputs_spks = np.zeros((len(t), n_e + n_i))
 	fixed_inputs_spks[:10, 0] = 1
-	# fixed_inputs_spks[10:int(65e-3/dt), 1:int(n_e/2) + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 10, int(n_e/2) - 1 + n_i))
+	fixed_inputs_spks[10:int(65e-3/dt), 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 10, n_e - 1 + n_i))
 
 	for i in range(n_inner_loop_iters):
-		random_inputs_poisson = np.zeros((len(t), int(n_e/2) + n_i))
-		random_inputs_poisson[10:int(65e-3/dt), :int(n_e/2) + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 10, int(n_e/2) + n_i))
+		# Define input for activation of the network
+		r_in = np.zeros((len(t), n_e + n_i))
+
+		random_inputs_poisson = np.zeros((len(t), n_e + n_i))
+		random_inputs_poisson[10:int(65e-3/dt), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 10, n_e + n_i))
 		random_inputs_poisson[:, 0] = 0
 
-		r_in_spks = np.zeros((len(t), n_e + n_i))
-		for shared_e_input_idx in range(0, n_e, 2):
-			r_in_spks[:, shared_e_input_idx] = (fixed_inputs_spks + random_inputs_poisson)[:, int(shared_e_input_idx / 2)]
-			r_in_spks[:, shared_e_input_idx + 1] = (fixed_inputs_spks + random_inputs_poisson)[:, int(shared_e_input_idx / 2)]
-		r_in_spks[:, n_e:n_e + n_i] = (fixed_inputs_spks + random_inputs_poisson)[:, int(n_e/2):int(n_e/2) + n_i]
-
-		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
-
-
+		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
