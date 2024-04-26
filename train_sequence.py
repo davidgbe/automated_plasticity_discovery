@@ -516,7 +516,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 					eval_tracker['best_loss'] = loss
 					eval_tracker['best_changed'] = True
 					eval_tracker['params'] = copy(x)
-			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
+				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
 			eval_tracker['evals'] += 1
 		else:
 			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=False)
