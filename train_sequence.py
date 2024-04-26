@@ -133,7 +133,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/kernel_test_discovered_{TITLE}_BATCH_{BATCH_SIZE}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/kernel_test_indep_scale_{TITLE}_BATCH_{BATCH_SIZE}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -299,10 +299,10 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		vbound = np.maximum(vmax, np.abs(vmin))
 		vbound = 5
 
-		mappable = axs[2 * i + 1][0].matshow(w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
+		mappable = axs[2 * i + 1][0].matshow(sorted_w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][0])
 
-		mappable = axs[2 * i + 1][1].matshow(w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
+		mappable = axs[2 * i + 1][1].matshow(sorted_w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][1])
 
 		axs[2 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
@@ -606,22 +606,33 @@ if __name__ == '__main__':
 	activated_terms = np.sort(np.concatenate([rule_contingency_map[r_idx] for r_idx in ACTIVE_RULES]))
 	x0 = copy(x_base)[activated_terms]
 
+	x_scale = np.abs(x0)
+
+	a0 = x0 / x_scale
+
+	print(a0)
+
+	coefs_lower_bounds = [(-10 * int(x0[coef_idx] < 0)) for coef_idx in range(len(ACTIVE_RULES))]
+	coefs_upper_bounds = [(10 * int(x0[coef_idx] >= 0)) for coef_idx in range(len(ACTIVE_RULES))]
+
+	bounds = [
+		coefs_lower_bounds + [0.5e-3] * (len(x0) - len(ACTIVE_RULES)),
+		coefs_upper_bounds + [40e-3] * (len(x0) - len(ACTIVE_RULES)),
+	]
+
+	for i_b in len(bounds):
+		bounds[i_b] = (np.array(bounds[i_b]) / x_scale).tolist()
+
 	eval_tracker = {
 		'evals': 0,
 		'best_loss': np.nan,
 		'best_changed': False,
 	}
 
-	coefs_lower_bounds = [(-10 * int(x0[coef_idx] < 0)) for coef_idx in range(len(ACTIVE_RULES))]
-	coefs_upper_bounds = [(10 * int(x0[coef_idx] >= 0)) for coef_idx in range(len(ACTIVE_RULES))]
-
 	options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
 		# 'popsize': 15,
-		'bounds': [
-			coefs_lower_bounds + [0.5e-3] * (len(x0) - len(ACTIVE_RULES)),
-			coefs_upper_bounds + [40e-3] * (len(x0) - len(ACTIVE_RULES)),
-		],
+		'bounds': bounds,
 	}
 
 	# coefs = args.param_vec[:-2]
@@ -651,26 +662,19 @@ if __name__ == '__main__':
 
 	# x = np.concatenate([0.1 * np.array([0, 0, 0, 0, 0, 0]), time_consts, [1000, 1000]])
 
-
-	eval_tracker = {
-		'evals': 0,
-		'best_loss': np.nan,
-		'best_changed': False,
-	}
-
-	es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
+	es = cma.CMAEvolutionStrategy(a0, STD_EXPL, options)
 	while not es.stop():
-		X = es.ask()
+		A = es.ask()
 		X_expanded = [copy(x_base) for k_sample in range(len(X))]
 
 		len(activated_terms)
 
-		for x_idx, x in enumerate(X):
-			X_expanded[x_idx][activated_terms] = x
+		for a_idx, a in enumerate(A):
+			X_expanded[a_idx][activated_terms] = a * x_scale
 
 		print(X_expanded[0])
 
-		es.tell(X, eval_all(X_expanded, eval_tracker=eval_tracker))
+		es.tell(A, eval_all(X_expanded, eval_tracker=eval_tracker))
 		if eval_tracker['best_changed']:
 			eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
 		es.disp()
