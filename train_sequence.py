@@ -620,7 +620,7 @@ if __name__ == '__main__':
 		coefs_upper_bounds + [40e-3] * (len(x0) - len(ACTIVE_RULES)),
 	]
 
-	for i_b in len(bounds):
+	for i_b in range(len(bounds)):
 		bounds[i_b] = (np.array(bounds[i_b]) / x_scale).tolist()
 
 	eval_tracker = {
@@ -665,12 +665,12 @@ if __name__ == '__main__':
 	es = cma.CMAEvolutionStrategy(a0, STD_EXPL, options)
 	while not es.stop():
 		A = es.ask()
-		X_expanded = [copy(x_base) for k_sample in range(len(X))]
+		X_expanded = [copy(x_base) for k_sample in range(len(A))]
 
 		len(activated_terms)
 
 		for a_idx, a in enumerate(A):
-			X_expanded[a_idx][activated_terms] = a * x_scale
+			X_expanded[a_idx][activated_terms] = (np.array(a) * x_scale).tolist()
 
 		print(X_expanded[0])
 
