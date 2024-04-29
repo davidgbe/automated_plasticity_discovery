@@ -627,10 +627,10 @@ if __name__ == '__main__':
 
 	eval_all([x_test] * REPEATS, eval_tracker=eval_tracker)
 
-	# for i in range(len(syn_effects_test)):
-	# 	x_test_reduced = copy(x_test)
-	# 	x_test_reduced[i] = 0
-	# 	print(x_test_reduced)
+	for i in range(len(syn_effects_test)):
+		x_test_reduced = copy(x_test)
+		x_test_reduced[i] = 0
+		print(x_test_reduced)
 
-	# 	eval_all([x_test_reduced] * REPEATS, eval_tracker=eval_tracker)
+		eval_all([x_test_reduced] * REPEATS, eval_tracker=eval_tracker)
 
