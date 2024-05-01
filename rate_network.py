@@ -189,7 +189,7 @@ def simulate_inner_loop(
 
             w_updates_unweighted.append(r_cross_products)
             # num_rules = w_updates_unweighted[k].shape[0]
-            w_updates_unweighted[k][2:] = w_copy[pop_slices[p_j], pop_slices[p_i]] * w_updates_unweighted[k][2:]
+            w_updates_unweighted[k][3:] = w_copy[pop_slices[p_j], pop_slices[p_i]] * w_updates_unweighted[k][3:]
 
         w_not_almost_zero = np.where(np.abs(w) > 2e-6, 1, 0)
 

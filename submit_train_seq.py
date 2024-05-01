@@ -77,23 +77,23 @@ batch_size = 1
 params = OrderedDict()
 params['SEED'] = [str(555)]
 params['PARAM_VEC'] = [
-	# # w-STDP + summed weight bound + single synapse bound
-	'"-0.001" 0.001 0 "-0.02" 0.02 0 2.5 7.5 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 0 0 0 1 1 0 1 1',
+	# # # w-STDP + summed weight bound + single synapse bound
+	# '"-0.001" 0.001 0 "-0.02" 0.02 0 2.5 7.5 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 0 0 0 1 1 0 1 1',
 
-	# # STDP + summed weight bound + single synapse bound
-	'"-0.01" 0.01 0 0 0 0 2.5 7.5 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 1 1 0 0 0 0 1 1',
+	# # # STDP + summed weight bound + single synapse bound
+	# '"-0.01" 0.01 0 0 0 0 2.5 7.5 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 1 1 0 0 0 0 1 1',
 
-	# # w-STDP + summed weight bound
-	'"-0.001" 0.001 0 "-0.02" 0.02 0 1000 7.5 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 0 0 0 1 1 0 0 1',
+	# # # w-STDP + summed weight bound
+	# '"-0.001" 0.001 0 "-0.02" 0.02 0 1000 7.5 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 0 0 0 1 1 0 0 1',
 
-	# # STDP + summed weight bound
-	'"-0.01" 0.01 0 0 0 0 1000 7.5 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 1 1 0 0 0 0 0 1',
+	# # # STDP + summed weight bound
+	# '"-0.01" 0.01 0 0 0 0 1000 7.5 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 1 1 0 0 0 0 0 1',
 
-	# w-STDP + w-firing rate bound
-	'"-0.001" 0.001 0 "-0.02" 0.02 "-0.005" 1000 1000 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 0 0 0 1 1 1 0 0',
+	# # w-STDP + w-firing rate bound
+	# '"-0.001" 0.001 0 "-0.02" 0.02 "-0.005" 1000 1000 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 0 0 0 1 1 1 0 0',
 
-	# # STDP + w-firing rate bound
-	'"-0.01" 0.01 0 0 0 "-0.005" 1000 1000 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 1 1 0 0 0 1 0 0',
+	# # # STDP + w-firing rate bound
+	# '"-0.01" 0.01 0 0 0 "-0.005" 1000 1000 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 1 1 0 0 0 1 0 0',
  
  	# STDP + firing rate bound
 	'"-0.01" 0.01 "-0.005" 0 0 0 1000 1000 10e-3 10e-3 0.5e-3 10e-3 10e-3 5e-3 1 1 1 0 0 0 0 0',
