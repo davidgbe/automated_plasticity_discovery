@@ -61,8 +61,8 @@ dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 20 # Number excitatory cells in sequence (also length of sequence)
 n_i = 8 # Number inhibitory cells
-train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
-test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
+train_seeds = np.random.randint(0, 1e7, size=REPEATS)
+test_seeds = np.random.randint(0, 1e7, size=REPEATS)
 
 layer_colors = get_ordered_colors('gist_rainbow', 15)
 np.random.shuffle(layer_colors)
