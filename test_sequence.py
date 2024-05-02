@@ -2,110 +2,102 @@ from copy import deepcopy as copy
 import numpy as np
 import os
 import time
-from functools import partial
+import cma
 from disp import get_ordered_colors
 from aux import gaussian_if_under_val, exp_if_under_val, rev_argsort, set_smallest_n_zero
-import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from datetime import datetime
 import multiprocessing as mp
 import argparse
-import cma
-from numba import njit
-from scipy.sparse import csc_matrix
 from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
 from csv_writer import write_csv
-
-new_rc_params = {
-    'text.usetex': False,
-    "svg.fonttype": 'none'
-}
-matplotlib.rcParams.update(new_rc_params)
-
-plt.rcParams['font.size'] = 15
-# plt.rcParams['axes.linewidth'] = 3.0
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
 ### Parse arguments 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--std_expl', metavar='std', type=float, help='Initial standard deviation for parameter search via CMA-ES')
+parser.add_argument('--title', metavar='ttl', type=str, default='')
 parser.add_argument('--l1_pen', metavar='l1', type=float, nargs=3, help='Prefactor for L1 penalties on loss function')
-parser.add_argument('--asp', metavar='asp', type=int, help="Flag for penalizing shape of neurons' activity ")
 parser.add_argument('--pool_size', metavar='ps', type=int, help='Number of processes to start for each loss function evaluation')
-parser.add_argument('--batch', metavar='b', type=int, help='Number of simulations that should be batched per loss function evaluation')
-parser.add_argument('--fixed_data', metavar='fd', type=int, help='')
-parser.add_argument('--load_initial', metavar='li', type=str, help='File from which to load the best params as an initial guess')
+parser.add_argument('--batch', metavar='b', type=int, default=1, help='Number of simulations that should be batched per loss function evaluation')
+parser.add_argument('--fixed_data', metavar='fd', type=int, default=1, help='')
 parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
 parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
+parser.add_argument('--root_file_name', metavar='fn', type=str)
+
 
 args = parser.parse_args()
 print(args)
 
 np.random.seed(args.seed)
 
+TITLE = args.title
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (999, 1000) # Number of times to simulate network and plasticity rules per loss function evaluation
-STD_EXPL = args.std_expl
+N_INNER_LOOP_RANGE = (1200, 1201) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = [1169, 1164, 1159, 1154, 1149, 1144]
+DECODER_TEST_ITERS = [1199, 1194, 1189, 1184, 1179, 1174]
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
 CALC_TEST_SET_LOSS_FREQ = 11
-ACTIVITY_LOSS_COEF = 6 if bool(args.asp) else 0
 ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
-N_RULES = 20
-N_TIMECONSTS = 12
+N_RULES = 8
+N_TIMECONSTS = 6
+ROOT_FILE_NAME = args.root_file_name
+REPEATS = 20
 
-T = 0.75 # Total duration of one network simulation
+
+T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
-n_e = 25 # Number excitatory cells in sequence (also length of sequence)
+n_e = 20 # Number excitatory cells in sequence (also length of sequence)
 n_i = 8 # Number inhibitory cells
-train_seeds = np.random.randint(0, 1e7, size=100)
-test_seeds = np.random.randint(0, 1e7, size=100)
+train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
+test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
+x_base = np.array(args.param_vec[:(N_RULES + N_TIMECONSTS)])
 
 layer_colors = get_ordered_colors('gist_rainbow', 15)
 np.random.shuffle(layer_colors)
 
 rule_names = [ # Define labels for all rules to be run during simulations
-	r'',
-	r'$y$',
-	r'$x$',
+	# r'',
+	# r'$y$',
+	# r'$x$',
 	# r'$y^2$',
 	# r'$x^2$',
-	r'$x \, y$',
-	r'$\tilde{y}$',
+	# r'$x \, y$',
+	# r'$\tilde{y}$',
 	r'$x \, \tilde{y}$',
-	r'$\tilde{x}$',
+	# r'$\tilde{x}$',
 	r'$\tilde{x} \, y$',
 	# r'$x_{int} \, y^2$',
 	r'$\tilde{y} \, y$',
-	r'$\tilde{x} \, x$',
+	# r'$\tilde{x} \, x$',
 	# r'$\tilde{y}^2$',
 	# r'$\tilde{x}^2$',
 
-	r'$w$',
-	r'$w y$',
-	r'$w x$',
+	# r'$w$',
+	# r'$w y$',
+	# r'$w x$',
 	# r'$y^2$',
 	# r'$x^2$',
-	r'$w x \, y$',
-	r'$w \tilde{y}$',
+	# r'$w x \, y$',
+	# r'$w \tilde{y}$',
 	r'$w x \, \tilde{y}$',
-	r'$w \tilde{x}$',
+	# r'$w \tilde{x}$',
 	r'$w \tilde{x} \, y$',
 	# r'$x_{int} \, y^2$',
 	r'$w \tilde{y} \, y$',
-	r'$w \tilde{x} \, x$',
+	# r'$w \tilde{x} \, x$',
 	# r'$w \tilde{y}^2$',
 	# r'$w \tilde{x}^2$',
 
@@ -139,7 +131,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/ee_no_syn_local_test_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/kernel_test_small_net_{TITLE}_BATCH_{BATCH_SIZE}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -163,6 +155,25 @@ w_e_i = 0.5e-4 / dt
 w_i_e = -0.3e-4 / dt
 w_e_e_added = 0.05 * w_e_e * 0.2
 
+def create_shift_matrix(size, k=1, weighting=[]):
+	w = np.zeros((size, size))
+	if k >= 1:
+		for k_p in np.arange(1, k+1):
+			a = 1
+			if len(weighting) == k:
+				a = weighting[k_p - 1]
+			w += a * np.diag(np.ones((size - k_p,)), k=k_p)
+			# w[(size - k_p):, k - k_p] = 1
+
+	elif k <= -1:
+		for k_p in np.arange(1, -k+1):
+			a = 1
+			if len(weighting) == -k:
+				a = weighting[k_p - 1]
+			w += a * np.diag(np.ones((size - k_p,)), k=-k_p)
+			# w[-k - k_p, (size - k_p):] = 1
+	return w
+
 def make_network():
 	'''
 	Generates an excitatory chain with recurrent inhibition and weak recurrent excitation. Weights that form sequence are distored randomly.
@@ -170,13 +181,15 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 
-	w_initial[:n_e, :n_e] = 0.05 * w_e_e * (0.2 + 0.8 * np.random.rand(n_e, n_e))
+	w_initial[:n_e, :n_e] = w_e_e * (0.05 * (0.2 + 0.8 * np.random.rand(n_e, n_e)))
+
+	# w_initial[:n_e, :n_e][np.random.rand(n_e, n_e) >= 0.8] = 0
 
 	# w_initial[:n_e, :n_e] = np.diag(np.ones(n_e - 1), k=-1) * w_e_e * 0.7
 
-	w_initial[n_e:, :n_e] = gaussian_if_under_val(0.8, (n_i, n_e), w_e_i, 0.3 * w_e_i)
+	w_initial[n_e:, :n_e] = gaussian_if_under_val(1, (n_i, n_e), w_e_i, 0 * w_e_i)
 	w_initial[n_e:, :n_e] = np.where(w_initial[n_e:, :n_e] < 0, 0, w_initial[n_e:, :n_e])
-	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
+	w_initial[:n_e, n_e:] = gaussian_if_under_val(1, (n_e, n_i), w_i_e, 0 * np.abs(w_i_e))
 	w_initial[:n_e, n_e:] = np.where(w_initial[:n_e, n_e:] > 0, 0, w_initial[:n_e, n_e:])
 
 	np.fill_diagonal(w_initial, 0)
@@ -205,17 +218,19 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 	X_test = np.concatenate(stacked_activities_test, axis=0)
 	y_test = np.stack([test_times for j in range(r.shape[0] - 6)]).flatten()
 
+	# print('X SHAPE', X.shape)
+	# print('y SHAPE', y.shape)
+
+	print(X_train)
+	print(y_train)
+
 	reg = LinearRegression().fit(X_train, y_train)
 
-	# print(np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100)
+	print(np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100)
 
-	decoding_loss = 1000 * (1 - reg.score(X_test, y_test))
-	activity_loss = np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100
+	loss = 1000 * (1 - reg.score(X_test, y_test)) + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100
 
-	print(f'decoding loss: {decoding_loss}')
-	print(f'activity loss: {activity_loss}')
-
-	loss = decoding_loss + activity_loss
+	print('loss:', loss)
 
 	return loss
 
@@ -224,122 +239,109 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	scale = 3
 	n_res_to_show = BATCH_SIZE
 
-	gs = gridspec.GridSpec(2 * 2 * n_res_to_show + 3, 2)
-	fig = plt.figure(figsize=(4  * scale, (2 * 2 * n_res_to_show + 3) * scale), tight_layout=True)
-	axs = []
-	for i in range(n_res_to_show):
-		axs.append([fig.add_subplot(gs[4*i:4*i+3, 0]), fig.add_subplot(gs[4*i:4*i+3, 1])])
-		axs.append([fig.add_subplot(gs[4*i+3, 0]), fig.add_subplot(gs[4*i+3, 1])])
-
-	axs += [fig.add_subplot(gs[2 * 2 * n_res_to_show, :])]
-	axs += [fig.add_subplot(gs[2 * 2 * n_res_to_show + 1, :])]
-	axs += [fig.add_subplot(gs[2 * 2 * n_res_to_show + 2, :])]
+	gs = gridspec.GridSpec(2 * n_res_to_show + 3, 2)
+	fig = plt.figure(figsize=(4  * scale, (2 * n_res_to_show + 3) * scale), tight_layout=True)
+	axs = [[fig.add_subplot(gs[i, 0]), fig.add_subplot(gs[i, 1])] for i in range(2 * n_res_to_show)]
+	axs += [fig.add_subplot(gs[2 * n_res_to_show, :])]
+	axs += [fig.add_subplot(gs[2 * n_res_to_show + 1, :])]
+	axs += [fig.add_subplot(gs[2 * n_res_to_show + 2, :])]
 
 	all_effects = []
-
+ 
 	for i in np.arange(BATCH_SIZE):
 		# for each network in the batch, graph its excitatory, inhibitory activity, as well as the target activity
 		res = results[i]
-
-		blew_up = res['blew_up']
+		r = res['r']
+		r_exp_filtered = res['r_exp_filtered']
 		w = res['w']
 		w_initial = res['w_initial']
+		effects = res['syn_effects']
+		all_weight_deltas = res['all_weight_deltas']
+		rs_for_loss = res['rs_for_loss']
 
-		t_ordering = None
+		all_effects.append(effects)
 
-		if not blew_up:
-			r = res['r']
-			r_exp_filtered = res['r_exp_filtered']
-			effects = res['syn_effects']
-			all_weight_deltas = res['all_weight_deltas']
-			rs_for_loss = res['rs_for_loss']
+		for trial_idx in range(rs_for_loss.shape[0]):
+			r = rs_for_loss[trial_idx, ...]
 
-			all_effects.append(effects)
+			for l_idx in range(r.shape[1]):
+				if l_idx < n_e:
+					if l_idx % 1 == 0:
+						axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
+						# axs[2 * i][0].plot(t, all_r_targets[loss_min_idx, :, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
 
-			for trial_idx in range(rs_for_loss.shape[0]):
-				r = rs_for_loss[trial_idx, ...]
+						# axs[2 * i][0].plot(t, 4 * r_exp_filtered[:, l_idx], '-.', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
+				else:
+					axs[2 * i][1].plot(t, r[:, l_idx], c='black') # graph inh activity
 
-				for l_idx in range(r.shape[1]):
-					if l_idx < n_e:
-						if l_idx % 1 == 0:
-							axs[2 * i][0].plot(t, r[:, l_idx] - trial_idx * 1.1 * rs_for_loss[..., :n_e].max() , c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
-							# axs[2 * i][0].plot(t, all_r_targets[loss_min_idx, :, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
+			write_csv(os.path.join(out_dir, f'all_r_{eval_tracker["evals"]}.csv'), rs_for_loss[trial_idx, :, :n_e], delimiter=',')
 
-							# axs[2 * i][0].plot(t, 4 * r_exp_filtered[:, l_idx], '-.', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
-					else:
-						axs[2 * i][1].plot(t, r[:, l_idx] - trial_idx * 1.1 * rs_for_loss[..., :n_e].max(), c='black') # graph inh activity
+		r_exc = r[:, :n_e]
+		r_summed = np.sum(r_exc, axis=0)
+		r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
+		r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
+		r_normed = r_exc / r_summed_safe_divide
+		t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
+		t_ordering = np.argsort(t_means)
+		t_ordering = np.concatenate([t_ordering, np.arange(n_e, n_e + n_i)])
 
-			r_exc = r[:, :n_e]
-			r_summed = np.sum(r_exc, axis=0)
-			r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
-			r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
-			r_normed = r_exc / r_summed_safe_divide
-			t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
-			t_ordering = np.argsort(t_means)
-			t_ordering = np.concatenate([t_ordering, np.arange(n_e, n_e + n_i)])
+		sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
+		sorted_w = w[t_ordering, :][:, t_ordering]
 
-			axs[2 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
-			for i_axs in range(2):
-				axs[2 * i][i_axs].set_xlabel('Time (s)')
-				axs[2 * i][i_axs].set_ylabel('Firing rate')
+		write_csv(os.path.join(out_dir, f'weight_mat_{eval_tracker["evals"]}.csv'), w, delimiter=',')
 
-			axs[2 * n_res_to_show + 2].plot(np.arange(len(all_weight_deltas)), np.log(all_weight_deltas), label=f'{i}')
 
 		vmin = np.min([w_initial.min(), w.min()])
 		vmax = np.max([w_initial.max(), w.max()])
 
 		vbound = np.maximum(vmax, np.abs(vmin))
-		# vbound = 5
+		vbound = 5
 
-		if t_ordering is not None:
-			sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
-			sorted_w = w[t_ordering, :][:, t_ordering]
+		mappable = axs[2 * i + 1][0].matshow(sorted_w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
+		plt.colorbar(mappable, ax=axs[2 * i + 1][0])
 
-			mappable = axs[2 * i + 1][0].matshow(sorted_w_initial[:n_e, :n_e], vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
-			plt.colorbar(mappable, ax=axs[2 * i + 1][0])
+		mappable = axs[2 * i + 1][1].matshow(sorted_w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
+		plt.colorbar(mappable, ax=axs[2 * i + 1][1])
 
-			mappable = axs[2 * i + 1][1].matshow(sorted_w[:n_e, :n_e], vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
-			plt.colorbar(mappable, ax=axs[2 * i + 1][1])
-		else:
-			mappable = axs[2 * i + 1][0].matshow(w_initial[:n_e, :n_e], vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
-			plt.colorbar(mappable, ax=axs[2 * i + 1][0])
+		axs[2 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
+		for i_axs in range(2):
+			axs[2 * i][i_axs].set_xlabel('Time (s)')
+			axs[2 * i][i_axs].set_ylabel('Firing rate')
 
-			mappable = axs[2 * i + 1][1].matshow(w[:n_e, :n_e], vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
-			plt.colorbar(mappable, ax=axs[2 * i + 1][1])
+		axs[2 * n_res_to_show + 2].plot(np.arange(len(all_weight_deltas)), np.log(all_weight_deltas), label=f'{i}')
 
 	partial_rules_len = int(len(plasticity_coefs))
 
 	all_effects = np.array(all_effects)
 	effects = np.mean(all_effects, axis=0)
 
-	if type(effects) is np.ndarray:
-		axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
-		effects_argsort = []
-		for l in range(1):
-			effects_partial = effects[l * partial_rules_len: (l+1) * partial_rules_len]
-			effects_argsort_partial = np.flip(np.argsort(effects_partial))
-			effects_argsort.append(effects_argsort_partial + l * partial_rules_len)
-			x = np.arange(len(effects_argsort_partial)) + l * partial_rules_len
-			axs[2 * n_res_to_show + 1].bar(x, effects_partial[effects_argsort_partial], zorder=0)
-			for i_e in x:
-				axs[2 * n_res_to_show + 1].scatter(i_e * np.ones(all_effects.shape[0]), all_effects[:, effects_argsort_partial][:, i_e], c='black', zorder=1, s=3)
-		axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
-		axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
+	axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
+	effects_argsort = []
+	for l in range(1):
+		effects_partial = effects[l * partial_rules_len: (l+1) * partial_rules_len]
+		effects_argsort_partial = np.flip(np.argsort(effects_partial))
+		effects_argsort.append(effects_argsort_partial + l * partial_rules_len)
+		x = np.arange(len(effects_argsort_partial)) + l * partial_rules_len
+		axs[2 * n_res_to_show + 1].bar(x, effects_partial[effects_argsort_partial], zorder=0)
+		for i_e in x:
+			axs[2 * n_res_to_show + 1].scatter(i_e * np.ones(all_effects.shape[0]), all_effects[:, effects_argsort_partial][:, i_e], c='black', zorder=1, s=3)
+	axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
+	axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
 
-		true_loss = np.sum(true_losses)
-		syn_effect_penalty = np.sum(syn_effect_penalties)
-		axs[2 * n_res_to_show].set_title(f'Loss: {true_loss + syn_effect_penalty}, {true_loss}, {syn_effect_penalty}')
+	true_loss = np.sum(true_losses)
+	syn_effect_penalty = np.sum(syn_effect_penalties)
+	axs[2 * n_res_to_show].set_title(f'Loss: {true_loss + syn_effect_penalty}, {true_loss}, {syn_effect_penalty}')
 
-		# plot the coefficients assigned to each plasticity rule (unsorted by size)
-		for l in range(1):
-			axs[2 * n_res_to_show].bar(np.arange(partial_rules_len) + l * partial_rules_len, plasticity_coefs[l * partial_rules_len: (l+1) * partial_rules_len])
-		axs[2 * n_res_to_show].set_xticks(np.arange(len(plasticity_coefs)))
-		axs[2 * n_res_to_show].set_xticklabels(rule_names, rotation=60, ha='right')
-		axs[2 * n_res_to_show].set_xlim(-1, len(plasticity_coefs))
+	# plot the coefficients assigned to each plasticity rule (unsorted by size)
+	for l in range(1):
+		axs[2 * n_res_to_show].bar(np.arange(partial_rules_len) + l * partial_rules_len, plasticity_coefs[l * partial_rules_len: (l+1) * partial_rules_len])
+	axs[2 * n_res_to_show].set_xticks(np.arange(len(plasticity_coefs)))
+	axs[2 * n_res_to_show].set_xticklabels(rule_names, rotation=60, ha='right')
+	axs[2 * n_res_to_show].set_xlim(-1, len(plasticity_coefs))
 
-		axs[2 * n_res_to_show + 2].set_xlabel('Epochs')
-		axs[2 * n_res_to_show + 2].set_ylabel('log(delta W)')
-		axs[2 * n_res_to_show + 2].legend()
+	axs[2 * n_res_to_show + 2].set_xlabel('Epochs')
+	axs[2 * n_res_to_show + 2].set_ylabel('log(delta W)')
+	axs[2 * n_res_to_show + 2].legend()
 
 	pad = 4 - len(str(eval_tracker['evals']))
 	zero_padding = '0' * pad
@@ -348,7 +350,6 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	fig.tight_layout()
 	if train:
 		fig.savefig(f'{out_dir}/{zero_padding}{evals}.png')
-		fig.savefig(f'{out_dir}/{zero_padding}{evals}.svg')
 	else:
 		fig.savefig(f'{out_dir}/{zero_padding}{evals}_test.png')
 	plt.close('all')
@@ -369,15 +370,17 @@ def poisson_arrivals_to_inputs(arrivals, tau_alpha):
 	return input_current
 
 
-def simulate_single_network(index, x, track_params=True, train=True):
+def simulate_single_network(index, x, train, track_params=True):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
-	plasticity_coefs = x[:N_RULES]
-	rule_time_constants = x[N_RULES:]
+	plasticity_coefs = x[:N_RULES - 2]
+	weight_bounds = x[N_RULES - 2 : N_RULES]
+	rule_time_constants = x[N_RULES:(N_RULES + N_TIMECONSTS)]
 
 	if FIXED_DATA:
 		if train:
+			print(train_seeds[index])
 			np.random.seed(train_seeds[index])
 		else:
 			np.random.seed(test_seeds[index])
@@ -386,8 +389,10 @@ def simulate_single_network(index, x, track_params=True, train=True):
 
 	w_initial = make_network() # make a new, distorted sequence
 
-	decode_start = 3e-3 / dt
-	decode_end = 65e-3 / dt
+	print(np.mean(w_initial))
+
+	decode_start = 3e-3/dt
+	decode_end = 105e-3/dt
 	train_times = (decode_start + np.random.rand(500) * (decode_end - decode_start - 1)).astype(int) # 500
 	test_times = (decode_start + np.random.rand(200) * (decode_end - decode_start - 1)).astype(int)	# 200
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
@@ -403,52 +408,45 @@ def simulate_single_network(index, x, track_params=True, train=True):
 	all_weight_deltas = []
 	w_hist.append(w)
 
-	blew_up = False
-
-	surviving_synapse_mask = np.ones((n_e, n_e)).astype(bool)
+	# surviving_synapse_mask = np.ones((n_e, n_e)).astype(bool)
 
 	fixed_inputs_spks = np.zeros((len(t), n_e + n_i))
 	fixed_inputs_spks[:10, 0] = 1
-	fixed_inputs_spks[10:int(65e-3/dt), 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 10, n_e - 1 + n_i))
+	fixed_inputs_spks[10:int(decode_end), 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(decode_end) - 10, n_e - 1 + n_i))
 
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
 
 		random_inputs_poisson = np.zeros((len(t), n_e + n_i))
-		random_inputs_poisson[10:int(65e-3/dt), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 10, n_e + n_i))
+		random_inputs_poisson[10:int(decode_end), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(decode_end) - 10, n_e + n_i))
 		random_inputs_poisson[:, 0] = 0
 
 		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		if i <= 400:
-			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
+		# if i >= 400 and i < 800:
+		# 	synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
-			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
-			birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
+		# 	drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
+		# 	birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
 
-			surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
+		# 	surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
 
-			w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
-			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
+		# 	w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
+		# 	w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, weight_bounds, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
-		if np.isnan(r).any() or (np.abs(w_out) > 500).any() or (np.abs(w_out[:n_e, :n_e]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
-			print(np.isnan(r).any())
-			print((np.abs(w_out) > 500).any())
-
+		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e, :n_e]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
 			return {
 				'blew_up': True,
-				'w': w_out,
-				'w_initial': w_initial,
 			}
 			
 
-		if i % 100 == 0: # in [n_inner_loop_iters - 1 - 20 * k for k in range(12)]:
+		if (i in DECODER_TRAIN_ITERS) or (i in DECODER_TEST_ITERS):
 			rs_for_loss.append(r)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
@@ -458,7 +456,7 @@ def simulate_single_network(index, x, track_params=True, train=True):
 			w_hist.pop(0)
 
 		if effects is not None:
-			all_effects += effects[:N_RULES]
+			all_effects += effects[:N_RULES - 2]
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
@@ -484,17 +482,18 @@ def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coef
 	syn_effect_means = np.mean(syn_effects, axis=0)
 	syn_effect_stds = np.std(syn_effects, axis=0)
 	to_save = np.concatenate([[eval_tracker['evals'], loss], true_losses, plasticity_coefs, syn_effect_means, syn_effect_stds]).flatten()
+	print(to_save)
 	write_csv(write_path, list(to_save))
 
 
 def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
-	plasticity_coefs = x[:N_RULES]
-	rule_time_constants = x[N_RULES:]
+	plasticity_coefs = x[:N_RULES - 2]
+	weight_bounds = x[N_RULES - 2:N_RULES]
+	rule_time_constants = x[N_RULES:(N_RULES + N_TIMECONSTS)]
 
 	if np.any(np.array([res['blew_up'] for res in results])):
 		if eval_tracker is not None:
 			eval_tracker['evals'] += 1
-			plot_results(results, eval_tracker, out_dir, plasticity_coefs, np.zeros(BATCH_SIZE), np.zeros(N_RULES), train=True)
 		return 1e8 * BATCH_SIZE + 1e7 * np.sum(np.abs(plasticity_coefs)), 1e8 * np.ones((len(results),)), np.zeros((len(results), len(plasticity_coefs)))
 
 	true_losses = np.array([res['loss'] for res in results])
@@ -509,35 +508,110 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	loss = np.sum(losses)
 
 	if eval_tracker is not None:
-		plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
-		eval_tracker['evals'] += 1
+		if train:
+			if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
+				if eval_tracker['evals'] > 0:
+					eval_tracker['best_loss'] = loss
+					eval_tracker['best_changed'] = True
+					eval_tracker['params'] = copy(x)
+				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
+			eval_tracker['evals'] += 1
+		else:
+			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=False)
+			eval_tracker['best_changed'] = False
+
+	print('guess:', plasticity_coefs)
+	print('loss:', loss)
+	print('')
 	return loss, true_losses, syn_effects
+
+
+# def plasticity_coefs_eval_wrapper(plasticity_coefs, eval_tracker=None, track_params=False):
+# 	if eval_tracker['evals'] > 0 and eval_tracker['evals'] % CALC_TEST_SET_LOSS_FREQ == 0 and eval_tracker['best_changed']:
+# 		loss, true_losses, syn_effects = simulate_plasticity_rules(eval_tracker['plasticity_coefs'], eval_tracker=eval_tracker, track_params=track_params, train=False)
+# 		eval_tracker['best_changed'] = False
+# 		log_sim_results(test_data_path, eval_tracker, loss, true_losses, eval_tracker['plasticity_coefs'], syn_effects)
+
+# 	loss, true_losses, syn_effects = simulate_plasticity_rules(plasticity_coefs, eval_tracker=eval_tracker, track_params=track_params, train=True)
+# 	log_sim_results(train_data_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects)
+# 	return loss
+
+
+def load_best_params(file_name):
+	file_path = f'./sims_out/{file_name}/outcmaes/xrecentbest.dat'
+	df_params = read_csv(file_path, read_header=False)
+	x = np.arange(df_params.shape[0])
+	min_loss_idx = np.argmin([df_params.iloc[i][4] for i in x])
+	best_params = df_params.iloc[min_loss_idx][5:]
+	return np.array(best_params)
+
+
+def simulate_single_network_wrapper(tup):
+	return simulate_single_network(*tup)
+
+
+def eval_all(X, eval_tracker=None, train=True):
+	start = time.time()
+
+	indices = np.arange(BATCH_SIZE)
+	pool = mp.Pool(POOL_SIZE)
+
+	task_vars = []
+	for i_x, x in enumerate(X):
+		for idx in indices:
+			task_vars.append((i_x, x, train))
+	results = pool.map(simulate_single_network_wrapper, task_vars)
+
+	pool.close()
+	pool.join()
+
+	losses = []
+	for i in range(len(X)):
+		loss, true_losses, syn_effects = process_plasticity_rule_results(results[BATCH_SIZE * i: BATCH_SIZE * (i+1)], X[i], eval_tracker=eval_tracker, train=train)
+		losses.append(loss)
+		if train:
+			log_sim_results(train_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
+		else:
+			log_sim_results(test_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
+	
+	dur = time.time() - start
+	print('dur:', dur)
+
+	return losses
+
+def process_params_str(s):
+	params = []
+	for x in s.split(' '):
+		x = x.replace('\n', '')
+		if x != '':
+			params.append(float(x))
+	return np.array(params)
 
 def load_best_avg_params(file_names, n_plasticity_coefs, n_time_constants, batch_size):
 	all_best_syn_effects = []
 	all_best_coefs = []
 
 	for file_name in file_names:
-		train_data_path = f'./sims_out/{file_name}/train_data.csv'
-		df_train = read_csv(train_data_path, read_header=False)
+		test_data_path = f'./sims_out/{file_name}/test_data.csv'
+		df_test = read_csv(test_data_path, read_header=False)
 
 		syn_effect_start = 2 + batch_size + n_plasticity_coefs + n_time_constants
 		syn_effect_end = 2 + batch_size + n_plasticity_coefs + n_time_constants + n_plasticity_coefs
 		plasticity_coefs_start = 2 + batch_size
 		plasticity_coefs_end = 2 + batch_size + n_plasticity_coefs + n_time_constants
 
-		x = np.arange(df_train.shape[0])
-		losses = df_train[df_train.columns[1]]
-		x_best_min = np.argmin(losses)
+		x = np.arange(df_test.shape[0])
+		losses_test = df_test[df_test.columns[1]]
+		x_best_min_test = np.argmin(losses_test)
 
 		final_syn_effects = []
 		for i in range(syn_effect_start, syn_effect_end):
-			final_syn_effects.append(df_train[df_train.columns[i]][x_best_min])
+			final_syn_effects.append(df_test[df_test.columns[i]][x_best_min_test])
 		final_syn_effects = np.array(final_syn_effects)
 
 		final_coefs = []
 		for i in range(plasticity_coefs_start, plasticity_coefs_end):
-			final_coefs.append(df_train[df_train.columns[i]][x_best_min])
+			final_coefs.append(df_test[df_test.columns[i]][x_best_min_test])
 		final_coefs = np.array(final_coefs)
 
 		all_best_syn_effects.append(final_syn_effects)
@@ -546,102 +620,12 @@ def load_best_avg_params(file_names, n_plasticity_coefs, n_time_constants, batch
 	return np.mean(np.stack(all_best_syn_effects), axis=0), np.mean(np.stack(all_best_coefs), axis=0)
 
 
-def simulate_single_network_wrapper(tup):
-	return simulate_single_network(*tup)
-
-
-def eval_all(X, eval_tracker=None):
-	start = time.time()
-
-	pool = mp.Pool(POOL_SIZE)
-
-	task_vars = []
-	for i_x, x in enumerate(X):
-		task_vars.append((i_x, x))
-	results = pool.map(simulate_single_network_wrapper, task_vars)
-
-	pool.close()
-	pool.join()
-
-	losses = []
-	for i in range(len(X)):
-		loss, true_losses, syn_effects = process_plasticity_rule_results(results[BATCH_SIZE * i: BATCH_SIZE * (i+1)], X[i], eval_tracker=eval_tracker)
-		losses.append(loss)
-		log_sim_results(train_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
-	
-	dur = time.time() - start
-	print('dur:', dur)
-
-	return losses
-
 if __name__ == '__main__':
 	mp.set_start_method('fork')
+	
+	file_names = [ROOT_FILE_NAME]
 
-	### SPEC
-	# 1. Take several directories as arguments
-	# 2. Load best average coefs
-	# 3. Arange by average total synaptic change
-	# 4. Take only N largest terms in terms of synaptic change, drop rest, simulate 100 networks
-
-	file_names = [
-		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6000_2023-05-31_10:27:28.126331',
-		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6001_2023-05-31_10:27:27.894879',
-		'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_6002_2023-06-02_22:59:05.788902',
-	]
-
-
-	# file_names = [
-	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_6000_2023-05-31_10:28:18.972929',
-	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_6001_2023-05-31_10:28:42.337351',
-	# 	'decoder_ee_2_reduced_act_pen_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_6002_2023-06-02_22:59:05.785824',
-	# ]
-
-	# file_names = [
-	# 	'decoder_refit_ee_2_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.0_FRACI_0.75_SEED_300_2023-06-10_12:43:54.952561',
-	# ]
-
-	# file_names = [
-	# 	'decoder_refit_ee_2_syn_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.001_FRACI_0.75_SEED_300_2023-06-10_23:49:16.532621',
-	# ]
-
-	# syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
-
-
-	# rule_mapping = np.array([17, 18])
-	# tc_mapping = np.array([0, 3, 4, 6, 8, 9, 10, 11]) + N_RULES
-
-	# rule_mapping = np.array([0, 5, 7, 14, 16, 18, 19])
-	# tc_mapping = np.array([1, 3, 6, 8, 10, 11]) + N_RULES
-
-	# mapping = np.concatenate([rule_mapping, tc_mapping]).astype(int)
-	# print(mapping)
-
-	# rule_mapping_one_hot = np.zeros(N_RULES + N_TIMECONSTS)
-	# rule_mapping_one_hot[rule_mapping] = 1
-	# rule_mapping_one_hot[tc_mapping] = 1
-	# rule_mapping_one_hot = rule_mapping_one_hot.astype(bool)
-
-	# x_test[(~rule_mapping_one_hot[:N_RULES]).nonzero()] = 0
-
-	# x_test[:N_RULES] = 4 * x_test[:N_RULES]
-
-	x_test = np.concatenate([np.zeros(N_RULES), 10e-3 * np.ones(N_TIMECONSTS)])
-
-	# x_test[5] = -0.0015
-	# x_test[7] = 0.0015
-
-	# x_test[8] = -0.1
-
-	x_test[17] = 0.05
-	x_test[18] = -0.05
-	x_test[10] = 0.02
-
-	# x_test[24] = 0.5e-3
-	x_test[30] = 6e-3
-
-
-	x_test[:N_RULES] = 0.4 * x_test[:N_RULES]
-
+	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 
 	eval_tracker = {
 		'evals': 0,
@@ -649,13 +633,4 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	eval_all([x_test] * 3, eval_tracker=eval_tracker)
-
-	# for i in range(len(syn_effects_test)):
-	# 	x_test_reduced = copy(x_test)
-	# 	x_test_reduced[i] = 0
-	# 	# set_smallest_n_zero(syn_effects_test, i, x_test_reduced[:N_RULES])
-	# 	print(x_test_reduced)
-
-	# 	eval_all([x_test_reduced] * 30, eval_tracker=eval_tracker)
-
+	eval_all([x_test] * REPEATS, eval_tracker=eval_tracker)

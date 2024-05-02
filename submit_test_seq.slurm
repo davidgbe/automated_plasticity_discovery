@@ -3,11 +3,11 @@
 ## Presets
 #SBATCH --job-name=seq_cmaes
 
-#SBATCH -p compute-bigmem
-#SBATCH -A labfairhall
+#SBATCH -p compute
+#SBATCH -A stf
 
 #SBATCH --nodes=1
-#SBATCH --time=05:00:00
+#SBATCH --time=01:00:00
 #SBATCH --ntasks=20
 #SBATCH --mem=20G
 
@@ -20,8 +20,7 @@ echo $CURRDIR
 ## Commands to run
 source python-env/bin/activate
 
-python test_sequence_2.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0 --seed 500
-
+python test_sequence.py --pool_size 20 --batch 10 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --frac_inputs_fixed 0.75 --syn_change_prob 0.0 --seed 2222 --root_file_name kernel_test_small_net_0_BATCH_10_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_555_2024-05-01_10:33:56.778037 --title nonmult_bound
 deactivate
 
 ## Exit
