@@ -39,9 +39,9 @@ TITLE = args.title
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (3200, 3201) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_ITERS = [3169, 3164, 3159, 3154, 3149, 3144]
-DECODER_TEST_ITERS = [3199, 3194, 3189, 3184, 3179, 3174]
+N_INNER_LOOP_RANGE = (6200, 6201) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = [6169, 6164, 6159, 6154, 6149, 6144]
+DECODER_TEST_ITERS = [6199, 6194, 6189, 6184, 6179, 6174]
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
@@ -513,7 +513,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 					eval_tracker['best_loss'] = loss
 					eval_tracker['best_changed'] = True
 					eval_tracker['params'] = copy(x)
-				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
+			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
 			eval_tracker['evals'] += 1
 		else:
 			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=False)
@@ -625,6 +625,8 @@ if __name__ == '__main__':
 	file_names = [ROOT_FILE_NAME]
 
 	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
+
+	print(x_test)
 
 	eval_tracker = {
 		'evals': 0,
