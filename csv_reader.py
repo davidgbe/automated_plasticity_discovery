@@ -41,20 +41,27 @@ class InFile(object):
 
         return line
     
-def read_csv(file_path, read_header=True, delimiter=','):
+def read_csv(file_path, read_header=True, delimiter=',', start=None):
     columns = None
     data = []
 
     file = InFile(file_path)
 
-    for row_idx, row in enumerate(csv.reader(file, delimiter=delimiter)):
-        if row_idx == 0 and read_header:
-            columns = row
+    if start is None:
+        if not read_header:
+            start = 1
         else:
-            try:
-                data.append([float(num) for num in row])
-            except ValueError as e:
-                data.append([num for num in row])
+            start = 0
+
+    for row_idx, row in enumerate(csv.reader(file, delimiter=delimiter)):
+        if row_idx >= start:
+            if read_header and row_idx == 0:
+                columns = row
+            else:
+                try:
+                    data.append([float(num) for num in row])
+                except ValueError as e:
+                    data.append([num for num in row])
     if read_header:
         df = pd.DataFrame(data=data, columns=columns[:-1])
     else:
