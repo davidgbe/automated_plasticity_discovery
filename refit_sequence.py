@@ -576,6 +576,29 @@ def compute_kl_divs(file_name, n_plasticity_coefs, n_time_constants, batch_size,
         
     return np.array(kl_divs), np.mean(all_losses_for_dropouts[0]), final_coefs
 
+def compute_median_loss_shifts(file_name, n_plasticity_coefs, n_time_constants, batch_size, runs, n_categories=1):    
+    train_data_path = f'./sims_out/{file_name}/train_data.csv'
+    df_train = read_csv(train_data_path, read_header=False, start=1)
+
+    plasticity_coefs_start = 2 + batch_size
+    plasticity_coefs_end = 2 + batch_size + n_plasticity_coefs + n_time_constants
+	
+    final_coefs = []
+    for i in range(plasticity_coefs_start, plasticity_coefs_end):
+        final_coefs.append(df_train[df_train.columns[i]][0])
+    final_coefs = np.array(final_coefs)
+
+    losses = df_train[df_train.columns[1]]
+    
+    all_losses_for_dropouts = np.array([losses[i:i + runs] for i in range(0, (n_plasticity_coefs + 1) * runs, runs)])
+    
+    med_loss_shifts = []
+    for d_idx in np.arange(1, all_losses_for_dropouts.shape[0]):
+        med_loss_shift = np.maximum(np.median(all_losses_for_dropouts[d_idx, :]) - np.median(all_losses_for_dropouts[0, :]), 0)
+        med_loss_shifts.append(med_loss_shift)
+        
+    return np.array(med_loss_shifts), np.mean(all_losses_for_dropouts[0]), final_coefs
+
 
 if __name__ == '__main__':
 	mp.set_start_method('fork')
@@ -625,23 +648,23 @@ if __name__ == '__main__':
 		'decoder_ee_test_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_500_2024-04-30_12:19:28.789082',
 		'decoder_ee_test_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_500_2024-04-30_12:50:05.281322',
 		'decoder_ee_test_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_500_2024-05-02_13:22:45.473420',
-		'decoder_ee_test_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_500_2024-05-02_15:01:16.905423',
+	#	  'decoder_ee_test_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_500_2024-05-02_15:01:16.905423',
 	#     'decoder_ee_test_1_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_ACT_PEN_1_CHANGEP_0.00072_FRACI_0.75_SEED_500_2024-05-02_15:01:16.911429',
 	]
  
-	kl_divs = []
+	med_loss_shifts = []
 	coefs = []
 
 	for file_name in file_names:
-		kl_divs_file, mean_loss_non_drop, coefs_file = compute_kl_divs(file_name, N_RULES, N_TIMECONSTS, 1, 100)
+		med_loss_shifts_file, mean_loss_non_drop, coefs_file = compute_kl_divs(file_name, N_RULES, N_TIMECONSTS, 1, 100)
 		if mean_loss_non_drop < 100: # 80 for unperturbed
-			kl_divs.append(kl_divs_file)
+			med_loss_shifts.append(med_loss_shifts_file)
 			coefs.append(coefs_file)
 
-	kl_divs_mean = np.mean(kl_divs, axis=0)
-	print(kl_divs_mean)
+	med_loss_shifts_median = np.median(med_loss_shifts, axis=0)
+	print(med_loss_shifts_median)
 	x_full_model = np.mean(coefs, axis=0)
-	ranked_order = np.flip(np.argsort(kl_divs_mean))
+	ranked_order = np.flip(np.argsort(med_loss_shifts_median))
 	print(ranked_order)
 
 	rule_contingency_map = [
@@ -669,7 +692,7 @@ if __name__ == '__main__':
 
 	for k in range(N_TERMS_TO_FIT, N_TERMS_TO_FIT + 1):
 		# Make subdirectory for this particular experiment
-		out_dir = f'sims_out/refit_ee_unpert_{k}_terms_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+		out_dir = f'sims_out/refit_ee_pert_median_{k}_terms_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 		os.mkdir(out_dir)
 
 		# Make subdirectory for outputting CMAES info
