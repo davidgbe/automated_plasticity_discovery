@@ -656,7 +656,7 @@ if __name__ == '__main__':
 	coefs = []
 
 	for file_name in file_names:
-		med_loss_shifts_file, mean_loss_non_drop, coefs_file = compute_kl_divs(file_name, N_RULES, N_TIMECONSTS, 1, 100)
+		med_loss_shifts_file, mean_loss_non_drop, coefs_file = compute_median_loss_shifts(file_name, N_RULES, N_TIMECONSTS, 1, 100)
 		if mean_loss_non_drop < 100: # 80 for unperturbed
 			med_loss_shifts.append(med_loss_shifts_file)
 			coefs.append(coefs_file)
