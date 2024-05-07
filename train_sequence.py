@@ -28,7 +28,7 @@ parser.add_argument('--fixed_data', metavar='fd', type=int, help='')
 parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
 parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
-parser.add_argument('--param_vec', metavar='ps', type=float, nargs=22)
+parser.add_argument('--param_vec', metavar='ps', type=float, nargs=24)
 
 args = parser.parse_args()
 print(args)
