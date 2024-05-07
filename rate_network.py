@@ -89,6 +89,7 @@ def simulate_inner_loop(
 
     single_synapse_ee_bound = weight_bounds[0]
     summed_synapse_ee_bound = weight_bounds[1]
+    summed_synapse_ee_bound_rate = weight_bounds[2]
 
     for i in range(0, len(t) - 1):
         v[i+1, :] = w_u * inp[i, :] + np.dot(w_copy, r[i, :].T) # calculate input to synaptic conductance equation
@@ -220,8 +221,8 @@ def simulate_inner_loop(
 
         w_copy[:n_e, :n_e] += (0.0005 * dw_e_e)
         # print(np.multiply(np.ones((n_e, n_e)), np.maximum(w_copy[:n_e, :n_e].sum(axis=1) - summed_synapse_ee_bound, np.zeros((n_e)))))
-        w_copy[:n_e, :n_e] -= 0.01 * np.multiply(np.ones((n_e, n_e)), np.maximum(w_copy[:n_e, :n_e].sum(axis=0) - summed_synapse_ee_bound, np.zeros((n_e))))
-        w_copy[:n_e, :n_e] -= 0.01 * np.multiply(np.ones((n_e, n_e)), np.maximum(w_copy[:n_e, :n_e].sum(axis=1) - summed_synapse_ee_bound, np.zeros((n_e)))).T
+        w_copy[:n_e, :n_e] -= summed_synapse_ee_bound_rate * np.multiply(np.ones((n_e, n_e)), np.maximum(w_copy[:n_e, :n_e].sum(axis=0) - summed_synapse_ee_bound, np.zeros((n_e))))
+        w_copy[:n_e, :n_e] -= summed_synapse_ee_bound_rate * np.multiply(np.ones((n_e, n_e)), np.maximum(w_copy[:n_e, :n_e].sum(axis=1) - summed_synapse_ee_bound, np.zeros((n_e)))).T
         w_copy[:n_e, :n_e] = np.minimum(w_copy[:n_e, :n_e], single_synapse_ee_bound)
 
         # w_copy[n_e:n_e + n_i, :n_e] += (0.0005 * dw_e_i)

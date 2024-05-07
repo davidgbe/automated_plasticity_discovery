@@ -51,14 +51,14 @@ ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
-N_RULES = 8
+N_RULES = 9
 N_TIMECONSTS = 6
 ACTIVE_RULES = np.flip(np.sort(np.nonzero(args.param_vec[-N_RULES:])[0])).astype(int)
 
 print(ACTIVE_RULES)
 
 
-T = 0.16 # Total duration of one network simulation
+T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 20 # Number excitatory cells in sequence (also length of sequence)
@@ -376,8 +376,8 @@ def simulate_single_network(index, x, train, track_params=True):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
-	plasticity_coefs = x[:N_RULES - 2]
-	weight_bounds = x[N_RULES - 2 : N_RULES]
+	plasticity_coefs = x[:N_RULES - 3]
+	weight_bounds = x[N_RULES - 3 : N_RULES]
 	rule_time_constants = x[N_RULES:(N_RULES + N_TIMECONSTS)]
 
 	if FIXED_DATA:
@@ -394,7 +394,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	print(np.mean(w_initial))
 
 	decode_start = 3e-3/dt
-	decode_end = 155e-3/dt
+	decode_end = 105e-3/dt
 	train_times = (decode_start + np.random.rand(500) * (decode_end - decode_start - 1)).astype(int) # 500
 	test_times = (decode_start + np.random.rand(200) * (decode_end - decode_start - 1)).astype(int)	# 200
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
@@ -458,7 +458,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			w_hist.pop(0)
 
 		if effects is not None:
-			all_effects += effects[:N_RULES - 2]
+			all_effects += effects[:N_RULES - 3]
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
@@ -489,8 +489,8 @@ def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coef
 
 
 def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
-	plasticity_coefs = x[:N_RULES - 2]
-	weight_bounds = x[N_RULES - 2:N_RULES]
+	plasticity_coefs = x[:N_RULES - 3]
+	weight_bounds = x[N_RULES - 3:N_RULES]
 	rule_time_constants = x[N_RULES:(N_RULES + N_TIMECONSTS)]
 
 	if np.any(np.array([res['blew_up'] for res in results])):
@@ -593,14 +593,15 @@ if __name__ == '__main__':
 	mp.set_start_method('fork')
 	
 	rule_contingency_map = [
-		[0, 8],
-		[1, 9],
-		[2, 10],
-		[3, 11],
-		[4, 12],
-		[5, 13],
+		[0, 9],
+		[1, 10],
+		[2, 11],
+		[3, 12],
+		[4, 13],
+		[5, 14],
 		[6],
 		[7],
+		[8],
 	]
 
 	activated_terms = np.sort(np.concatenate([rule_contingency_map[r_idx] for r_idx in ACTIVE_RULES]))
