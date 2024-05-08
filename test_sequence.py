@@ -40,9 +40,9 @@ TITLE = args.title
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (3200, 3201) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_ITERS = [3169, 3164, 3159, 3154, 3149, 3144]
-DECODER_TEST_ITERS = [3199, 3194, 3189, 3184, 3179, 3174]
+N_INNER_LOOP_RANGE = (6200, 6201) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = [6169, 6164, 6159, 6154, 6149, 6144]
+DECODER_TEST_ITERS = [6199, 6194, 6189, 6184, 6179, 6174]
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
@@ -54,7 +54,7 @@ INPUT_RATE_PER_CELL = 80
 N_RULES = 9
 N_TIMECONSTS = 6
 ROOT_FILE_NAME = args.root_file_name
-REPEATS = 5
+REPEATS = 10
 
 
 T = args.time # Total duration of one network simulation

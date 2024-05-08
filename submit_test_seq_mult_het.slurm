@@ -8,8 +8,8 @@
 
 #SBATCH --nodes=1
 #SBATCH --time=01:30:00
-#SBATCH --ntasks=5
-#SBATCH --mem=20G
+#SBATCH --ntasks=10
+#SBATCH --mem=40G
 
 #SBATCH --chdir=.
 
@@ -20,7 +20,7 @@ echo $CURRDIR
 ## Commands to run
 source python-env/bin/activate
 
-python test_sequence.py --pool_size 5 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --frac_inputs_fixed 0.75 --syn_change_prob 0.0 --seed 2222 --root_file_name kernel_test_mult_het_BATCH_10_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_555_2024-05-07_12:50:02.549627 --title mult_het --time 0.16
+python test_sequence.py --pool_size 10 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --frac_inputs_fixed 0.75 --syn_change_prob 0.0 --seed 2222 --root_file_name kernel_test_small_net_2_BATCH_10_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_555_2024-04-30_14:45:05.635437 --title mult_het --time 0.2
 deactivate
 
 ## Exit
