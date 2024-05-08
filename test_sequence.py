@@ -28,6 +28,7 @@ parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
 parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
 parser.add_argument('--root_file_name', metavar='fn', type=str)
+parser.add_argument('--time', metavar='T', type=float)
 
 
 args = parser.parse_args()
@@ -39,9 +40,9 @@ TITLE = args.title
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (6200, 6201) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_ITERS = [6169, 6164, 6159, 6154, 6149, 6144]
-DECODER_TEST_ITERS = [6199, 6194, 6189, 6184, 6179, 6174]
+N_INNER_LOOP_RANGE = (3200, 3201) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = [3169, 3164, 3159, 3154, 3149, 3144]
+DECODER_TEST_ITERS = [3199, 3194, 3189, 3184, 3179, 3174]
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
@@ -50,13 +51,13 @@ ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
-N_RULES = 8
+N_RULES = 9
 N_TIMECONSTS = 6
 ROOT_FILE_NAME = args.root_file_name
-REPEATS = 20
+REPEATS = 5
 
 
-T = 0.11 # Total duration of one network simulation
+T = args.time # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 20 # Number excitatory cells in sequence (also length of sequence)
@@ -373,8 +374,8 @@ def simulate_single_network(index, x, train, track_params=True):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
-	plasticity_coefs = x[:N_RULES - 2]
-	weight_bounds = x[N_RULES - 2 : N_RULES]
+	plasticity_coefs = x[:N_RULES - 3]
+	weight_bounds = x[N_RULES - 3 : N_RULES]
 	rule_time_constants = x[N_RULES:(N_RULES + N_TIMECONSTS)]
 
 	if FIXED_DATA:
@@ -391,7 +392,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	print(np.mean(w_initial))
 
 	decode_start = 3e-3/dt
-	decode_end = 105e-3/dt
+	decode_end = (T - 5e-3)/dt
 	train_times = (decode_start + np.random.rand(500) * (decode_end - decode_start - 1)).astype(int) # 500
 	test_times = (decode_start + np.random.rand(200) * (decode_end - decode_start - 1)).astype(int)	# 200
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
@@ -455,7 +456,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			w_hist.pop(0)
 
 		if effects is not None:
-			all_effects += effects[:N_RULES - 2]
+			all_effects += effects[:N_RULES - 3]
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
@@ -486,8 +487,8 @@ def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coef
 
 
 def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
-	plasticity_coefs = x[:N_RULES - 2]
-	weight_bounds = x[N_RULES - 2:N_RULES]
+	plasticity_coefs = x[:N_RULES - 3]
+	weight_bounds = x[N_RULES - 3:N_RULES]
 	rule_time_constants = x[N_RULES:(N_RULES + N_TIMECONSTS)]
 
 	if np.any(np.array([res['blew_up'] for res in results])):
