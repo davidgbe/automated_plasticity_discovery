@@ -625,7 +625,9 @@ if __name__ == '__main__':
 	
 	file_names = [ROOT_FILE_NAME]
 
-	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
+	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES - 1, N_TIMECONSTS, 10)
+
+	x_test = np.concatenate([x_test[:N_RULES - 1], [0.01]], x_test[N_RULES - 1:])
 
 	print(x_test)
 
