@@ -58,7 +58,7 @@ ACTIVE_RULES = np.flip(np.sort(np.nonzero(args.param_vec[-N_RULES:])[0])).astype
 print(ACTIVE_RULES)
 
 
-T = 0.11 # Total duration of one network simulation
+T = 0.16 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 20 # Number excitatory cells in sequence (also length of sequence)
@@ -394,7 +394,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	print(np.mean(w_initial))
 
 	decode_start = 3e-3/dt
-	decode_end = 105e-3/dt
+	decode_end = 155e-3/dt
 	train_times = (decode_start + np.random.rand(500) * (decode_end - decode_start - 1)).astype(int) # 500
 	test_times = (decode_start + np.random.rand(200) * (decode_end - decode_start - 1)).astype(int)	# 200
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
@@ -606,6 +606,8 @@ if __name__ == '__main__':
 
 	activated_terms = np.sort(np.concatenate([rule_contingency_map[r_idx] for r_idx in ACTIVE_RULES]))
 	x0 = copy(x_base)[activated_terms]
+	print('x_base', x_base)
+	print('x0', x0)
 
 	x_scale = np.abs(x0)
 
@@ -635,33 +637,6 @@ if __name__ == '__main__':
 		# 'popsize': 15,
 		'bounds': bounds,
 	}
-
-	# coefs = args.param_vec[:-2]
-	# bounds = args.param_vec[-2:]
-
-	# x = np.concatenate([coefs, time_consts, bounds])
-
-	# w-STDP + summed weight bound
-	# x = np.concatenate([0.3 * np.array([-0.0001, 0.0001, 0, -0.005, 0.005, 0]), time_consts, [7.5, 7.5]])
-
-	# STDP + summed weight bound
-	# x = np.concatenate([0.3 * np.array([-0.03, 0.03, 0, 0, 0, 0]), time_consts, [7.5, 7.5]])
-
-	# successful rules for STDP + firing rate bound
-	# x = np.concatenate([0.3 * np.array([-0.03, 0.03, 0, 0, 0, -0.005]), time_consts, [1000, 1000]])
-
-	# successful rules for w-STDP + firing rate bound
-	# x = np.concatenate([0.1 * np.array([0, 0, 0, -0.01, 0.01, -0.005]), time_consts, [1000, 1000]])
-
-
-	# time_consts = np.array([6e-3, 6e-3, 6e-3, 6e-3, 0.5e-3, 0.5e-3])
-	# x_ila = np.concatenate([0.1 * np.array([0, 0, 0, -0.01, 0.01, -0.005]), time_consts, [1000, 1000]])
-
-	# time_consts = np.array([6e-3, 6e-3, 6e-3, 6e-3, 0.5e-3, 0.5e-3])
-	# x_ila = np.concatenate([0.3 * np.array([-0.03, 0.03, 0, 0, 0, -0.005]), time_consts, [1000, 1000]])
-
-
-	# x = np.concatenate([0.1 * np.array([0, 0, 0, 0, 0, 0]), time_consts, [1000, 1000]])
 
 	es = cma.CMAEvolutionStrategy(a0, STD_EXPL, options)
 	while not es.stop():
