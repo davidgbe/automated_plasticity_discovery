@@ -433,6 +433,14 @@ def simulate_single_network(index, x, train, track_params=True):
 			# END synaptic perturbation code
 
 		# below, simulate one activation of the network for the period T
+		print('start:')
+		print(t)
+		print(n_e)
+		print(r_in)
+		print(plasticity_coefs)
+		print(rule_time_constants)
+		print(w)
+		print(w_plastic)
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
 		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e, :n_e]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
