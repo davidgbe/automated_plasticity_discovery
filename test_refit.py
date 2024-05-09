@@ -419,7 +419,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		if i > 0 and i < 400:
+		if index % 2 == 0 and i > 0 and i < 400:
 			# BEGIN synaptic perturbation code
 			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
@@ -613,16 +613,27 @@ if __name__ == '__main__':
 
 	### NOTE: use BATCH_SIZE of 1
 
-	# unperturbed refit file names
+	# perturbed refit file names
 	file_names = [
-		'refit_ee_unpert_1_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-04-12_12:50:29.059385',
-		'refit_ee_unpert_2_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-04-12_12:50:29.058336',
-		'refit_ee_unpert_3_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-04-12_13:36:35.128403',
-		'refit_ee_unpert_4_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-04-12_13:38:08.174390',
-		'refit_ee_unpert_5_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-04-12_13:38:08.344208',
-		'refit_ee_unpert_6_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-04-12_13:43:24.169194',
-		'refit_ee_unpert_7_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-04-12_14:08:37.123467',
+		'refit_ee_pert_median_1_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.00072_FRACI_0.75_SEED_1000_2024-05-06_15:39:48.347133',
+		'refit_ee_pert_median_2_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.00072_FRACI_0.75_SEED_1000_2024-05-07_01:54:13.043861',
+		'refit_ee_pert_median_3_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.00072_FRACI_0.75_SEED_1000_2024-05-06_15:39:48.203085',
+		'refit_ee_pert_median_4_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.00072_FRACI_0.75_SEED_1000_2024-05-06_15:40:47.728457',
+		'refit_ee_pert_median_5_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.00072_FRACI_0.75_SEED_1000_2024-05-07_06:40:25.191402',
+		'refit_ee_pert_median_6_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.00072_FRACI_0.75_SEED_1000_2024-05-07_11:41:07.083642',
+		'refit_ee_pert_median_7_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.00072_FRACI_0.75_SEED_1000_2024-05-07_12:34:05.668599',
 	]
+
+	# unperturbed refit file names
+	# file_names = [
+	# 	'refit_ee_unpert_median_1_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-05-07_15:05:33.852452',
+	# 	'refit_ee_unpert_median_2_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-05-07_15:17:39.753406',
+	# 	'refit_ee_unpert_median_3_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-05-07_15:18:03.836551',
+	# 	'refit_ee_unpert_median_4_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-05-07_15:19:05.713924',
+	# 	'refit_ee_unpert_median_5_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-05-07_22:33:49.220093',
+	# 	'refit_ee_unpert_median_6_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-05-08_01:56:49.919144',
+	# 	'refit_ee_unpert_median_7_terms_10_STD_EXPL_0.003_FIXED_True_L1_PENALTY_5e-07_5e-07_5e-07_CHANGEP_0.0_FRACI_0.75_SEED_1000_2024-05-08_01:57:28.941777',
+	# ]
 
 	eval_tracker = {
 		'evals': 0,
