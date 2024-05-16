@@ -39,9 +39,9 @@ TITLE = args.title
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (500, 501) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_ITERS = [469, 464, 459, 454, 449, 444]
-DECODER_TEST_ITERS = [499, 494, 489, 484, 479, 474]
+N_INNER_LOOP_RANGE = (700, 701) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = [499, 494, 489, 484, 479, 474]
+DECODER_TEST_ITERS = [699, 694, 689, 684, 679, 674]
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -183,7 +183,7 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 
-	w_initial[:n_e, :n_e] = w_e_e * (0.05 * (0.2 + 0.8 * np.random.rand(n_e, n_e)))
+	w_initial[:n_e, :n_e] = 2.5 * create_shift_matrix(n_e, k=-3)
 
 	# w_initial[:n_e, :n_e][np.random.rand(n_e, n_e) >= 0.8] = 0
 
@@ -299,10 +299,10 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		vbound = np.maximum(vmax, np.abs(vmin))
 		vbound = 5
 
-		mappable = axs[2 * i + 1][0].matshow(sorted_w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
+		mappable = axs[2 * i + 1][0].matshow(w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][0])
 
-		mappable = axs[2 * i + 1][1].matshow(sorted_w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
+		mappable = axs[2 * i + 1][1].matshow(w, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot final weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][1])
 
 		axs[2 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
@@ -410,43 +410,33 @@ def simulate_single_network(index, x, train, track_params=True):
 	all_weight_deltas = []
 	w_hist.append(w)
 
-	# surviving_synapse_mask = np.ones((n_e, n_e)).astype(bool)
+	surviving_synapse_mask = np.ones((n_e, n_e)).astype(bool)
 
-	k = 3
 	fixed_inputs_spks = np.zeros((len(t), n_e + n_i))
-	fixed_inputs_spks[:10, :k] = 1/k
+	fixed_inputs_spks[:10, 0] = 1
 
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
 
 		random_inputs_poisson = np.zeros((len(t), n_e + n_i))
-		if i >= 350:
-			random_inputs_poisson[10:int(decode_end), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(decode_end) - 10, n_e + n_i))
-			random_inputs_poisson[:, :k] = 0
+		random_inputs_poisson[10:int(decode_end), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(decode_end) - 10, n_e + n_i))
+		random_inputs_poisson[:, 0] = 0
 
-		sequential_inputs_poisson  = np.zeros((len(t), n_e + n_i))
-		if i < 350:
-			time_chunk_size = int((decode_end - decode_start) / np.ceil(n_e / k))
-			for i_e in range(0, n_e, k):
-				group_idx = int(i_e / k)
-				cell_group_size = k if i_e + k <= n_e else (n_e - i_e)
-				sequential_inputs_poisson[int(decode_start) + group_idx * time_chunk_size:int(decode_start) + (group_idx + 1) * time_chunk_size, i_e:i_e + cell_group_size] = np.random.poisson(lam=3 * INPUT_RATE_PER_CELL * dt, size=(time_chunk_size, cell_group_size))
-
-		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson + sequential_inputs_poisson, 3e-3)
+		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		# if i >= 400 and i < 800:
-		# 	synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
+		if i >= 500 and i < 650:
+			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
-		# 	drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
-		# 	birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
+			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
+			birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
 
-		# 	surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
+			surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
 
-		# 	w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
-		# 	w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
+			w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
+			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in, plasticity_coefs, rule_time_constants, weight_bounds, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
@@ -525,7 +515,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 					eval_tracker['best_loss'] = loss
 					eval_tracker['best_changed'] = True
 					eval_tracker['params'] = copy(x)
-			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
+				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
 			eval_tracker['evals'] += 1
 		else:
 			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=False)
@@ -624,8 +614,8 @@ if __name__ == '__main__':
 
 	print(a0)
 
-	coefs_lower_bounds = [(-10 * int(x0[coef_idx] < 0)) for coef_idx in range(len(ACTIVE_RULES))]
-	coefs_upper_bounds = [(10 * int(x0[coef_idx] >= 0)) for coef_idx in range(len(ACTIVE_RULES))]
+	coefs_lower_bounds = [(-30 * int(x0[coef_idx] < 0)) for coef_idx in range(len(ACTIVE_RULES))]
+	coefs_upper_bounds = [(30 * int(x0[coef_idx] >= 0)) for coef_idx in range(len(ACTIVE_RULES))]
 
 	bounds = [
 		coefs_lower_bounds + [0.5e-3] * (len(x0) - len(ACTIVE_RULES)),
@@ -633,7 +623,7 @@ if __name__ == '__main__':
 	]
 
 	for i_b in range(len(bounds)):
-		bounds[i_b] = (np.array(bounds[i_b]) / x_scale).tolist()
+			bounds[i_b] = (np.array(bounds[i_b]) / x_scale).tolist()
 
 	eval_tracker = {
 		'evals': 0,
