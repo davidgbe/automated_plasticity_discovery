@@ -61,7 +61,7 @@ print(ACTIVE_RULES)
 T = 0.11 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
-n_e = 25 # Number excitatory cells in sequence (also length of sequence)
+n_e = 54 # Number excitatory cells in sequence (also length of sequence)
 n_i = 8 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
@@ -157,23 +157,13 @@ w_e_i = 0.5e-4 / dt
 w_i_e = -0.3e-4 / dt
 w_e_e_added = 0.05 * w_e_e * 0.2
 
-def create_shift_matrix(size, k=1, weighting=[]):
+def create_block_matrix(size, k=1):
 	w = np.zeros((size, size))
-	if k >= 1:
-		for k_p in np.arange(1, k+1):
-			a = 1
-			if len(weighting) == k:
-				a = weighting[k_p - 1]
-			w += a * np.diag(np.ones((size - k_p,)), k=k_p)
-			# w[(size - k_p):, k - k_p] = 1
-
-	elif k <= -1:
-		for k_p in np.arange(1, -k+1):
-			a = 1
-			if len(weighting) == -k:
-				a = weighting[k_p - 1]
-			w += a * np.diag(np.ones((size - k_p,)), k=-k_p)
-			# w[-k - k_p, (size - k_p):] = 1
+	for i_k in range(0, size - k, k):
+		if i_k + 2 * k < n_e:
+			w[i_k + k:i_k + 2 * k, i_k:i_k + k] = np.ones((k, k))
+		else:
+			w[i_k + k:i_k + 2 * k, i_k:i_k + k] = np.ones((size - (i_k + k), k))
 	return w
 
 def make_network():
@@ -183,15 +173,16 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 
-	w_initial[:n_e, :n_e] = 2.5 * create_shift_matrix(n_e, k=-3)
+	w_initial[:n_e, :n_e] = 3 * create_block_matrix(n_e, k=3)
+	w_initial[:n_e, :n_e] = np.where(w_initial[:n_e, :n_e] > 0, w_initial[:n_e, :n_e], 0.05 * w_e_e * (0.2 + 0.8 * np.random.rand(n_e, n_e)))
 
 	# w_initial[:n_e, :n_e][np.random.rand(n_e, n_e) >= 0.8] = 0
 
 	# w_initial[:n_e, :n_e] = np.diag(np.ones(n_e - 1), k=-1) * w_e_e * 0.7
 
-	w_initial[n_e:, :n_e] = gaussian_if_under_val(1, (n_i, n_e), w_e_i, 0 * w_e_i)
+	w_initial[n_e:, :n_e] = gaussian_if_under_val(0.8, (n_i, n_e), w_e_i, 0 * w_e_i)
 	w_initial[n_e:, :n_e] = np.where(w_initial[n_e:, :n_e] < 0, 0, w_initial[n_e:, :n_e])
-	w_initial[:n_e, n_e:] = gaussian_if_under_val(1, (n_e, n_i), w_i_e, 0 * np.abs(w_i_e))
+	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e, 0 * np.abs(w_i_e))
 	w_initial[:n_e, n_e:] = np.where(w_initial[:n_e, n_e:] > 0, 0, w_initial[:n_e, n_e:])
 
 	np.fill_diagonal(w_initial, 0)
@@ -643,6 +634,7 @@ if __name__ == '__main__':
 
 	# for a_idx, a in enumerate([a0]):
 	# 	X_expanded[a_idx][activated_terms] = (np.array(a) * x_scale).tolist()
+	# 	# X_expanded[a_idx][:N_RULES - 3] = 0
 
 	# print(X_expanded[0])
 
