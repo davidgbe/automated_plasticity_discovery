@@ -39,9 +39,9 @@ TITLE = args.title
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (400, 401) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_ITERS = [369, 364, 359, 354, 349, 344]
-DECODER_TEST_ITERS = [399, 394, 389, 384, 379, 374]
+N_INNER_LOOP_RANGE = (500, 501) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = [469, 464, 459, 454, 449, 444]
+DECODER_TEST_ITERS = [499, 494, 489, 484, 479, 474]
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -414,24 +414,24 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	k = 3
 	fixed_inputs_spks = np.zeros((len(t), n_e + n_i))
-	fixed_inputs_spks[:10, k] = 1/k
+	fixed_inputs_spks[:10, :k] = 1/k
 
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
 
 		random_inputs_poisson = np.zeros((len(t), n_e + n_i))
-		if i >= 400:
+		if i >= 350:
 			random_inputs_poisson[10:int(decode_end), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(decode_end) - 10, n_e + n_i))
-			random_inputs_poisson[:, 0] = 0
+			random_inputs_poisson[:, :k] = 0
 
 		sequential_inputs_poisson  = np.zeros((len(t), n_e + n_i))
-		if i < 400:
+		if i < 350:
 			time_chunk_size = int((decode_end - decode_start) / np.ceil(n_e / k))
 			for i_e in range(0, n_e, k):
 				group_idx = int(i_e / k)
 				cell_group_size = k if i_e + k <= n_e else (n_e - i_e)
-				sequential_inputs_poisson[int(decode_start) + group_idx * time_chunk_size:int(decode_start) + (group_idx + 1) * time_chunk_size, i_e:i_e + cell_group_size] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(time_chunk_size, cell_group_size))
+				sequential_inputs_poisson[int(decode_start) + group_idx * time_chunk_size:int(decode_start) + (group_idx + 1) * time_chunk_size, i_e:i_e + cell_group_size] = np.random.poisson(lam=3 * INPUT_RATE_PER_CELL * dt, size=(time_chunk_size, cell_group_size))
 
 		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson + sequential_inputs_poisson, 3e-3)
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
@@ -525,7 +525,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 					eval_tracker['best_loss'] = loss
 					eval_tracker['best_changed'] = True
 					eval_tracker['params'] = copy(x)
-				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
+			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
 			eval_tracker['evals'] += 1
 		else:
 			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=False)
@@ -648,6 +648,17 @@ if __name__ == '__main__':
 	}
 
 	es = cma.CMAEvolutionStrategy(a0, STD_EXPL, options)
+
+	# X_expanded = [copy(x_base) for k_sample in range(1)]
+
+	# for a_idx, a in enumerate([a0]):
+	# 	X_expanded[a_idx][activated_terms] = (np.array(a) * x_scale).tolist()
+
+	# print(X_expanded[0])
+
+	# eval_all(X_expanded, eval_tracker=eval_tracker)
+	
+
 	while not es.stop():
 		A = es.ask()
 		X_expanded = [copy(x_base) for k_sample in range(len(A))]
