@@ -39,9 +39,9 @@ TITLE = args.title
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (700, 701) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_ITERS = [499, 494, 489, 484, 479, 474]
-DECODER_TEST_ITERS = [699, 694, 689, 684, 679, 674]
+N_INNER_LOOP_RANGE = (400, 401) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = [369, 364, 359, 354, 349, 344]
+DECODER_TEST_ITERS = [399, 394, 389, 384, 379, 374]
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -418,7 +418,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		if i >= 500 and i < 650:
+		if index % 2 == 0 and i >= 1 and i < 400:
 			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
 			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
