@@ -649,6 +649,7 @@ if __name__ == '__main__':
 
 		for a_idx, a in enumerate(A):
 			X_expanded[a_idx][activated_terms] = (np.array(a) * x_scale).tolist()
+			X_expanded[a_idx][7] = 3 * X_expanded[a_idx][6]
 
 		print(X_expanded[0])
 
