@@ -403,14 +403,13 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	surviving_synapse_mask = np.ones((n_e, n_e)).astype(bool)
 
+	fixed_inputs_spks = np.zeros((len(t), n_e + n_i))
+	fixed_inputs_spks[:10, 0] = 1
+	fixed_inputs_spks[10:int(65e-3/dt), 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 10, n_e - 1 + n_i))
+
 	for i in range(n_inner_loop_iters):
 		# Define input for activation of the network
 		r_in = np.zeros((len(t), n_e + n_i))
-
-		fixed_inputs_spks = np.zeros((len(t), n_e + n_i))
-		fixed_inputs_spks[:10, 0] = 1
-		if i < 400:
-			fixed_inputs_spks[10:int(65e-3/dt), 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 10, n_e - 1 + n_i))
 
 		random_inputs_poisson = np.zeros((len(t), n_e + n_i))
 		random_inputs_poisson[10:int(65e-3/dt), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 10, n_e + n_i))
