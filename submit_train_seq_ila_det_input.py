@@ -5,7 +5,7 @@ import functools
 
 base_path = os.curdir
 scripts = [
-	'submit_seq.slurm',
+	'submit_seq_ila_det_input.slurm',
 ]
 
 def replace_all(line, repl_dict):
@@ -75,7 +75,7 @@ def pad_zeros(to_pad, length):
 batch_size = 1
 
 params = OrderedDict()
-params['SEED'] = [str(602), str(603)]
+params['SEED'] = [str(600), str(601), str(602)]
 params['PARAM_VEC'] = [
 	# # # # w-STDP + summed weight bound + single synapse bound
 	'"-0.001" 0.001 0 "-0.02" 0.02 0 2.5 7.5 0.01 10e-3 10e-3 2e-3 10e-3 10e-3 2e-3 0 0 0 1 1 0 1 1 1',
