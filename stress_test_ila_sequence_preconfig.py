@@ -416,7 +416,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		if index % 2 == 0 and i >= 1 and i < 400:
+		if i >= 400 and i < 550:
 			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
 			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
