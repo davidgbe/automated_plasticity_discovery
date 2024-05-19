@@ -40,9 +40,9 @@ TITLE = args.title
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (6200, 6201) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_ITERS = [6169, 6164, 6159, 6154, 6149, 6144]
-DECODER_TEST_ITERS = [6199, 6194, 6189, 6184, 6179, 6174]
+N_INNER_LOOP_RANGE = (1200, 1201) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = [1169, 1164, 1159, 1154, 1149, 1144]
+DECODER_TEST_ITERS = [1199, 1194, 1189, 1184, 1179, 1174]
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
@@ -392,7 +392,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	print(np.mean(w_initial))
 
 	decode_start = 3e-3/dt
-	decode_end = (T - 5e-3)/dt
+	decode_end = 65e-3/dt
 	train_times = (decode_start + np.random.rand(500) * (decode_end - decode_start - 1)).astype(int) # 500
 	test_times = (decode_start + np.random.rand(200) * (decode_end - decode_start - 1)).astype(int)	# 200
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
