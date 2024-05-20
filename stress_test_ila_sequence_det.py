@@ -393,7 +393,7 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	decode_start = 3e-3/dt
 	decode_end = 65e-3/dt
-	input_end = (T - 3e-3)/dt
+	input_end = decode_end
 	train_times = (decode_start + np.random.rand(500) * (decode_end - decode_start - 1)).astype(int) # 500
 	test_times = (decode_start + np.random.rand(200) * (decode_end - decode_start - 1)).astype(int)	# 200
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
