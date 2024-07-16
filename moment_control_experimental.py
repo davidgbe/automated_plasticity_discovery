@@ -44,6 +44,9 @@ parser.add_argument('--title', type=str)
 # rule params
 parser.add_argument('--exc_rule_setpoint', metavar='ers', type=float)
 parser.add_argument('--inh_rule_setpoint', metavar='irs', type=float)
+parser.add_argument('--exc_rule_rate', metavar='err', type=float)
+parser.add_argument('--inh_rule_rate', metavar='irr', type=float)
+
 parser.add_argument('--exc_m1_c', metavar='em1c', type=float)
 parser.add_argument('--exc_m2_c', metavar='im2c', type=float)
 parser.add_argument('--inh_m1_c', metavar='em1c', type=float)
@@ -635,8 +638,8 @@ if __name__ == '__main__':
 
 	x_test = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
 
-	exc_rule_rate = 6e-2
-	inh_rule_rate = 0 #-3e-2
+	exc_rule_rate = args.exc_rule_rate
+	inh_rule_rate = args.inh_rule_rate
 
 	x_test[0] = args.exc_rule_setpoint * exc_rule_rate
 	x_test[44] = args.inh_rule_setpoint * inh_rule_rate * -1
