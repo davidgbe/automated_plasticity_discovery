@@ -115,8 +115,8 @@ def simulate_inner_loop(
         r_0_r_0 = np.outer(r_0_pow, r_0_pow)
         r_0_r_1 = np.outer(r_1_pow, r_0_pow)
         r_1_r_0 = r_0_r_1.T
-        # r_0_r_2 = np.outer(r_2_pow, r_0_pow)
-        # r_2_r_0 = r_0_r_2.T
+        r_0_r_2 = np.outer(r_2_pow, r_0_pow)
+        r_2_r_0 = r_0_r_2.T
         r_1_r_1 = np.outer(r_1_pow, r_1_pow)
         # r_1_r_2 = np.outer(r_2_pow, r_1_pow)
         # r_2_r_1 = r_1_r_2.T
@@ -151,7 +151,7 @@ def simulate_inner_loop(
                 r_0_r_0[pop_slices[p_j], pop_slices[p_i]],
                 r_0_r_1[pop_slices[p_j], pop_slices[p_i]],
                 r_1_r_0[pop_slices[p_j], pop_slices[p_i]],
-                # r_0_r_2,
+                r_0_r_2[pop_slices[p_j], pop_slices[p_i]],
                 # r_2_r_0,
                 r_1_r_1[pop_slices[p_j], pop_slices[p_i]],
                 r_0_r_exp,
@@ -167,7 +167,7 @@ def simulate_inner_loop(
                 r_0_r_0[pop_slices[p_j], pop_slices[p_i]],
                 r_0_r_1[pop_slices[p_j], pop_slices[p_i]],
                 r_1_r_0[pop_slices[p_j], pop_slices[p_i]],
-                # r_0_r_2,
+                r_0_r_2[pop_slices[p_j], pop_slices[p_i]],
                 # r_2_r_0,
                 r_1_r_1[pop_slices[p_j], pop_slices[p_i]],
                 # r_1_r_2,
