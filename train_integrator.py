@@ -41,9 +41,9 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (200, 201) # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (0, 180)
-decoder_test_trial_nums = (180, 200)
+N_INNER_LOOP_RANGE = (300, 301) # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (260, 280)
+decoder_test_trial_nums = (280, 300)
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
