@@ -41,9 +41,9 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (300, 301) # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (260, 280)
-decoder_test_trial_nums = (280, 300)
+N_INNER_LOOP_RANGE = (40, 41) # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (0, 20)
+decoder_test_trial_nums = (20, 40)
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -53,7 +53,7 @@ ACTIVITY_LOSS_COEF = 6 if bool(args.asp) else 0
 ACTIVITY_JITTER_COEF = 60
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
-INPUT_RATE_PER_CELL = 500
+INPUT_RATE_PER_CELL = 1000
 N_RULES = 60
 N_TIMECONSTS = 36
 
@@ -153,7 +153,7 @@ write_csv(test_data_path, header)
 
 w_e_e = 0.6e-4 / dt
 w_pool_side = -0.2e-4 / dt
-w_side_pool = 0.2e-4 / dt
+w_side_pool = 0.3e-4 / dt
 
 w_e_i = 2.5e-4 / dt / n_e_pool
 w_i_e = -1e-4 / dt / n_i
@@ -180,28 +180,32 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e_pool + 2 * n_e_side + n_i, n_e_pool + 2 * n_e_side + n_i))
 
-	w_initial[:n_e_pool, :n_e_pool] = gaussian_if_under_val(0.5, (n_e_pool, n_e_pool), w_e_e, 0.3 * w_e_e)
+	# w_initial[:n_e_pool, :n_e_pool] = gaussian_if_under_val(0.5, (n_e_pool, n_e_pool), w_e_e, 0.3 * w_e_e)
 
 	# ring_connectivity = w_e_e * 0.5 * (1 + np.cos(2 * np.pi / n_e_pool * np.arange(n_e_pool)))
-	# for r_idx in np.arange(n_e_pool):
-	# 	w_initial[r_idx:n_e_pool, r_idx] = ring_connectivity[:(n_e_pool - r_idx)]
-	# 	w_initial[0:r_idx, r_idx] = ring_connectivity[(n_e_pool - r_idx):]
+	x = np.arange(n_e_pool) / n_e_pool
+	connectivity_scale = 0.075
+	exp_ring_connectivity = 4 * w_e_e * (np.exp(-x/connectivity_scale) + np.exp((x-1)/connectivity_scale))
+
+	for r_idx in np.arange(n_e_pool):
+		w_initial[r_idx:n_e_pool, r_idx] = exp_ring_connectivity[:(n_e_pool - r_idx)]
+		w_initial[0:r_idx, r_idx] = exp_ring_connectivity[(n_e_pool - r_idx):]
 	
-	w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = gaussian_if_under_val(0.5, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
-	w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = gaussian_if_under_val(0.5, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
+	# w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = gaussian_if_under_val(0.5, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
+	# w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = gaussian_if_under_val(0.5, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
 
-	# w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=3)
-	# w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=-3)
+	w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=3)
+	w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=-3)
 
-	w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = gaussian_if_under_val(0.5, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
-	w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = gaussian_if_under_val(0.5, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
+	# w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = gaussian_if_under_val(0.5, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
+	# w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = gaussian_if_under_val(0.5, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
 
-	# left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=3) + create_shift_matrix(n_e_side, k=-3)))
-	# np.fill_diagonal(left_input_cells, 0)
-	# right_input_cells = copy(left_input_cells)
+	left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=3) + create_shift_matrix(n_e_side, k=-3)))
+	np.fill_diagonal(left_input_cells, 0)
+	right_input_cells = copy(left_input_cells)
 
-	# w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = left_input_cells
-	# w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = right_input_cells
+	w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = left_input_cells
+	w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = right_input_cells
 
 	w_initial[-n_i:, :n_e_pool] = gaussian_if_under_val(1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
 	w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, 0 * np.abs(w_i_e))
@@ -404,7 +408,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	input_end = int(320e-3/dt)
 	input_len = input_end - input_start
 
-	input_signal_transition_probs = np.random.rand(n_inner_loop_iters, 2) * 0.1 + 0.9
+	input_signal_transition_probs = np.random.rand(n_inner_loop_iters, 2) * 0.05 + 0.95
 	input_signal_totals = np.zeros((n_inner_loop_iters,))
 
 	w = copy(w_initial)
@@ -423,9 +427,10 @@ def simulate_single_network(index, x, train, track_params=True):
 	surviving_synapse_mask = np.ones((n_e_pool, n_e_pool)).astype(bool)
 
 	for i in range(n_inner_loop_iters):
+		print(f'Activation number: {i}')
 		# Define input for activation of the network
 		r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
-		# r_in_spks[:int(20e-3/dt), :8] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(20e-3/dt), 8))
+		r_in_spks[:int(15e-3/dt), :6] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(15e-3/dt), 6))
 
 		input_spks = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_len, n_e_side))
 		input_signal_transition_probs_i = input_signal_transition_probs[i, :]
@@ -442,8 +447,8 @@ def simulate_single_network(index, x, train, track_params=True):
 		# right_input_spks = np.logical_and(input_spks, rnd_walk_steps_i > 0)
 		input_spks[np.nonzero(1 - markov_state)[0], :] = 0
 
-		print('input spikes', np.sum(input_spks))
-		print('input diffs', input_signal_totals[i])
+		# print('input spikes', np.sum(input_spks))
+		# print('input diffs', input_signal_totals[i])
 
 		# r_in_spks[input_start:input_end, n_e_pool:n_e_pool + n_e_side] = right_input_spks
 		r_in_spks[input_start:input_end, n_e_pool + n_e_side:n_e_pool + 2 * n_e_side] = input_spks
@@ -468,7 +473,12 @@ def simulate_single_network(index, x, train, track_params=True):
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
-		if np.isnan(r).any() or (np.abs(w_out) > 100).any() or (np.abs(w_out[:n_e_pool, :n_e_pool]) < 1.5e-6).all() or (np.abs(w_out[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)]) < 1.5e-6).all() or (np.abs(w_out[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool]) < 1.5e-6).all(): # if simulation turns up nans in firing rate matrix, end the simulation
+		if (np.isnan(r).any()
+	  		or (np.abs(w_out) > 100).any()
+			or (np.abs(w_out[:n_e_pool, :n_e_pool]) < 1.5e-6).all() 
+			or (np.abs(w_out[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)]) < 1.5e-6).all()
+			or (np.abs(w_out[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool]) < 1.5e-6).all()): # if simulation turns up nans in firing rate matrix, end the simulation
+			
 			return {
 				'blew_up': True,
 			}
@@ -629,25 +639,25 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	# eval_all([x0], eval_tracker=eval_tracker)
+	eval_all([x0], eval_tracker=eval_tracker)
 
-	options = {
-		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-		# 'popsize': 15,
-		'bounds': [
-			[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
-			[10] * N_RULES + [40e-3] * N_TIMECONSTS,
-		],
-	}
+	# options = {
+	# 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+	# 	# 'popsize': 15,
+	# 	'bounds': [
+	# 		[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
+	# 		[10] * N_RULES + [40e-3] * N_TIMECONSTS,
+	# 	],
+	# }
 
-	es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
-	options['popsize'] = es.opts['popsize']
+	# es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
+	# options['popsize'] = es.opts['popsize']
 
-	eval_all([x0], eval_tracker=eval_tracker, train=False)
+	# eval_all([x0], eval_tracker=eval_tracker, train=False)
 
-	while not es.stop():
-		X = es.ask()
-		es.tell(X, eval_all(X, eval_tracker=eval_tracker))
-		if eval_tracker['best_changed']:
-			eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
-		es.disp()
+	# while not es.stop():
+	# 	X = es.ask()
+	# 	es.tell(X, eval_all(X, eval_tracker=eval_tracker))
+	# 	if eval_tracker['best_changed']:
+	# 		eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
+	# 	es.disp()
