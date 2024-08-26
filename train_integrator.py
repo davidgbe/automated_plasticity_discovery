@@ -151,9 +151,9 @@ test_data_path = os.path.join(out_dir, 'test_data.csv')
 write_csv(test_data_path, header)
 
 
-w_e_e = 0.6e-4 / dt
-w_pool_side = -0.2e-4 / dt
-w_side_pool = 0.3e-4 / dt
+w_e_e = 0.6e-4 / dt * 0.1
+w_pool_side = -0.2e-4 / dt * 0.1
+w_side_pool = 0.3e-4 / dt * 0.1
 
 w_e_i = 2.5e-4 / dt / n_e_pool
 w_i_e = -1e-4 / dt / n_i
@@ -180,32 +180,33 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e_pool + 2 * n_e_side + n_i, n_e_pool + 2 * n_e_side + n_i))
 
-	# w_initial[:n_e_pool, :n_e_pool] = gaussian_if_under_val(0.5, (n_e_pool, n_e_pool), w_e_e, 0.3 * w_e_e)
+	w_initial[:n_e_pool, :n_e_pool] = w_e_e * np.random.rand(n_e_pool, n_e_pool)
 
-	# ring_connectivity = w_e_e * 0.5 * (1 + np.cos(2 * np.pi / n_e_pool * np.arange(n_e_pool)))
-	x = np.arange(n_e_pool) / n_e_pool
-	connectivity_scale = 0.075
-	exp_ring_connectivity = 4 * w_e_e * (np.exp(-x/connectivity_scale) + np.exp((x-1)/connectivity_scale))
+	# x = np.arange(n_e_pool) / n_e_pool
+	# connectivity_scale = 0.075
+	# exp_ring_connectivity = 4 * w_e_e * (np.exp(-x/connectivity_scale) + np.exp((x-1)/connectivity_scale))
 
-	for r_idx in np.arange(n_e_pool):
-		w_initial[r_idx:n_e_pool, r_idx] = exp_ring_connectivity[:(n_e_pool - r_idx)]
-		w_initial[0:r_idx, r_idx] = exp_ring_connectivity[(n_e_pool - r_idx):]
+	# for r_idx in np.arange(n_e_pool):
+	# 	w_initial[r_idx:n_e_pool, r_idx] = exp_ring_connectivity[:(n_e_pool - r_idx)]
+	# 	w_initial[0:r_idx, r_idx] = exp_ring_connectivity[(n_e_pool - r_idx):]
 	
-	# w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = gaussian_if_under_val(0.5, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
-	# w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = gaussian_if_under_val(0.5, (n_e_pool, n_e_side), w_side_pool, 0.3 * w_side_pool)
+	w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.random.rand(n_e_pool, n_e_side)
+	# w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = np.where(np.random.rand(n_e_pool, n_e_side) >= 0.5, w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)], 0)
+	w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * np.random.rand(n_e_pool, n_e_side)
+	# w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = np.where(np.random.rand(n_e_pool, n_e_side) >= 0.5, w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)], 0)
 
-	w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=3)
-	w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=-3)
+	# w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=3)
+	# w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=-3)
 
-	# w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = gaussian_if_under_val(0.5, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
-	# w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = gaussian_if_under_val(0.5, (n_e_side, n_e_pool), w_pool_side, 0.3 * np.abs(w_pool_side))
+	w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = w_pool_side * np.random.rand(n_e_side, n_e_pool)
+	w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = w_pool_side * np.random.rand(n_e_side, n_e_pool)
 
-	left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=3) + create_shift_matrix(n_e_side, k=-3)))
-	np.fill_diagonal(left_input_cells, 0)
-	right_input_cells = copy(left_input_cells)
+	# left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=3) + create_shift_matrix(n_e_side, k=-3)))
+	# np.fill_diagonal(left_input_cells, 0)
+	# right_input_cells = copy(left_input_cells)
 
-	w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = left_input_cells
-	w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = right_input_cells
+	# w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = left_input_cells
+	# w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = right_input_cells
 
 	w_initial[-n_i:, :n_e_pool] = gaussian_if_under_val(1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
 	w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, 0 * np.abs(w_i_e))
@@ -427,7 +428,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	surviving_synapse_mask = np.ones((n_e_pool, n_e_pool)).astype(bool)
 
 	for i in range(n_inner_loop_iters):
-		print(f'Activation number: {i}')
+		# print(f'Activation number: {i}')
 		# Define input for activation of the network
 		r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
 		r_in_spks[:int(15e-3/dt), :6] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(15e-3/dt), 6))
