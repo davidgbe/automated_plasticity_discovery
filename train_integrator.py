@@ -533,7 +533,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	if np.any(np.array([res['blew_up'] for res in results])):
 		if eval_tracker is not None:
 			eval_tracker['evals'] += 1
-		return 1e8 * BATCH_SIZE + 1e7 * np.sum(np.abs(plasticity_coefs)), 1e8 * np.ones((len(results),)), np.zeros((len(results), len(plasticity_coefs)))
+		return 1e8 * BATCH_SIZE + 1e7 * np.sum(np.abs(plasticity_coefs)), 1e8 * np.ones((len(results),)), np.zeros((len(results), len(plasticity_coefs))), np.zeros((len(results),)), np.zeros((len(results),))
 
 	true_losses = np.array([res['loss'] for res in results])
 	syn_effects = np.stack([res['syn_effects'] for res in results])
