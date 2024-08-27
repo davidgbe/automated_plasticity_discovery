@@ -24,7 +24,7 @@ from rate_network import simulate, tanh, generate_gaussian_pulse
 parser = argparse.ArgumentParser()
 parser.add_argument('--std_expl', metavar='std', type=float, help='Initial standard deviation for parameter search via CMA-ES')
 parser.add_argument('--l1_pen', metavar='l1', type=float, nargs=3, help='Prefactor for L1 penalties on loss function')
-parser.add_argument('--asp', metavar='asp', type=int, help="Flag for penalizing shape of neurons' activity ")
+parser.add_argument('--asp', metavar='asp', type=float, help='', default=0.)
 parser.add_argument('--pool_size', metavar='ps', type=int, help='Number of processes to start for each loss function evaluation')
 parser.add_argument('--batch', metavar='b', type=int, help='Number of simulations that should be batched per loss function evaluation')
 parser.add_argument('--fixed_data', metavar='fd', type=int, help='')
@@ -41,16 +41,15 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (40, 41) # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (0, 20)
-decoder_test_trial_nums = (20, 40)
+N_INNER_LOOP_RANGE = (320, 321) # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (280, 300)
+decoder_test_trial_nums = (300, 320)
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
 CALC_TEST_SET_LOSS_FREQ = 11
-ACTIVITY_LOSS_COEF = 6 if bool(args.asp) else 0
-ACTIVITY_JITTER_COEF = 60
+ACTIVITY_LOSS_COEF = args.asp
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 1000
@@ -249,7 +248,7 @@ def calc_loss(r : np.ndarray, train_diff_drives : np.ndarray, test_diff_drives :
 	return loss
 
 
-def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True):
+def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, total_activity_penalties, train=True):
 	scale = 3
 	n_res_to_show = BATCH_SIZE
 
@@ -316,7 +315,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		mappable = axs[4 * i + 3][1].matshow(w, vmin=-vbound, vmax=vbound, cmap='bwr') # plot final weight matrix
 		plt.colorbar(mappable, ax=axs[4 * i + 3][1])
 
-		axs[4 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]}')
+		axs[4 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]} + {total_activity_penalties[i]}')
 		for i_axs in range(2):
 			axs[2 * i][i_axs].set_xlabel('Time (s)')
 			axs[2 * i][i_axs].set_ylabel('Firing rate')
@@ -343,7 +342,8 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 
 	true_loss = np.sum(true_losses)
 	syn_effect_penalty = np.sum(syn_effect_penalties)
-	axs[4 * n_res_to_show].set_title(f'Loss: {true_loss + syn_effect_penalty}, {true_loss}, {syn_effect_penalty}')
+	total_activity_penalty = np.sum(total_activity_penalties)
+	axs[4 * n_res_to_show].set_title(f'Loss: {true_loss + syn_effect_penalty}, {true_loss}, {syn_effect_penalty}, {total_activity_penalty}')
 
 	# plot the coefficients assigned to each plasticity rule (unsorted by size)
 	for l in range(1):
@@ -537,13 +537,14 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 
 	true_losses = np.array([res['loss'] for res in results])
 	syn_effects = np.stack([res['syn_effects'] for res in results])
+	total_activity_penalties = ACTIVITY_LOSS_COEF * np.array([res['rs_for_loss'].mean() for res in results])
 	syn_effect_penalties = np.zeros(syn_effects.shape[0])
-	one_third_len = int(syn_effects.shape[1])
+	one_third_len = int(syn_effects.shape[1]/3)
 
-	for i in range(1):
+	for i in range(3):
 		syn_effect_penalties += L1_PENALTIES[i] * np.sum(np.abs(syn_effects[:, i * one_third_len:(i+1) * one_third_len]), axis=1)
 
-	losses = true_losses + syn_effect_penalties
+	losses = true_losses + syn_effect_penalties + total_activity_penalties
 	loss = np.sum(losses)
 
 	if eval_tracker is not None:
@@ -553,27 +554,35 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 					eval_tracker['best_loss'] = loss
 					eval_tracker['best_changed'] = True
 					eval_tracker['params'] = copy(x)
-				plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True)
+
+				plot_results(
+					results,
+					eval_tracker,
+					out_dir,
+					plasticity_coefs,
+					true_losses,
+					syn_effect_penalties,
+					total_activity_penalties,
+					train=True,
+				)
 			eval_tracker['evals'] += 1
 		else:
-			plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=False)
+			plot_results(
+				results,
+				eval_tracker,
+				out_dir,
+				plasticity_coefs,
+				true_losses,
+				syn_effect_penalties,
+				total_activity_penalties,
+				train=False,
+			)
 			eval_tracker['best_changed'] = False
 
 	print('guess:', plasticity_coefs)
 	print('loss:', loss)
 	print('')
-	return loss, true_losses, syn_effects
-
-
-# def plasticity_coefs_eval_wrapper(plasticity_coefs, eval_tracker=None, track_params=False):
-# 	if eval_tracker['evals'] > 0 and eval_tracker['evals'] % CALC_TEST_SET_LOSS_FREQ == 0 and eval_tracker['best_changed']:
-# 		loss, true_losses, syn_effects = simulate_plasticity_rules(eval_tracker['plasticity_coefs'], eval_tracker=eval_tracker, track_params=track_params, train=False)
-# 		eval_tracker['best_changed'] = False
-# 		log_sim_results(test_data_path, eval_tracker, loss, true_losses, eval_tracker['plasticity_coefs'], syn_effects)
-
-# 	loss, true_losses, syn_effects = simulate_plasticity_rules(plasticity_coefs, eval_tracker=eval_tracker, track_params=track_params, train=True)
-# 	log_sim_results(train_data_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects)
-# 	return loss
+	return loss, true_losses, syn_effects, syn_effect_penalties, total_activity_penalties
 
 
 def load_best_params(file_name):
@@ -606,7 +615,7 @@ def eval_all(X, eval_tracker=None, train=True):
 
 	losses = []
 	for i in range(len(X)):
-		loss, true_losses, syn_effects = process_plasticity_rule_results(results[BATCH_SIZE * i: BATCH_SIZE * (i+1)], X[i], eval_tracker=eval_tracker, train=train)
+		loss, true_losses, syn_effects, syn_effect_penalties, total_activities = process_plasticity_rule_results(results[BATCH_SIZE * i: BATCH_SIZE * (i+1)], X[i], eval_tracker=eval_tracker, train=train)
 		losses.append(loss)
 		if train:
 			log_sim_results(train_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
