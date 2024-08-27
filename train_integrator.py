@@ -640,25 +640,25 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	eval_all([x0], eval_tracker=eval_tracker)
+	# eval_all([x0], eval_tracker=eval_tracker)
 
-	# options = {
-	# 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-	# 	# 'popsize': 15,
-	# 	'bounds': [
-	# 		[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
-	# 		[10] * N_RULES + [40e-3] * N_TIMECONSTS,
-	# 	],
-	# }
+	options = {
+		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+		# 'popsize': 15,
+		'bounds': [
+			[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
+			[10] * N_RULES + [40e-3] * N_TIMECONSTS,
+		],
+	}
 
-	# es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
-	# options['popsize'] = es.opts['popsize']
+	es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
+	options['popsize'] = es.opts['popsize']
 
-	# eval_all([x0], eval_tracker=eval_tracker, train=False)
+	eval_all([x0], eval_tracker=eval_tracker, train=False)
 
-	# while not es.stop():
-	# 	X = es.ask()
-	# 	es.tell(X, eval_all(X, eval_tracker=eval_tracker))
-	# 	if eval_tracker['best_changed']:
-	# 		eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
-	# 	es.disp()
+	while not es.stop():
+		X = es.ask()
+		es.tell(X, eval_all(X, eval_tracker=eval_tracker))
+		if eval_tracker['best_changed']:
+			eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
+		es.disp()
