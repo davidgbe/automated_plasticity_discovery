@@ -56,7 +56,7 @@ INPUT_RATE_PER_CELL = 1000
 N_RULES = 60
 N_TIMECONSTS = 36
 
-T = 0.55 # Total duration of one network simulation
+T = 0.12 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
@@ -400,14 +400,15 @@ def simulate_single_network(index, x, train, track_params=True):
 		np.random.seed()
 
 	w_initial = make_network() # make a new ring attractor
-	num_readouts = decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]
-	readout_times = ((0.32 + 0.22 * (1 - np.sqrt(1 - np.random.rand(num_readouts)))) / dt).astype(int)
 
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
 	input_start = int(20e-3/dt)
-	input_end = int(320e-3/dt)
+	input_end = int(100e-3/dt)
 	input_len = input_end - input_start
+
+	num_readouts = decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]
+	readout_times = ((input_end * dt + 15e-3 * (1 - np.sqrt(1 - np.random.rand(num_readouts)))) / dt).astype(int)
 
 	input_signal_transition_probs = np.random.rand(n_inner_loop_iters, 2) * 0.05 + 0.95
 	input_signal_totals = np.zeros((n_inner_loop_iters,))
