@@ -75,7 +75,7 @@ def pad_zeros(to_pad, length):
 batch_size = 10
 
 params = OrderedDict()
-params['SEED'] = [str(1)]
+params['SEED'] = [str(2)]
 params['SYN_CHANGE_PROB'] = [0]
 
 params['EXC_RULE_SETPOINT'] = [0.1]
