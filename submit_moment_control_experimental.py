@@ -85,7 +85,7 @@ params['INH_RULE_RATE'] = [-3e-2]
 
 params['EXC_M1_C'] = [0]
 params['EXC_M2_C'] = [1]
-params['INH_M1_C'] = [1]
+params['INH_M1_C'] = [0]
 params['INH_M2_C'] = [0]
 
 params['A_I'] = [0.5, 0.6]

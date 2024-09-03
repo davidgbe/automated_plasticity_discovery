@@ -641,8 +641,8 @@ if __name__ == '__main__':
 	exc_rule_rate = args.exc_rule_rate
 	inh_rule_rate = args.inh_rule_rate
 
-	x_test[0] = args.exc_rule_setpoint * exc_rule_rate
-	x_test[44] = args.inh_rule_setpoint * inh_rule_rate * -1
+	x_test[0] = args.exc_rule_setpoint * exc_rule_rate * np.max([args.exc_m1_c, args.exc_m2_c])
+	x_test[44] = args.inh_rule_setpoint * inh_rule_rate * -1 * np.max([args.inh_m1_c, args.inh_m2_c])
 	x_test[1] = args.exc_m1_c * exc_rule_rate * -1
 	x_test[3] = args.exc_m2_c * exc_rule_rate * -1
 	x_test[45] = args.inh_m1_c * inh_rule_rate
