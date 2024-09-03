@@ -80,12 +80,12 @@ params['SYN_CHANGE_PROB'] = [0]
 
 params['EXC_RULE_SETPOINT'] = [0.1]
 params['EXC_RULE_RATE'] = [3e-2] # [3e-2, 3e-2, 4e-2]
-params['INH_RULE_SETPOINT'] = [0.2, 0.3, 0.4]
+params['INH_RULE_SETPOINT'] = [0.4]
 params['INH_RULE_RATE'] = [-3e-2]
 
 params['EXC_M1_C'] = [0]
 params['EXC_M2_C'] = [1]
-params['INH_M1_C'] = [0]
+params['INH_M1_C'] = [1]
 params['INH_M2_C'] = [0]
 
 params['A_I'] = [0.5, 0.6]

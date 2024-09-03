@@ -287,7 +287,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		for trial_idx in range(rs_for_loss.shape[0]):
 			r = rs_for_loss[trial_idx, ...]
 
-			# write_csv(os.path.join(out_dir, f'all_r_{eval_tracker["evals"]}_{trial_idx}.csv'), r[:, :n_e], delimiter=',')
+			write_csv(os.path.join(out_dir, f'all_r_{eval_tracker["evals"]}_batch_{i}_trial_{trial_idx}.csv'), r[:, :n_e], delimiter=',')
 
 			for l_idx in range(r.shape[1]):
 				if l_idx < n_e:
