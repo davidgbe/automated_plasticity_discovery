@@ -153,10 +153,10 @@ rule_names = np.array(rule_names).flatten()
 if not os.path.exists('sims_out'):
 	os.mkdir('sims_out')
 
-# Make subdirectory for this particular experiment
+
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/2_moment_control_param_sweep_long_settle_INDEX_{INDEX}_{args.title}_{time_stamp}'
+out_dir = f'sims_out/2MC_long_settle_INDEX_{INDEX}_{args.title}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
