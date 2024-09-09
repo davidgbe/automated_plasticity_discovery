@@ -79,7 +79,7 @@ params['SEED'] = [str(2)]
 params['SYN_CHANGE_PROB'] = [0]
 
 params['EXC_RULE_SETPOINT'] = [0.1]
-params['EXC_RULE_RATE'] = [3e-2] # [3e-2, 3e-2, 4e-2]
+params['EXC_RULE_RATE'] = [0.1, 0.25, 0.5, 1.0] # [3e-2, 3e-2, 4e-2]
 params['INH_RULE_SETPOINT'] = [0.4]
 params['INH_RULE_RATE'] = [-3e-2]
 

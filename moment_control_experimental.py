@@ -66,9 +66,9 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (400, 401) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_RANGE = (190, 200)
-DECODER_TEST_RANGE = (390, 400)
+N_INNER_LOOP_RANGE = (800, 801) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_RANGE = (390, 400)
+DECODER_TEST_RANGE = (790, 800)
 FREEZE_WEIGHTS_TRIAL = np.inf
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -156,7 +156,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/2_moment_control_param_sweep_INDEX_{INDEX}_{args.title}_{time_stamp}'
+out_dir = f'sims_out/2_moment_control_param_sweep_long_settle_INDEX_{INDEX}_{args.title}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -442,10 +442,10 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in = np.zeros((len(t), n_e + n_i))
 
 		random_inputs_poisson = np.zeros((len(t), n_e + n_i))
-		random_inputs_poisson[10:int(65e-3/dt), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(65e-3/dt) - 10, n_e + n_i))
+		random_inputs_poisson[10:int(decode_end), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(decode_end) - 10, n_e + n_i))
 		random_inputs_poisson[:, 0] = 0
 
-		if i >= 200:
+		if i >= 400:
 			r_in = poisson_arrivals_to_inputs(fixed_inputs_spks, args.T_f) * args.a_f
 		else:
 			r_in = poisson_arrivals_to_inputs(fixed_inputs_spks, args.T_i) * args.a_i
@@ -455,16 +455,16 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, 1:n_e] = 0.03 * r_in[:, 1:n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
-		if i >= 600 and i < 700:
-			synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
+		# if i >= 600 and i < 700:
+		# 	synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
-			drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
-			birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
+		# 	drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
+		# 	birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
 
-			surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
+		# 	surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
 
-			w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
-			w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
+		# 	w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
+		# 	w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
 		if i >= FREEZE_WEIGHTS_TRIAL:
