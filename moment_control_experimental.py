@@ -524,8 +524,6 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 			eval_tracker['evals'] += 1
 		return 1e8 * BATCH_SIZE + 1e7 * np.sum(np.abs(plasticity_coefs)), 1e8 * np.ones((len(results),)), np.zeros((len(results), len(plasticity_coefs)))
 
-	print(len(results))
-
 	true_losses = np.array([res['loss'] for res in results])
 	syn_effects = np.stack([res['syn_effects'] for res in results])
 	syn_effect_penalties = np.zeros(syn_effects.shape[0])
