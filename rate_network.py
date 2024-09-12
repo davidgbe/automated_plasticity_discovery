@@ -92,7 +92,7 @@ def simulate_inner_loop(
     for i in range(0, len(t) - 1):
         v[i+1, :] = w_u * inp[i, :] + np.dot(w_copy, r[i, :].T) # calculate input to synaptic conductance equation
         s[i+1, 0] = v[i+1, 0]
-        s[i+1, 1:] = s[i, 1:] + (v[i+1, 1:] - s[i, 1:]) * dt / tau # update synaptic conductance as exponential filter of input
+        s[i+1, 1:] = s[i, 1:] + (v[i+1, 1:] - s[i, 1:]) * dt / tau[1:] # update synaptic conductance as exponential filter of input
 
         # firing rates are calculated as normalized synaptic conductances
         shifted_s_e = s[i, :n_e] - bias_e
