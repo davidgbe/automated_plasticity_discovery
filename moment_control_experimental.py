@@ -4,20 +4,17 @@ import os
 import time
 from functools import partial
 from disp import get_ordered_colors
-from aux import gaussian_if_under_val, exp_if_under_val, rev_argsort, set_smallest_n_zero
+from aux import gaussian_if_under_val
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from datetime import datetime
 import multiprocessing as mp
 import argparse
-import cma
-from numba import njit
-from scipy.sparse import csc_matrix
 from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
 from csv_writer import write_csv
-from rate_network import simulate, tanh, generate_gaussian_pulse
+from rate_network import simulate
 
 new_rc_params = {
     'text.usetex': False,
@@ -79,7 +76,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
 N_RULES = 66
 N_TIMECONSTS = 36
-REPEATS = 5
+REPEATS = 1
 INDEX = args.index
 
 T = 0.11 # Total duration of one network simulation
@@ -87,8 +84,8 @@ dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e = 25 # Number excitatory cells in sequence (also length of sequence)
 n_i = 8 # Number inhibitory cells
-train_seeds = np.random.randint(0, 1e7, size=REPEATS)
-test_seeds = np.random.randint(0, 1e7, size=REPEATS)
+train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
+test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 
 layer_colors = get_ordered_colors('gist_rainbow', 15)
 np.random.shuffle(layer_colors)
@@ -156,7 +153,7 @@ if not os.path.exists('sims_out'):
 
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/2MC_long_settle_INDEX_{INDEX}_{args.title}_{time_stamp}'
+out_dir = f'sims_out/2MC_strong_inh_INDEX_{INDEX}_{args.title}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -175,10 +172,9 @@ test_data_path = os.path.join(out_dir, 'test_data.csv')
 write_csv(test_data_path, header)
 
 
-w_e_e = 1.5e-3 / dt
+w_e_e = 0.75e-3 / dt
 w_e_i = 0.5e-4 / dt
-w_i_e = -0.3e-4 / dt # -0.3e-4 / dt
-w_e_e_added = 0.05 * w_e_e * 0.2
+w_i_e = -1.5e-4 / dt # -0.3e-4 / dt
 
 def create_shift_matrix(size, k=1, weighting=[]):
 	w = np.zeros((size, size))
@@ -206,16 +202,16 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 
-	w_initial[:n_e, :n_e] = w_e_e * 0.25 * 4/3 * create_shift_matrix(n_e, k=-1)
+	w_initial[:n_e, :n_e] = w_e_e * create_shift_matrix(n_e, k=-1)
 
 	# w_initial[:n_e, :n_e][np.random.rand(n_e, n_e) >= 0.8] = 0
 
 	# w_initial[:n_e, :n_e] = np.diag(np.ones(n_e - 1), k=-1) * w_e_e * 0.7
 
-	w_initial[n_e:, :n_e] = gaussian_if_under_val(1, (n_i, n_e), w_e_i, 0 * w_e_i)
-	w_initial[n_e:, :n_e] = np.where(w_initial[n_e:, :n_e] < 0, 0, w_initial[n_e:, :n_e])
-	w_initial[:n_e, n_e:] = gaussian_if_under_val(1, (n_e, n_i), w_i_e, 0 * np.abs(w_i_e))
-	w_initial[:n_e, n_e:] = np.where(w_initial[:n_e, n_e:] > 0, 0, w_initial[:n_e, n_e:])
+	w_initial[n_e:, 1:n_e] = gaussian_if_under_val(1, (n_i, n_e - 1), w_e_i, 0 * w_e_i)
+	w_initial[n_e:, 1:n_e] = np.where(w_initial[n_e:, 1:n_e] < 0, 0, w_initial[n_e:, 1:n_e])
+	w_initial[1:n_e, n_e:] = gaussian_if_under_val(1, (n_e - 1, n_i), w_i_e, 0 * np.abs(w_i_e))
+	w_initial[1:n_e, n_e:] = np.where(w_initial[1:n_e, n_e:] > 0, 0, w_initial[1:n_e, n_e:])
 
 	np.fill_diagonal(w_initial, 0)
 	return w_initial
@@ -226,7 +222,7 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 	if np.isnan(r).any():
 		return 10000
 
-	r_exc = r[:, :, :n_e]
+	r_exc = r[:, :, 1:n_e]
 
 	stacked_activities_train = []
 	stacked_activities_test = []
@@ -319,7 +315,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		vmax = np.max([w_initial.max(), w.max()])
 
 		vbound = np.maximum(vmax, np.abs(vmin))
-		vbound = 5
+		vbound = 10
 
 		mappable = axs[2 * i + 1][0].matshow(w_initial, vmin=-vbound, vmax=vbound, cmap='coolwarm') # plot initial weight matrix
 		plt.colorbar(mappable, ax=axs[2 * i + 1][0])
@@ -412,8 +408,8 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	w_initial = make_network() # make a new, distorted sequence
 
-	decode_start = 20e-3/dt
-	decode_end = 80e-3/dt
+	decode_start = 5e-3/dt
+	decode_end = 40e-3/dt
 	train_times = (decode_start + np.random.rand(500) * (decode_end - decode_start - 1)).astype(int) # 500
 	test_times = (decode_start + np.random.rand(200) * (decode_end - decode_start - 1)).astype(int)	# 200
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
@@ -528,6 +524,8 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 			eval_tracker['evals'] += 1
 		return 1e8 * BATCH_SIZE + 1e7 * np.sum(np.abs(plasticity_coefs)), 1e8 * np.ones((len(results),)), np.zeros((len(results), len(plasticity_coefs)))
 
+	print(len(results))
+
 	true_losses = np.array([res['loss'] for res in results])
 	syn_effects = np.stack([res['syn_effects'] for res in results])
 	syn_effect_penalties = np.zeros(syn_effects.shape[0])
@@ -580,7 +578,8 @@ def eval_all(X, eval_tracker=None, train=True):
 
 	task_vars = []
 	for i_x, x in enumerate(X):
-		task_vars.append((i_x, x, train))
+		for i_batch in range(BATCH_SIZE):
+			task_vars.append((i_batch, x, train))
 	results = pool.map(simulate_single_network_wrapper, task_vars)
 
 	pool.close()
