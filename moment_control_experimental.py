@@ -87,6 +87,11 @@ n_i = 8 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 
+n_input_cells = 5
+input_spacing = 4e-3
+fixed_sequence_a = 0.15
+fixed_sequence_T = 3e-3
+
 layer_colors = get_ordered_colors('gist_rainbow', 15)
 np.random.shuffle(layer_colors)
 
@@ -204,14 +209,16 @@ def make_network():
 
 	w_initial[:n_e, :n_e] = w_e_e * create_shift_matrix(n_e, k=-1)
 
+	w_initial[:n_input_cells, :n_e] = 0
+
 	# w_initial[:n_e, :n_e][np.random.rand(n_e, n_e) >= 0.8] = 0
 
 	# w_initial[:n_e, :n_e] = np.diag(np.ones(n_e - 1), k=-1) * w_e_e * 0.7
 
-	w_initial[n_e:, 1:n_e] = gaussian_if_under_val(1, (n_i, n_e - 1), w_e_i, 0 * w_e_i)
-	w_initial[n_e:, 1:n_e] = np.where(w_initial[n_e:, 1:n_e] < 0, 0, w_initial[n_e:, 1:n_e])
-	w_initial[1:n_e, n_e:] = gaussian_if_under_val(1, (n_e - 1, n_i), w_i_e, 0 * np.abs(w_i_e))
-	w_initial[1:n_e, n_e:] = np.where(w_initial[1:n_e, n_e:] > 0, 0, w_initial[1:n_e, n_e:])
+	w_initial[n_e:, :n_e] = gaussian_if_under_val(1, (n_i, n_e), w_e_i, 0 * w_e_i)
+	w_initial[n_e:, :n_e] = np.where(w_initial[n_e:, :n_e] < 0, 0, w_initial[n_e:, :n_e])
+	w_initial[n_input_cells:n_e, n_e:] = gaussian_if_under_val(1, (n_e - n_input_cells, n_i), w_i_e, 0 * np.abs(w_i_e))
+	w_initial[n_input_cells:n_e, n_e:] = np.where(w_initial[n_input_cells:n_e, n_e:] > 0, 0, w_initial[n_input_cells:n_e, n_e:])
 
 	np.fill_diagonal(w_initial, 0)
 	return w_initial
@@ -222,7 +229,7 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 	if np.isnan(r).any():
 		return 10000
 
-	r_exc = r[:, :, 1:n_e]
+	r_exc = r[:, :, n_input_cells:n_e]
 
 	stacked_activities_train = []
 	stacked_activities_test = []
@@ -408,8 +415,8 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	w_initial = make_network() # make a new, distorted sequence
 
-	decode_start = 5e-3/dt
-	decode_end = 40e-3/dt
+	decode_start = 30e-3/dt
+	decode_end = 60e-3/dt
 	train_times = (decode_start + np.random.rand(500) * (decode_end - decode_start - 1)).astype(int) # 500
 	test_times = (decode_start + np.random.rand(200) * (decode_end - decode_start - 1)).astype(int)	# 200
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
@@ -430,7 +437,8 @@ def simulate_single_network(index, x, train, track_params=True):
 	surviving_synapse_mask = np.ones((n_e, n_e)).astype(bool)
 
 	fixed_inputs_spks = np.zeros((len(t), n_e + n_i))
-	fixed_inputs_spks[:1, 0] = 1
+	for cell_idx in np.arange(n_input_cells):
+		fixed_inputs_spks[cell_idx * int(input_spacing/dt), cell_idx] = 1
 	# fixed_inputs_spks[10:int(65e-3/dt), 1:n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * FRAC_INPUTS_FIXED * dt, size=(int(65e-3/dt) - 10, n_e - 1 + n_i))
 
 	for i in range(n_inner_loop_iters):
@@ -439,16 +447,18 @@ def simulate_single_network(index, x, train, track_params=True):
 
 		random_inputs_poisson = np.zeros((len(t), n_e + n_i))
 		random_inputs_poisson[10:int(decode_end), :n_e + n_i] = np.random.poisson(lam=INPUT_RATE_PER_CELL * (1 - FRAC_INPUTS_FIXED) * dt, size=(int(decode_end) - 10, n_e + n_i))
-		random_inputs_poisson[:, 0] = 0
+		random_inputs_poisson[:, :n_input_cells] = 0
 
-		if i >= 400:
-			r_in = poisson_arrivals_to_inputs(fixed_inputs_spks, args.T_f) * args.a_f
+		r_in[:, :n_input_cells - 1] = poisson_arrivals_to_inputs(fixed_inputs_spks[:, :n_input_cells - 1], fixed_sequence_T) * fixed_sequence_a
+
+		if i >= DECODER_TRAIN_RANGE[1]:
+			r_in[:, n_input_cells - 1:n_input_cells] = poisson_arrivals_to_inputs(fixed_inputs_spks[:, n_input_cells - 1:n_input_cells ], args.T_f) * args.a_f
 		else:
-			r_in = poisson_arrivals_to_inputs(fixed_inputs_spks, args.T_i) * args.a_i
-		r_in += poisson_arrivals_to_inputs(random_inputs_poisson, 3e-3)
-		
+			r_in[:, n_input_cells - 1:n_input_cells ] = poisson_arrivals_to_inputs(fixed_inputs_spks[:, n_input_cells - 1:n_input_cells ], args.T_i) * args.a_i
 
-		r_in[:, 1:n_e] = 0.03 * r_in[:, 1:n_e]
+		r_in += poisson_arrivals_to_inputs(random_inputs_poisson, 3e-3)
+
+		r_in[:, n_input_cells:n_e] = 0.03 * r_in[:, n_input_cells:n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
 		# if i >= 600 and i < 700:
@@ -473,7 +483,6 @@ def simulate_single_network(index, x, train, track_params=True):
 			return {
 				'blew_up': True,
 			}
-			
 
 		if (i >= DECODER_TRAIN_RANGE[0] and i < DECODER_TRAIN_RANGE[1]) or (i >= DECODER_TEST_RANGE[0] and i < DECODER_TEST_RANGE[1]):
 			rs_for_loss.append(r)

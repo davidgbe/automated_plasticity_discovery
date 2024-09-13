@@ -88,10 +88,10 @@ params['EXC_M2_C'] = [1]
 params['INH_M1_C'] = [1]
 params['INH_M2_C'] = [0]
 
-params['A_I'] = [0.075, 0.15]
-params['T_I'] = [1e-3, 3e-3]
-params['A_F'] = [0.075, 0.15]
-params['T_F'] = [1e-3, 3e-3]
+params['A_I'] = [0.1, 0.15]
+params['T_I'] = [2e-3, 3e-3]
+params['A_F'] = [0.1, 0.15]
+params['T_F'] = [2e-3, 3e-3]
 
 n_seeds = len(params['SEED'])
 
