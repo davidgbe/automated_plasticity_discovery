@@ -79,19 +79,19 @@ params['SEED'] = [str(2)]
 params['SYN_CHANGE_PROB'] = [0]
 
 params['EXC_RULE_SETPOINT'] = [0.1]
-params['EXC_RULE_RATE'] = [0.01, 0.05, 0.1] # [3e-2, 3e-2, 4e-2]
+params['EXC_RULE_RATE'] = [0] # [3e-2, 3e-2, 4e-2]
 params['INH_RULE_SETPOINT'] = [0.4]
-params['INH_RULE_RATE'] = [-0.001, -0.01, -0.1]
+params['INH_RULE_RATE'] = [0]
 
 params['EXC_M1_C'] = [0]
-params['EXC_M2_C'] = [1]
-params['INH_M1_C'] = [1]
+params['EXC_M2_C'] = [0]
+params['INH_M1_C'] = [0]
 params['INH_M2_C'] = [0]
 
-params['A_I'] = [0.1, 0.15]
-params['T_I'] = [2e-3, 3e-3]
-params['A_F'] = [0.1, 0.15]
-params['T_F'] = [2e-3, 3e-3]
+params['A_I'] = [0.1, 0.2]
+params['T_I'] = [1e-3, 4e-3]
+params['A_F'] = [0.1, 0.2]
+params['T_F'] = [1e-3, 4e-3]
 
 n_seeds = len(params['SEED'])
 

@@ -158,7 +158,7 @@ if not os.path.exists('sims_out'):
 
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/2MC_strong_inh_INDEX_{INDEX}_{args.title}_{time_stamp}'
+out_dir = f'sims_out/2MC_strong_inh_v4_INDEX_{INDEX}_{args.title}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
