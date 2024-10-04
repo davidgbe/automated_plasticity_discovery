@@ -8,14 +8,20 @@ warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib")
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 
-def set_font_size(ax, font_size, legend_font_size=None):
+def set_font_size(ax, font_size, legend_font_size=None, non_label_font_size=None):
     """Set font_size of all axis text objects to specified value."""
 
-    texts = [ax.title, ax.xaxis.label, ax.yaxis.label] + \
-        ax.get_xticklabels() + ax.get_yticklabels()
+    if non_label_font_size is None:
+        non_label_font_size = font_size
 
-    for text in texts:
+    label_texts = [ax.title, ax.xaxis.label, ax.yaxis.label]
+    non_label_texts = ax.get_xticklabels() + ax.get_yticklabels()
+
+    for text in label_texts:
         text.set_fontsize(font_size)
+
+    for text in non_label_texts:
+        text.set_fontsize(non_label_font_size)
 
     if ax.get_legend():
         if not legend_font_size:
