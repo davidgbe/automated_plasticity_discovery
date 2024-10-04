@@ -190,8 +190,31 @@ def simulate_inner_loop(
             w_updates_unweighted.append(r_cross_products)
             num_rules = w_updates_unweighted[k].shape[0]
             w_updates_unweighted[k][int(0.5 * num_rules):num_rules] = w_copy[pop_slices[p_j], pop_slices[p_i]] * w_updates_unweighted[k][int(0.5 * num_rules):num_rules]
-
+        
         w_not_almost_zero = np.where(np.abs(w) > 2e-6, 1, 0)
+
+        # compute the same for 3 factor rules
+        # what's the operative synapse here?
+        for k, pop_indices in enumerate([[1, 0, 0], [0, 1, 0]]):
+            p_i = pop_indices[0]
+            p_j = pop_indices[1]
+            p_l = pop_indices[2]
+
+            # how to read this:
+            # first factor is presynaptic neuron from second population (p_i)
+            # second factor is postsynaptic neuron from third population (p_j)
+            # third factor is summmed integrated inputs from the first population (p_i) NOTE this info is only local if `l`` is connected to `j`
+            r_exp_r_1_r_exp_sum = np.dot(w_not_almost_zero[p_j, p_l], r_exp_filtered_curr_split[p_l][k, :]) * np.outer(r_exp_filtered_curr_split[p_j][k, :], r_0_pow_split[p_i])
+            r_1_r_exp_r_exp_sum = np.dot(w_not_almost_zero[p_j, p_l], r_exp_filtered_curr_split[p_l][k, :]) * np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k, :])
+
+            r_cross_products = np.stack((
+                r_exp_r_1_r_exp_sum,
+                r_1_r_exp_r_exp_sum,
+            ))
+
+            w_updates_unweighted.append(r_cross_products)
+            num_rules = w_updates_unweighted[-1].shape[0]
+            w_updates_unweighted[-1][int(0.5 * num_rules):num_rules] = w_copy[pop_slices[p_j], pop_slices[p_i]] * w_updates_unweighted[-1][int(0.5 * num_rules):num_rules]
 
         if track_params:
             dw_e_e_unsummed = plasticity_coefs[:one_third_n_params].reshape(one_third_n_params, 1, 1) * (w_updates_unweighted[0] * w_plastic[:n_e_pool, :n_e_pool] * w_not_almost_zero[:n_e_pool, :n_e_pool])
