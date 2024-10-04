@@ -128,22 +128,24 @@ def simulate_inner_loop(
             p_i = pop_indices[0]
             p_j = pop_indices[1]
 
-            r_0_r_exp = np.outer(r_exp_filtered_curr_split[p_j][k, :], r_0_pow_split[p_i])
-            r_1_r_exp = np.outer(r_exp_filtered_curr_split[p_j][k + 1, :], r_1_pow_split[p_i])
-            r_exp_r_0 = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 2, :])
-            r_exp_r_1 = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 3, :])
-            r_0_by_r_exp_r = np.outer(r_exp_filtered_curr_split[p_j][k + 4, :] * r_1_pow_split[p_j], r_0_pow_split[p_i])
-            r_exp_r_by_r_0 = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 5, :] * r_1_pow_split[p_i])
+            start_pop_idx = k * int(r_exp_filtered_curr.shape[0] / 3)
+
+            r_0_r_exp = np.outer(r_exp_filtered_curr_split[p_j][start_pop_idx, :], r_0_pow_split[p_i])
+            r_1_r_exp = np.outer(r_exp_filtered_curr_split[p_j][start_pop_idx + 1, :], r_1_pow_split[p_i])
+            r_exp_r_0 = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][start_pop_idx + 2, :])
+            r_exp_r_1 = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][start_pop_idx + 3, :])
+            r_0_by_r_exp_r = np.outer(r_exp_filtered_curr_split[p_j][start_pop_idx + 4, :] * r_1_pow_split[p_j], r_0_pow_split[p_i])
+            r_exp_r_by_r_0 = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][start_pop_idx + 5, :] * r_1_pow_split[p_i])
             # r_0_by_r_exp_2 = np.outer(np.square(r_exp_filtered_curr_split[p_j][k + 6, :]), r_0_pow_split[p_i])
             # r_exp_2_by_r_0 = np.outer(r_0_pow_split[p_j], np.square(r_exp_filtered_curr_split[p_i][k + 7, :]))
 
 
-            r_0_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 6, :], r_0_pow_split[p_i])
-            r_1_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][k + 7, :], r_1_pow_split[p_i])
-            r_exp_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 8, :])
-            r_exp_r_1_w = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 9, :])
-            r_0_by_r_exp_r_w = np.outer(r_exp_filtered_curr_split[p_j][k + 10, :] * r_1_pow_split[p_j], r_0_pow_split[p_i])
-            r_exp_r_by_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][k + 11, :] * r_1_pow_split[p_i])
+            r_0_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][start_pop_idx + 6, :], r_0_pow_split[p_i])
+            r_1_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][start_pop_idx + 7, :], r_1_pow_split[p_i])
+            r_exp_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][start_pop_idx + 8, :])
+            r_exp_r_1_w = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][start_pop_idx + 9, :])
+            r_0_by_r_exp_r_w = np.outer(r_exp_filtered_curr_split[p_j][start_pop_idx + 10, :] * r_1_pow_split[p_j], r_0_pow_split[p_i])
+            r_exp_r_by_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][start_pop_idx + 11, :] * r_1_pow_split[p_i])
             # r_0_by_r_exp_2_w = np.outer(np.square(r_exp_filtered_curr_split[p_j][k + 14, :]), r_0_pow_split[p_i])
             # r_exp_2_by_r_0_w = np.outer(r_0_pow_split[p_j], np.square(r_exp_filtered_curr_split[p_i][k + 15, :]))
 
