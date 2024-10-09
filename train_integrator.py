@@ -23,7 +23,7 @@ from rate_network import simulate, tanh, generate_gaussian_pulse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--std_expl', metavar='std', type=float, help='Initial standard deviation for parameter search via CMA-ES')
-parser.add_argument('--l1_pen', metavar='l1', type=float, nargs=3, help='Prefactor for L1 penalties on loss function')
+parser.add_argument('--l1_pen', metavar='l1', type=float, nargs=1, help='Prefactor for L1 penalties on loss function')
 parser.add_argument('--asp', metavar='asp', type=float, help='', default=0.)
 parser.add_argument('--pool_size', metavar='ps', type=int, help='Number of processes to start for each loss function evaluation')
 parser.add_argument('--batch', metavar='b', type=int, help='Number of simulations that should be batched per loss function evaluation')
@@ -53,8 +53,8 @@ ACTIVITY_LOSS_COEF = args.asp
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 1000
-N_RULES = 60
-N_TIMECONSTS = 36
+N_RULES = 60 + 8
+N_TIMECONSTS = 36 + 16
 
 T = 0.12 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -72,55 +72,46 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'',
 	r'$y$',
 	r'$x$',
-	# r'$y^2$',
-	# r'$x^2$',
 	r'$x \, y$',
 	r'$\tilde{y}$',
 	r'$x \, \tilde{y}$',
 	r'$\tilde{x}$',
 	r'$\tilde{x} \, y$',
-	# r'$x_{int} \, y^2$',
 	r'$\tilde{y} \, y$',
 	r'$\tilde{x} \, x$',
-	# r'$\tilde{y}^2$',
-	# r'$\tilde{x}^2$',
 
 	r'$w$',
 	r'$w y$',
 	r'$w x$',
-	# r'$y^2$',
-	# r'$x^2$',
 	r'$w x \, y$',
 	r'$w \tilde{y}$',
 	r'$w x \, \tilde{y}$',
 	r'$w \tilde{x}$',
 	r'$w \tilde{x} \, y$',
-	# r'$x_{int} \, y^2$',
 	r'$w \tilde{y} \, y$',
 	r'$w \tilde{x} \, x$',
-	# r'$w \tilde{y}^2$',
-	# r'$w \tilde{x}^2$',
-
-	# r'$w^2$',
-	# r'$w^2 \, y$',
-	# r'$w^2 \, x$',
-	# r'$w^2 \, y^2$',
-	# r'$w^2 \, x^2$',
-	# r'$w^2 \, x \, y$',
-	# r'$w^2 \, x \, y^2$',
-	# r'$w^2 \, x^2 \, y$',
-	# r'$w^2 \, x^2 \, y^2$',
-	# r'$w^2 y_{int}$',
-	# r'$w^2 x \, y_{int}$',
-	# r'$w^2 x_{int}$',
-	# r'$w^2 x_{int} \, y$',
 ]
 
 rule_names = [
-	[r'$E \rightarrow E$ ' + r_name for r_name in rule_names],
-	[r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
-	[r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
+	[r'$HD \rightarrow HD$ ' + r_name for r_name in rule_names],
+	[r'$HD \rightarrow HR$ ' + r_name for r_name in rule_names],
+	[r'$HR \rightarrow HD$ ' + r_name for r_name in rule_names],
 ]
+
+rule_names_tripartite = [
+	r'$\tilde{x} y, z~y$',
+	r'$x \tilde{y}, z~y$',
+
+	r'$w \tilde{x} y, z~y$',
+	r'$w x \tilde{y}, z~y$',
+]
+
+rule_names += [
+	[r'HD \rightarrow HD, HR~HD' + r_name for r_name in rule_names_tripartite],
+	[r'HR \rightarrow HD, HD~HD' + r_name for r_name in rule_names_tripartite],
+]
+
+
 rule_names = np.array(rule_names).flatten()
 
 
@@ -539,11 +530,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	true_losses = np.array([res['loss'] for res in results])
 	syn_effects = np.stack([res['syn_effects'] for res in results])
 	total_activity_penalties = ACTIVITY_LOSS_COEF * np.array([res['rs_for_loss'].mean() for res in results])
-	syn_effect_penalties = np.zeros(syn_effects.shape[0])
-	one_third_len = int(syn_effects.shape[1]/3)
-
-	for i in range(3):
-		syn_effect_penalties += L1_PENALTIES[i] * np.sum(np.abs(syn_effects[:, i * one_third_len:(i+1) * one_third_len]), axis=1)
+	syn_effect_penalties = L1_PENALTIES[0] * np.sum(np.abs(syn_effects), axis=1)
 
 	losses = true_losses + syn_effect_penalties + total_activity_penalties
 	loss = np.sum(losses)
