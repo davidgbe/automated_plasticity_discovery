@@ -164,7 +164,7 @@ def simulate_inner_loop(
             num_rules = w_updates_unweighted[-1].shape[0]
             w_updates_unweighted[k][int(0.5 * num_rules):num_rules] = w_copy[pop_slices[p_j], pop_slices[p_i]] * w_updates_unweighted[k][int(0.5 * num_rules):num_rules]
         
-        w_not_almost_zero = np.where(np.abs(w) > 2e-6, 1, 0)
+        w_not_almost_zero = np.where(np.abs(w) > 2e-6, 1.0, 0.0)
 
         # compute the same for 3 factor rules
         # what's the operative synapse here?

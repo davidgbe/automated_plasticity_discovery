@@ -112,7 +112,8 @@ rule_names += [
 ]
 
 
-rule_names = np.array(rule_names).flatten()
+rule_names = [r for rs in rule_names for r in rs]
+rule_names = np.array(rule_names, dtype=object)
 
 
 # Make directory for outputting simulations
