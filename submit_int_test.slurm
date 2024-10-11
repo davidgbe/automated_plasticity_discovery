@@ -21,7 +21,7 @@ echo $CURRDIR
 source python-env/bin/activate
 
 RFN=etc.
-python train_integrator.py --std_expl 0.0005 --pool_size 5 --batch 1 --fixed_data 1 --l1_pen 5e-7 --asp 500 --frac_inputs_fixed 0 --syn_change_prob 0 --seed 2000 --root_file_name $RFN
+python test_integrator.py --std_expl 0.0005 --pool_size 5 --batch 1 --fixed_data 1 --l1_pen 5e-7 --asp 500 --frac_inputs_fixed 0 --syn_change_prob 0 --seed 2000 --root_file_name $RFN
 
 deactivate
 
