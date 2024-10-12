@@ -102,16 +102,16 @@ rule_names = [
 ]
 
 rule_names_tripartite = [
-	r'$\tilde{x} y, z~y$',
-	r'$x \tilde{y}, z~y$',
+	r'$\tilde{x} y, z\simy$',
+	r'$x \tilde{y}, z\simy$',
 
-	r'$w \tilde{x} y, z~y$',
-	r'$w x \tilde{y}, z~y$',
+	r'$w \tilde{x} y, z\simy$',
+	r'$w x \tilde{y}, z\simy$',
 ]
 
 rule_names += [
-	[r'HD \rightarrow HD, HR~HD' + r_name for r_name in rule_names_tripartite],
-	[r'HR \rightarrow HD, HD~HD' + r_name for r_name in rule_names_tripartite],
+	[r'$HD \rightarrow HD, HR\simHD$' + r_name for r_name in rule_names_tripartite],
+	[r'$HR \rightarrow HD, HD\simHD$' + r_name for r_name in rule_names_tripartite],
 ]
 
 
@@ -355,7 +355,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	zero_padding = '0' * pad
 	evals = eval_tracker['evals']
 
-	fig.tight_layout()
+	# fig.tight_layout()
 	if train:
 		fig.savefig(f'{out_dir}/{zero_padding}{evals}.png')
 	else:
