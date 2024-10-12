@@ -65,8 +65,8 @@ t = np.linspace(0, T, int(T / dt))
 n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
 n_e_side = 15
 n_i = 1 # Number inhibitory cells
-train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
-test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
+train_seeds = np.random.randint(0, 1e7, size=REPEATS)
+test_seeds = np.random.randint(0, 1e7, size=REPEATS)
 
 layer_colors = get_ordered_colors('gist_rainbow', 15)
 np.random.shuffle(layer_colors)
@@ -126,7 +126,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/ring_int_rand{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/ring_int_test_rand{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -547,16 +547,16 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 					eval_tracker['best_changed'] = True
 					eval_tracker['params'] = copy(x)
 
-				plot_results(
-					results,
-					eval_tracker,
-					out_dir,
-					plasticity_coefs,
-					true_losses,
-					syn_effect_penalties,
-					total_activity_penalties,
-					train=True,
-				)
+			plot_results(
+			        results,
+				eval_tracker,
+				out_dir,
+				plasticity_coefs,
+				true_losses,
+				syn_effect_penalties,
+				total_activity_penalties,
+				train=True,
+			)
 			eval_tracker['evals'] += 1
 		else:
 			plot_results(
@@ -597,9 +597,9 @@ def eval_all(X, eval_tracker=None, train=True):
 	pool = mp.Pool(POOL_SIZE)
 
 	task_vars = []
-	for x in X:
+	for i_x, x in enumerate(X):
 		for idx in indices:
-			task_vars.append((idx, x, train))
+			task_vars.append((i_x, x, train))
 	results = pool.map(simulate_single_network_wrapper, task_vars)
 
 	pool.close()
@@ -665,7 +665,7 @@ if __name__ == '__main__':
 	# Load learned synaptic rules from root_file_name
 	file_names = [ROOT_FILE_NAME]
 
-	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
+	syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 5)
 	print(x_test)
 
 	eval_tracker = {

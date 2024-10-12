@@ -20,7 +20,7 @@ echo $CURRDIR
 ## Commands to run
 source python-env/bin/activate
 
-RFN=etc.
+RFN="ring_int_rand5_STD_EXPL_0.0005_FIXED_True_L1_PENALTY_5e-07_ACT_PEN_500.0_CHANGEP_0.0_FRACI_0.0_SEED_8016_2024-10-08_18:14:24.507395"
 python test_integrator.py --std_expl 0.0005 --pool_size 5 --batch 1 --fixed_data 1 --l1_pen 5e-7 --asp 500 --frac_inputs_fixed 0 --syn_change_prob 0 --seed 2000 --root_file_name $RFN
 
 deactivate
