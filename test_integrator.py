@@ -247,9 +247,9 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	scale = 3
 	n_res_to_show = BATCH_SIZE
 
-	gs = gridspec.GridSpec(4 * n_res_to_show + 3, 2)
-	fig = plt.figure(figsize=(4  * scale, (4 * n_res_to_show + 3) * scale), tight_layout=True)
-	axs = [[fig.add_subplot(gs[i, 0]), fig.add_subplot(gs[i, 1])] for i in range(4 * n_res_to_show)]
+	gs = gridspec.GridSpec(20 * n_res_to_show + 3, 2)
+	fig = plt.figure(figsize=(4  * scale, (20 * n_res_to_show + 3) * scale), tight_layout=False)
+	axs = [[fig.add_subplot(gs[i, 0]), fig.add_subplot(gs[i, 1])] for i in range(20 * n_res_to_show)]
 	axs += [fig.add_subplot(gs[4 * n_res_to_show, :])]
 	axs += [fig.add_subplot(gs[4 * n_res_to_show + 1, :])]
 	axs += [fig.add_subplot(gs[4 * n_res_to_show + 2, :])]
@@ -272,8 +272,8 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		plotted_trial_count = 0
 
 		for trial_idx in range(rs_for_loss.shape[0]):
-			if trial_idx < rs_for_loss.shape[0] - 3:
-				continue
+			# if trial_idx < rs_for_loss.shape[0] - 3:
+			# 	continue
 			r = rs_for_loss[trial_idx, ...]
 
 			for l_idx in range(r.shape[1]):
@@ -505,6 +505,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		'blew_up': False,
 		'r': r,
 		'rs_for_loss': rs_for_loss,
+		'test_diffs': test_diffs,
 		'r_exp_filtered': r_exp_filtered,
 		'w': w,
 		'w_initial': w_initial,
@@ -548,7 +549,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 					eval_tracker['params'] = copy(x)
 
 			plot_results(
-			        results,
+			    results,
 				eval_tracker,
 				out_dir,
 				plasticity_coefs,
