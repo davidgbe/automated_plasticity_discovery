@@ -272,8 +272,8 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		plotted_trial_count = 0
 
 		for trial_idx in range(rs_for_loss.shape[0]):
-			# if trial_idx < rs_for_loss.shape[0] - 3:
-			# 	continue
+			if trial_idx < rs_for_loss.shape[0] - (decoder_test_trial_nums[1] - decoder_test_trial_nums[0]):
+				continue
 			r = rs_for_loss[trial_idx, ...]
 
 			for l_idx in range(r.shape[1]):
