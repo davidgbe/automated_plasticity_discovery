@@ -102,16 +102,16 @@ rule_names = [
 ]
 
 rule_names_tripartite = [
-	r'$\tilde{x} y, z\simy$',
-	r'$x \tilde{y}, z\simy$',
+	r'$\tilde{x} y, z \sim y$',
+	r'$x \tilde{y}, z \sim y$',
 
-	r'$w \tilde{x} y, z\simy$',
-	r'$w x \tilde{y}, z\simy$',
+	r'$w \tilde{x} y, z \sim y$',
+	r'$w x \tilde{y}, z \sim y$',
 ]
 
 rule_names += [
-	[r'$HD \rightarrow HD, HR\simHD$' + r_name for r_name in rule_names_tripartite],
-	[r'$HR \rightarrow HD, HD\simHD$' + r_name for r_name in rule_names_tripartite],
+	[r'$HD \rightarrow HD, HR \sim HD$' + r_name for r_name in rule_names_tripartite],
+	[r'$HR \rightarrow HD, HD \sim HD$' + r_name for r_name in rule_names_tripartite],
 ]
 
 
