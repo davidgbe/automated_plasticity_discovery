@@ -3,11 +3,11 @@
 ## Presets
 #SBATCH --job-name=int_cmaes
 
-#SBATCH -p compute-bigmem
-#SBATCH -A labfairhall
+#SBATCH -p compute
+#SBATCH -A stf
 
 #SBATCH --nodes=1
-#SBATCH --time=01:00:00
+#SBATCH --time=00:10:00
 #SBATCH --ntasks=20
 #SBATCH --mem=40G
 
