@@ -402,12 +402,10 @@ def simulate_single_network(index, x, train, track_params=True):
 	num_readouts = decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]
 	readout_times = ((input_end * dt + 15e-3 * (1 - np.sqrt(1 - np.random.rand(num_readouts)))) / dt).astype(int)
 
-	input_signal_stationary_probs = np.random.rand(3) * 0.05 + 0.95
+	input_signal_stationary_probs = np.random.rand(3) * 0.05 + 0.9
 	input_signal_transition_probs = ((1 - input_signal_stationary_probs.reshape(3, 1))/2) * np.ones((3, 3))
 	np.fill_diagonal(input_signal_transition_probs, input_signal_stationary_probs)
-
-	print(input_signal_stationary_probs)
-
+	
 
 	input_signal_totals = np.zeros((n_inner_loop_iters,))
 
@@ -443,6 +441,7 @@ def simulate_single_network(index, x, train, track_params=True):
 				cummulative_prob += input_signal_transition_probs_k[l]
 				if draw <= cummulative_prob:
 					markov_state[k] = l
+					break
 
 		input_signal_totals[i] = np.sum(markov_state == 1) - np.sum(markov_state == 2)
 
