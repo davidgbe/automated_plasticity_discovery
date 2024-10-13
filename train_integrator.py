@@ -402,7 +402,13 @@ def simulate_single_network(index, x, train, track_params=True):
 	num_readouts = decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]
 	readout_times = ((input_end * dt + 15e-3 * (1 - np.sqrt(1 - np.random.rand(num_readouts)))) / dt).astype(int)
 
-	input_signal_transition_probs = np.random.rand(n_inner_loop_iters, 2) * 0.05 + 0.95
+	input_signal_stationary_probs = np.random.rand(3) * 0.05 + 0.95
+	input_signal_transition_probs = ((1 - input_signal_stationary_probs.reshape(3, 1))/2) * np.ones((3, 3))
+	np.fill_diagonal(input_signal_transition_probs, input_signal_stationary_probs)
+
+	print(input_signal_stationary_probs)
+
+
 	input_signal_totals = np.zeros((n_inner_loop_iters,))
 
 	w = copy(w_initial)
@@ -427,25 +433,27 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in_spks[:int(15e-3/dt), :6] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(15e-3/dt), 6))
 
 		input_spks = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_len, n_e_side))
-		input_signal_transition_probs_i = input_signal_transition_probs[i, :]
 		markov_state = np.zeros((input_len,)).astype(int)
-		markov_state[0] = 1
-		for k in range(input_len - 1):
-			if input_signal_transition_probs_i[markov_state[k]] > np.random.rand():
-				markov_state[k+1] = markov_state[k]
-			else:
-				markov_state[k+1] = 1 - markov_state[k]
+		markov_state[0] = 0
+		for k in range(1, input_len):
+			draw = np.random.rand()
+			input_signal_transition_probs_k = input_signal_transition_probs[markov_state[k-1], :]
+			cummulative_prob = 0
+			for l in np.arange(3):
+				cummulative_prob += input_signal_transition_probs_k[l]
+				if draw <= cummulative_prob:
+					markov_state[k] = l
 
-		input_signal_totals[i] = np.mean(markov_state)
+		input_signal_totals[i] = np.sum(markov_state == 1) - np.sum(markov_state == 2)
 
-		# right_input_spks = np.logical_and(input_spks, rnd_walk_steps_i > 0)
-		input_spks[np.nonzero(1 - markov_state)[0], :] = 0
+		right_input_spks = input_spks * (markov_state == 1).reshape(markov_state.shape[0], 1)
+		left_input_spks = input_spks * (markov_state == 2).reshape(markov_state.shape[0], 1)
 
 		# print('input spikes', np.sum(input_spks))
 		# print('input diffs', input_signal_totals[i])
 
-		# r_in_spks[input_start:input_end, n_e_pool:n_e_pool + n_e_side] = right_input_spks
-		r_in_spks[input_start:input_end, n_e_pool + n_e_side:n_e_pool + 2 * n_e_side] = input_spks
+		r_in_spks[input_start:input_end, n_e_pool:n_e_pool + n_e_side] = right_input_spks
+		r_in_spks[input_start:input_end, n_e_pool + n_e_side:n_e_pool + 2 * n_e_side] = left_input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
 
 		r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
