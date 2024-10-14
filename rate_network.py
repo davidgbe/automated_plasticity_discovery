@@ -199,7 +199,7 @@ def simulate_inner_loop(
                 r_1_r_exp_r_exp_sum_w,
             ))
 
-            w_updates_unweighted.append(r_cross_products)
+            w_updates_unweighted.append(r_cross_products / n_e)
             num_rules = w_updates_unweighted[-1].shape[0]
             w_updates_unweighted[-1][int(0.5 * num_rules):num_rules] = w_copy[pop_slices[p_j], pop_slices[p_i]] * w_updates_unweighted[-1][int(0.5 * num_rules):num_rules]
 

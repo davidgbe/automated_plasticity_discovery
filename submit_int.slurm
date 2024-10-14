@@ -20,7 +20,7 @@ echo $CURRDIR
 ## Commands to run
 source python-env/bin/activate
 
-python train_integrator.py --std_expl 0.0005 --pool_size 30 --batch 5 --fixed_data 1 --l1_pen 5e-7  --asp 500 --frac_inputs_fixed 0 --syn_change_prob 0 --seed 8017
+python train_integrator.py --std_expl 0.0005 --pool_size 30 --batch 5 --fixed_data 1 --l1_pen 5e-7  --asp 500 --frac_inputs_fixed 0 --syn_change_prob 0 --seed 8015
 
 deactivate
 
