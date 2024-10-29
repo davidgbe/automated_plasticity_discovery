@@ -128,7 +128,7 @@ def simulate_inner_loop(
             p_i = pop_indices[0]
             p_j = pop_indices[1]
 
-            start_pop_idx = k * int(r_exp_filtered_curr.shape[0] / 3)
+            start_pop_idx = k
 
             r_0_r_exp = np.outer(r_exp_filtered_curr_split[p_j][start_pop_idx, :], r_0_pow_split[p_i])
             r_1_r_exp = np.outer(r_exp_filtered_curr_split[p_j][start_pop_idx + 1, :], r_1_pow_split[p_i])
