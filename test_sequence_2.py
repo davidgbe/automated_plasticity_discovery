@@ -143,7 +143,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/decoder_ee_test_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/decoder_ee_test_scores_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 out_dir_weights = os.path.join(out_dir, 'weights')
@@ -218,11 +218,13 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 
 	# print(np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100)
 
-	loss = 1000 * (1 - reg.score(X_test, y_test)) + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100
+	score = reg.score(X_test, y_test)
+
+	loss = 1000 * (1 - score) + np.sum(r) / (r.shape[0] * r.shape[1] * r.shape[2]) * 100
 
 	print('loss:', loss)
 
-	return loss
+	return loss, score
 
 
 def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, train=True):
@@ -463,10 +465,11 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	if i == n_inner_loop_iters - 1:
 		rs_for_loss = np.stack(rs_for_loss)
-		normed_loss = calc_loss(rs_for_loss, train_times, test_times)
+		normed_loss, score = calc_loss(rs_for_loss, train_times, test_times)
 
 	return {
 		'loss': normed_loss,
+		'score': score,
 		'blew_up': False,
 		'r': r,
 		'rs_for_loss': rs_for_loss,
@@ -478,11 +481,11 @@ def simulate_single_network(index, x, train, track_params=True):
 	}
 
 
-def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects):
+def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects, scores):
 	# eval_num, loss, true_losses, plastic_coefs, syn_effects
 	syn_effect_means = np.mean(syn_effects, axis=0)
 	syn_effect_stds = np.std(syn_effects, axis=0)
-	to_save = np.concatenate([[eval_tracker['evals'], loss], true_losses, plasticity_coefs, syn_effect_means, syn_effect_stds]).flatten()
+	to_save = np.concatenate([[eval_tracker['evals'], loss], true_losses, plasticity_coefs, syn_effect_means, syn_effect_stds, scores]).flatten()
 	print(to_save)
 	write_csv(write_path, list(to_save))
 
@@ -497,6 +500,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 		return 1e8 * BATCH_SIZE + 1e7 * np.sum(np.abs(plasticity_coefs)), 1e8 * np.ones((len(results),)), np.zeros((len(results), len(plasticity_coefs)))
 
 	true_losses = np.array([res['loss'] for res in results])
+	scores = true_losses = np.array([res['score'] for res in results])
 	syn_effects = np.stack([res['syn_effects'] for res in results])
 	syn_effect_penalties = np.zeros(syn_effects.shape[0])
 	one_third_len = int(syn_effects.shape[1])
@@ -523,7 +527,7 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 	print('guess:', plasticity_coefs)
 	print('loss:', loss)
 	print('')
-	return loss, true_losses, syn_effects
+	return loss, true_losses, syn_effects, scores
 
 
 # def plasticity_coefs_eval_wrapper(plasticity_coefs, eval_tracker=None, track_params=False):
@@ -557,12 +561,12 @@ def eval_all(X, eval_tracker=None, train=True):
 
 	losses = []
 	for i in range(len(X)):
-		loss, true_losses, syn_effects = process_plasticity_rule_results(results[BATCH_SIZE * i: BATCH_SIZE * (i+1)], X[i], eval_tracker=eval_tracker, train=train)
+		loss, true_losses, syn_effects, scores = process_plasticity_rule_results(results[BATCH_SIZE * i: BATCH_SIZE * (i+1)], X[i], eval_tracker=eval_tracker, train=train)
 		losses.append(loss)
 		if train:
-			log_sim_results(train_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
+			log_sim_results(train_data_path, eval_tracker, loss, true_losses, X[i], syn_effects, scores)
 		else:
-			log_sim_results(test_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
+			log_sim_results(test_data_path, eval_tracker, loss, true_losses, X[i], syn_effects, scores)
 	
 	dur = time.time() - start
 	print('dur:', dur)
@@ -627,10 +631,10 @@ if __name__ == '__main__':
 
 	eval_all([x_test] * REPEATS, eval_tracker=eval_tracker)
 
-	for i in range(len(syn_effects_test)):
-		x_test_reduced = copy(x_test)
-		x_test_reduced[i] = 0
-		print(x_test_reduced)
+	# for i in range(len(syn_effects_test)):
+	# 	x_test_reduced = copy(x_test)
+	# 	x_test_reduced[i] = 0
+	# 	print(x_test_reduced)
 
-		eval_all([x_test_reduced] * REPEATS, eval_tracker=eval_tracker)
+	# 	eval_all([x_test_reduced] * REPEATS, eval_tracker=eval_tracker)
 
