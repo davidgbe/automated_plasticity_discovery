@@ -102,7 +102,7 @@ def simulate_inner_loop(
         r_0_pow = np.ones(n_e + n_i)
         r_1_pow = r[i+1, :] / 0.02
         r_2_pow = np.square(r[i+1, :]) / 0.01
-        r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.01
+        r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.025
 
         r_0_pow_split = [r_0_pow[s] for s in pop_slices]
         r_1_pow_split = [r_1_pow[s] for s in pop_slices]
