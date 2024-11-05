@@ -90,7 +90,7 @@ def simulate_inner_loop(
         # firing rates are calculated as normalized synaptic conductances
         shifted_s_e = s[i, :n_e] - 0.1
         shifted_s_e[shifted_s_e < 0] = 0
-        r[i+1, :n_e] = g * np.tanh(shifted_s_e)
+        r[i+1, :n_e] = g * shifted_s_e
 
         shifted_s_i = s[i, n_e:]# - 0.1
         shifted_s_i[shifted_s_i < 0] = 0
@@ -102,7 +102,7 @@ def simulate_inner_loop(
         r_0_pow = np.ones(n_e + n_i)
         r_1_pow = r[i+1, :] / 0.02
         r_2_pow = np.square(r[i+1, :]) / 0.01
-        r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.025
+        r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.01
 
         r_0_pow_split = [r_0_pow[s] for s in pop_slices]
         r_1_pow_split = [r_1_pow[s] for s in pop_slices]

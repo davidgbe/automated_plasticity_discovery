@@ -56,7 +56,7 @@ INPUT_RATE_PER_CELL = 1000
 N_RULES = 60 + 8
 N_TIMECONSTS = 36 + 16
 
-T = 0.12 # Total duration of one network simulation
+T = 0.135 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 t = np.linspace(0, T, int(T / dt))
 n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
@@ -400,7 +400,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	input_len = input_end - input_start
 
 	num_readouts = decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]
-	readout_times = ((input_end * dt + 15e-3 * (1 - np.sqrt(1 - np.random.rand(num_readouts)))) / dt).astype(int)
+	readout_times = ((input_end * dt + 30e-3 * np.random.rand(num_readouts)) / dt).astype(int)
 
 	input_signal_stationary_probs = np.random.rand(3) * 0.05 + 0.9
 	input_signal_transition_probs = ((1 - input_signal_stationary_probs.reshape(3, 1))/2) * np.ones((3, 3))
