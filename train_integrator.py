@@ -44,6 +44,7 @@ BATCH_SIZE = args.batch
 N_INNER_LOOP_RANGE = (320, 321) # Number of times to simulate network and plasticity rules per loss function evaluation
 decoder_train_trial_nums = (280, 300)
 decoder_test_trial_nums = (300, 320)
+READOUTS_PER_TRIAL = 10
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -53,11 +54,16 @@ ACTIVITY_LOSS_COEF = args.asp
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 1000
+INPUT_BLOCK_DURATION = 5e-3
 N_RULES = 60 + 8
 N_TIMECONSTS = 36 + 16
 
-T = 0.12 # Total duration of one network simulation
+T = 0.100 # Total duration of one network simulation
 dt = 1e-4 # Timestep
+input_start = int(20e-3/dt)
+input_end = int(100e-3/dt)
+input_len = input_end - input_start
+input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
 t = np.linspace(0, T, int(T / dt))
 n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
 n_e_side = 15
@@ -149,7 +155,7 @@ w_side_pool = 0.3e-4 / dt * 0.1
 w_e_i = 2.5e-4 / dt / n_e_pool
 w_i_e = -1e-4 / dt / n_i
 
-w_e_e_added = 0.05 * w_e_e * 0.2
+# w_e_e_added = 0.05 * w_e_e * 0.2
 
 def create_shift_matrix(size, k=1):
 	w = np.zeros((size, size))
@@ -214,27 +220,26 @@ def calc_loss(r : np.ndarray, train_diff_drives : np.ndarray, test_diff_drives :
 	r_readout = r[:, :, :n_e_pool]
 
 	stacked_activities_train = []
+	y_train = []
 	stacked_activities_test = []
+	y_test = []
 
-	for i in range(r.shape[0]):
-		if i < train_diff_drives.shape[0]:
-			stacked_activities_train.append(r_readout[i, readout_times[i], :].flatten())
+	for i in range(readout_times.shape[0]):
+		trial_num = int(i / READOUTS_PER_TRIAL)
+		if i < train_diff_drives.shape[0] * READOUTS_PER_TRIAL:
+			stacked_activities_train.append(r_readout[trial_num, readout_times[i], :].flatten())
+			y_train.append(train_diff_drives[trial_num, readout_times[i] - input_start])
 		else:
-			stacked_activities_test.append(r_readout[i, readout_times[i], :].flatten())
+			stacked_activities_test.append(r_readout[trial_num, readout_times[i], :].flatten())
+			y_test.append(test_diff_drives[trial_num - train_diff_drives.shape[0], readout_times[i] - input_start])
 
 	X_train = np.stack(stacked_activities_train)
-	y_train = train_diff_drives
-
-	print(X_train)
-	print(y_train)
+	y_train = np.array(y_train)
 
 	X_test = np.stack(stacked_activities_test)
-	y_test = test_diff_drives
+	y_test = np.array(y_test)
 
 	reg = LinearRegression().fit(X_train, y_train)
-
-	print(reg.coef_)
-
 	loss = 1000 * (1 - reg.score(X_test, y_test))
 
 	return loss
@@ -263,6 +268,8 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 		effects = res['syn_effects']
 		all_weight_deltas = res['all_weight_deltas']
 		rs_for_loss = res['rs_for_loss']
+		r_in_for_loss = res['r_in_for_loss']
+		targets_for_loss = res['targets_for_loss']
 
 		all_effects.append(effects)
 
@@ -272,6 +279,17 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 			if trial_idx < rs_for_loss.shape[0] - 3:
 				continue
 			r = rs_for_loss[trial_idx, ...]
+			r_in = r_in_for_loss[trial_idx, ...]
+			targets = targets_for_loss[trial_idx, ...]
+
+			# scale = 1
+			# fig_r_in, axs_r_in = plt.subplots(1, 1, figsize=(4 * scale, 2 * scale), sharex=True, sharey=True)
+			# axs_r_in.plot(np.arange(len(targets)), targets, color='red')
+			# input_diffs = r_in[input_start:, n_e_pool + n_e_side : n_e_pool + 2 * n_e_side].sum(axis=1) - r_in[input_start:, n_e_pool:n_e_pool + n_e_side].sum(axis=1)
+			# input_summed = [input_diffs[:j].sum() for j in range(len(input_diffs))]
+			# axs_r_in.plot(np.arange(len(targets)), input_summed, color='black')
+
+			# fig_r_in.savefig(f'{out_dir}/r_in_trial_{trial_idx}.png')
 
 			for l_idx in range(r.shape[1]):
 				if l_idx < n_e_pool:
@@ -395,15 +413,10 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
-	input_start = int(20e-3/dt)
-	input_end = int(100e-3/dt)
-	input_len = input_end - input_start
+	num_readouts = (decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]) * READOUTS_PER_TRIAL
+	readout_times = (np.random.rand(num_readouts) * (input_end - input_start) + input_start).astype(int)
 
-	num_readouts = decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]
-	readout_times = ((input_end * dt + 15e-3 * (1 - np.sqrt(1 - np.random.rand(num_readouts)))) / dt).astype(int)
-
-	input_signal_transition_probs = np.random.rand(n_inner_loop_iters, 2) * 0.05 + 0.95
-	input_signal_totals = np.zeros((n_inner_loop_iters,))
+	input_signal_totals = np.zeros((n_inner_loop_iters, input_len))
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
@@ -411,6 +424,8 @@ def simulate_single_network(index, x, train, track_params=True):
 	all_effects = np.zeros(plasticity_coefs.shape)
 	normed_loss = 10000	
 	rs_for_loss = []
+	r_in_for_loss = []
+	targets_for_loss = []
 
 	w_hist = []
 	all_weight_deltas = []
@@ -423,30 +438,37 @@ def simulate_single_network(index, x, train, track_params=True):
 	for i in range(n_inner_loop_iters):
 		# print(f'Activation number: {i}')
 		# Define input for activation of the network
-		r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
-		r_in_spks[:int(15e-3/dt), :6] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(15e-3/dt), 6))
+		input_spks = np.zeros((input_len, 2 * n_e_side))
+		inputs = np.zeros((input_len,)).astype(int)
+		inputs[0] = 1
 
-		input_spks = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_len, n_e_side))
-		input_signal_transition_probs_i = input_signal_transition_probs[i, :]
-		markov_state = np.zeros((input_len,)).astype(int)
-		markov_state[0] = 1
-		for k in range(input_len - 1):
-			if input_signal_transition_probs_i[markov_state[k]] > np.random.rand():
-				markov_state[k+1] = markov_state[k]
+		for k in range(input_len):
+			if k % input_block_timesteps == 0:
+				inputs[k] = np.random.choice([-1, 0, 1])
+				if inputs[k] == -1:
+					input_block = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, n_e_side))
+					input_spks[k : k + input_block_timesteps, :n_e_side] = input_block
+				elif inputs[k] == 1:
+					input_block = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, n_e_side))
+					input_spks[k : k + input_block_timesteps, n_e_side : 2 * n_e_side] = input_block
 			else:
-				markov_state[k+1] = 1 - markov_state[k]
+				inputs[k] = inputs[k-1]
 
-		input_signal_totals[i] = np.mean(markov_state)
+		filtered_input_to_sum = poisson_arrivals_to_inputs(input_spks, 3e-3)
+		filtered_input_to_sum = filtered_input_to_sum[:, n_e_pool:2 * n_e_pool].sum(axis=1) - filtered_input_to_sum[:, :n_e_pool].sum(axis=1)
+		running_input_sums = np.zeros_like(filtered_input_to_sum)
+		for j in range(len(running_input_sums)):
+			if j > 0:
+				running_input_sums[j] += running_input_sums[j-1]
+			running_input_sums[j] += filtered_input_to_sum[j]
 
-		# right_input_spks = np.logical_and(input_spks, rnd_walk_steps_i > 0)
-		input_spks[np.nonzero(1 - markov_state)[0], :] = 0
+		r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
+		r_in_spks[:int(10e-3/dt), :6] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), 6))
 
-		# print('input spikes', np.sum(input_spks))
-		# print('input diffs', input_signal_totals[i])
-
-		# r_in_spks[input_start:input_end, n_e_pool:n_e_pool + n_e_side] = right_input_spks
-		r_in_spks[input_start:input_end, n_e_pool + n_e_side:n_e_pool + 2 * n_e_side] = input_spks
+		r_in_spks[input_start:input_end, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
+		
+		input_signal_totals[i, :] = running_input_sums / input_len
 
 		r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
 		r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = 0.1 * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
@@ -465,7 +487,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		# 	w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=5e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
 		if (np.isnan(r).any()
 	  		or (np.abs(w_out) > 100).any()
@@ -479,6 +501,8 @@ def simulate_single_network(index, x, train, track_params=True):
 			
 		if (i >= decoder_train_trial_nums[0] and i < decoder_train_trial_nums[1]) or (i >= decoder_test_trial_nums[0] and i < decoder_test_trial_nums[1]):
 			rs_for_loss.append(r)
+			r_in_for_loss.append(r_in)
+			targets_for_loss.append(running_input_sums)
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
 
@@ -491,8 +515,8 @@ def simulate_single_network(index, x, train, track_params=True):
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
-	train_diffs = input_signal_totals[decoder_train_trial_nums[0]:decoder_train_trial_nums[1]]
-	test_diffs = input_signal_totals[decoder_test_trial_nums[0]:decoder_test_trial_nums[1]]
+	train_diffs = input_signal_totals[decoder_train_trial_nums[0]:decoder_train_trial_nums[1], :]
+	test_diffs = input_signal_totals[decoder_test_trial_nums[0]:decoder_test_trial_nums[1], :]
 
 	rs_for_loss = np.stack(rs_for_loss)
 	normed_loss = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
@@ -502,6 +526,8 @@ def simulate_single_network(index, x, train, track_params=True):
 		'blew_up': False,
 		'r': r,
 		'rs_for_loss': rs_for_loss,
+		'r_in_for_loss': np.stack(r_in_for_loss),
+		'targets_for_loss': np.stack(targets_for_loss),
 		'r_exp_filtered': r_exp_filtered,
 		'w': w,
 		'w_initial': w_initial,
