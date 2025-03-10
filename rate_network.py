@@ -179,16 +179,16 @@ def simulate_inner_loop(
             # first factor is presynaptic neuron from first population (p_i)
             # second factor is postsynaptic neuron from second population (p_j)
             # third factor is summmed integrated inputs from the thid population (p_l) to second pop (p_j) NOTE: this info is only local if `l`` is connected to `j`
-            w_not_almost_zero_k = w_not_almost_zero[pop_slices[p_j], pop_slices[p_l]]
+            w_k = w_copy[pop_slices[p_j], pop_slices[p_l]]
             
-            third_factor = np.dot(w_not_almost_zero_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 1, :])
+            third_factor = np.dot(w_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 1, :])
             r_exp_r_1_r_exp_sum = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start, :], r_0_pow_split[p_i])
-            third_factor = np.dot(w_not_almost_zero_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 3, :])
+            third_factor = np.dot(w_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 3, :])
             r_1_r_exp_r_exp_sum = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 2, :])
 
-            third_factor = np.dot(w_not_almost_zero_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 5, :])
+            third_factor = np.dot(w_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 5, :])
             r_exp_r_1_r_exp_sum_w = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start + 4, :], r_0_pow_split[p_i])
-            third_factor = np.dot(w_not_almost_zero_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 7, :])
+            third_factor = np.dot(w_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 7, :])
             r_1_r_exp_r_exp_sum_w = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 6, :])
 
             r_cross_products = np.stack((
