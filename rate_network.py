@@ -75,7 +75,7 @@ def simulate_inner_loop(
     n_e = n_e_pool + 2 * n_e_side
 
     coefficient_for_division_pair = [slice(0, 20), slice(20, 40), slice(40, 60)]
-    coefficient_for_division_trip = [slice(60, 64), slice(64, 68)]
+    coefficient_for_division_trip = [slice(60, 68), slice(68, 76)]
     pop_slices = [slice(0, n_e_pool), slice(n_e_pool, n_e_pool + 2 * n_e_side)]
 
     w_copy = np.copy(w)
@@ -168,35 +168,50 @@ def simulate_inner_loop(
 
         # compute the same for 3 factor rules
         # what's the operative synapse here?
+        tc_offset = 8
         for k, pop_indices in enumerate([[0, 0, 1], [1, 0, 0]]):
             p_i = pop_indices[0]
             p_j = pop_indices[1]
             p_l = pop_indices[2]
 
-            ts_for_pop_start = k * 8 + 36
+            ts_for_pop_start = 36 + k * (2 * tc_offset)
 
             # how to read this:
             # first factor is presynaptic neuron from first population (p_i)
             # second factor is postsynaptic neuron from second population (p_j)
             # third factor is summmed integrated inputs from the thid population (p_l) to second pop (p_j) NOTE: this info is only local if `l`` is connected to `j`
             w_k = w_copy[pop_slices[p_j], pop_slices[p_l]]
-            
-            third_factor = np.dot(w_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 1, :])
-            r_exp_r_1_r_exp_sum = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start, :], r_0_pow_split[p_i])
-            third_factor = np.dot(w_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 3, :])
-            r_1_r_exp_r_exp_sum = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 2, :])
 
+            third_factor = np.dot(w_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 1, :])
+            r_0_r_exp_r_exp_sum = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start + 0, :], r_0_pow_split[p_i])
+            third_factor = np.dot(w_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 3, :])
+            r_exp_r_0_r_exp_sum = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 2, :])
+            
             third_factor = np.dot(w_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 5, :])
-            r_exp_r_1_r_exp_sum_w = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start + 4, :], r_0_pow_split[p_i])
+            r_1_r_exp_r_exp_sum = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start + 4, :], r_1_pow_split[p_i])
             third_factor = np.dot(w_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 7, :])
-            r_1_r_exp_r_exp_sum_w = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 6, :])
+            r_exp_r_1_r_exp_sum = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 6, :])
+
+            third_factor = np.dot(w_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 1 + tc_offset, :])
+            r_0_r_exp_r_exp_sum_w = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start + 0 + tc_offset, :], r_0_pow_split[p_i])
+            third_factor = np.dot(w_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 3 + tc_offset, :])
+            r_exp_r_0_r_exp_sum_w = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 2 + tc_offset, :])
+            
+            third_factor = np.dot(w_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 5 + tc_offset, :])
+            r_1_r_exp_r_exp_sum_w = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start + 4 + tc_offset, :], r_1_pow_split[p_i])
+            third_factor = np.dot(w_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 7 + tc_offset, :])
+            r_exp_r_1_r_exp_sum_w = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 6 + tc_offset, :])
 
             r_cross_products = np.stack((
-                r_exp_r_1_r_exp_sum,
+                r_0_r_exp_r_exp_sum,
+                r_exp_r_0_r_exp_sum,
                 r_1_r_exp_r_exp_sum,
+                r_exp_r_1_r_exp_sum,
 
-                r_exp_r_1_r_exp_sum_w,
+                r_0_r_exp_r_exp_sum_w,
+                r_exp_r_0_r_exp_sum_w,
                 r_1_r_exp_r_exp_sum_w,
+                r_exp_r_1_r_exp_sum_w,
             ))
 
             w_updates_unweighted.append(r_cross_products)

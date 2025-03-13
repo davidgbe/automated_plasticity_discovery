@@ -55,8 +55,8 @@ CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 1000
 INPUT_BLOCK_DURATION = 5e-3
-N_RULES = 60 + 8
-N_TIMECONSTS = 36 + 16
+N_RULES = 60 + 16
+N_TIMECONSTS = 36 + 32
 
 T = 0.100 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -105,11 +105,15 @@ rule_names = [
 ]
 
 rule_names_tripartite = [
-	r'$\tilde{x} y, z \sim y$',
+	r'$\tilde{y}, z \sim y$',
+	r'$\tilde{x}, z \sim y$',
 	r'$x \tilde{y}, z \sim y$',
+	r'$\tilde{x} y, z \sim y$',
 
-	r'$w \tilde{x} y, z \sim y$',
+	r'$w \tilde{y}, z \sim y$',
+	r'$w \tilde{x}, z \sim y$',
 	r'$w x \tilde{y}, z \sim y$',
+	r'$w \tilde{x} y, z \sim y$',
 ]
 
 rule_names += [
