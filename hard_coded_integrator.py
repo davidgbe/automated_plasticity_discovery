@@ -44,7 +44,7 @@ BATCH_SIZE = args.batch
 N_INNER_LOOP_RANGE = (40, 41) # Number of times to simulate network and plasticity rules per loss function evaluation
 decoder_train_trial_nums = (0, 20)
 decoder_test_trial_nums = (20, 40)
-READOUTS_PER_TRIAL = 10
+READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -55,8 +55,8 @@ CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 1000
 INPUT_BLOCK_DURATION = 5e-3
-N_RULES = 60 + 8
-N_TIMECONSTS = 36 + 16
+N_RULES = 60 + 16
+N_TIMECONSTS = 36 + 32
 
 T = 0.100 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -105,11 +105,15 @@ rule_names = [
 ]
 
 rule_names_tripartite = [
-	r'$\tilde{x} y, z \sim y$',
+	r'$\tilde{y}, z \sim y$',
+	r'$\tilde{x}, z \sim y$',
 	r'$x \tilde{y}, z \sim y$',
+	r'$\tilde{x} y, z \sim y$',
 
-	r'$w \tilde{x} y, z \sim y$',
+	r'$w \tilde{y}, z \sim y$',
+	r'$w \tilde{x}, z \sim y$',
 	r'$w x \tilde{y}, z \sim y$',
+	r'$w \tilde{x} y, z \sim y$',
 ]
 
 rule_names += [
@@ -129,7 +133,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/ring_int_rand{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/hard_coded_int{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -249,7 +253,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	n_res_to_show = BATCH_SIZE
 
 	gs = gridspec.GridSpec(4 * n_res_to_show + 3, 2)
-	fig = plt.figure(figsize=(4  * scale, (4 * n_res_to_show + 3) * scale), tight_layout=True)
+	fig = plt.figure(figsize=(4  * scale, (4 * n_res_to_show + 3) * scale))
 	axs = [[fig.add_subplot(gs[i, 0]), fig.add_subplot(gs[i, 1])] for i in range(4 * n_res_to_show)]
 	axs += [fig.add_subplot(gs[4 * n_res_to_show, :])]
 	axs += [fig.add_subplot(gs[4 * n_res_to_show + 1, :])]
@@ -369,7 +373,8 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	zero_padding = '0' * pad
 	evals = eval_tracker['evals']
 
-	# fig.tight_layout()
+	plt.subplots_adjust(hspace=0.1)
+
 	if train:
 		fig.savefig(f'{out_dir}/{zero_padding}{evals}.png')
 	else:
