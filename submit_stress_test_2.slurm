@@ -7,7 +7,7 @@
 #SBATCH -A stf
 
 #SBATCH --nodes=1
-#SBATCH --time=02:00:00
+#SBATCH --time=06:00:00
 #SBATCH --ntasks=20
 #SBATCH --mem=20G
 
@@ -20,8 +20,12 @@ echo $CURRDIR
 ## Commands to run
 source python-env/bin/activate
 
-python seq_stress_test_2.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0 --seed SEED --root_file_name ROOT_FILE_NAME
-python seq_stress_test_2.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.00072 --seed SEED --root_file_name ROOT_FILE_NAME
+python seq_stress_test_2.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0000 --seed SEED --root_file_name ROOT_FILE_NAME --index INDEX
+python seq_stress_test_2.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0004 --seed SEED --root_file_name ROOT_FILE_NAME --index INDEX
+python seq_stress_test_2.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0008 --seed SEED --root_file_name ROOT_FILE_NAME --index INDEX
+python seq_stress_test_2.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0012 --seed SEED --root_file_name ROOT_FILE_NAME --index INDEX
+python seq_stress_test_2.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0016 --seed SEED --root_file_name ROOT_FILE_NAME --index INDEX
+python seq_stress_test_2.py --std_expl 0.003 --pool_size 20 --batch 1 --fixed_data 1 --l1_pen 5e-7 5e-7 5e-7 --asp 1 --frac_inputs_fixed 0.75 --syn_change_prob 0.0020 --seed SEED --root_file_name ROOT_FILE_NAME --index INDEX
 
 deactivate
 
