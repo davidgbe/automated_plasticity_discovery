@@ -447,9 +447,9 @@ def simulate_single_network(index, x, train, track_params=True):
 
 			id_str = f'batch_{zero_pad(index, 2)}_activ_{zero_pad(i, 3)}'
 			# save weights
-			write_csv(os.path.join(out_dir_weights, f'weight_mat_{id_str}.csv'), w_out, delimiter=',')
+			# write_csv(os.path.join(out_dir_weights, f'weight_mat_{id_str}.csv'), w_out, delimiter=',')
 			# save dynamics
-			write_csv(os.path.join(out_dir_dynamics, f'r_{id_str}.csv'), r, delimiter=',')
+			# write_csv(os.path.join(out_dir_dynamics, f'r_{id_str}.csv'), r, delimiter=',')
 
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
 
