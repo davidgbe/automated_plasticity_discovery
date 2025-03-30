@@ -681,7 +681,7 @@ if __name__ == '__main__':
 
 	options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-		# 'popsize': 15,
+		'popsize': 30,
 		'bounds': [
 			[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
 			[10] * N_RULES + [40e-3] * N_TIMECONSTS,
