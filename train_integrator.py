@@ -190,7 +190,10 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e_pool + 2 * n_e_side + n_i, n_e_pool + 2 * n_e_side + n_i))
 
-	w_initial[:n_e_pool, :n_e_pool] = w_e_e * np.random.rand(n_e_pool, n_e_pool)
+	# w_initial[:n_e_pool, :n_e_pool] = w_e_e * np.random.rand(n_e_pool, n_e_pool)
+
+	# sparsify e --> e connectivity to see in ring can be learned on top of heterogenous connectivity
+	w_initial[:n_e_pool, :n_e_pool] = np.where(np.random.rand(n_e_pool, n_e_pool) < 0.8, w_e_e * np.random.rand(n_e_pool, n_e_pool), 0)
 
 	# x = np.arange(n_e_pool) / n_e_pool
 	# connectivity_scale = 0.075
