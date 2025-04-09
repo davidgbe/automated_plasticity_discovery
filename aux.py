@@ -103,3 +103,9 @@ def set_smallest_n_zero(arr_ref, n, arr_set=None):
         if sort_i >= (len(arr_ref) - n):
             arr_set[i] = 0
     return arr_set
+
+def zero_pad(s, n):
+    s_str = str(s)
+    pad = n - len(s_str)
+    zero_padding = '0' * pad
+    return zero_padding + s_str
