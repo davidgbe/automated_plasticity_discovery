@@ -211,7 +211,7 @@ def make_network():
 	
 	if args.struct_prior == 'shift':
 		# define connectivity from HR to HD neurons as "shift" matrix
-		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, np.create_shift_matrix(n_e_side, k=3), 0)
+		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=3), 0)
 		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool *  np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=-3), 0)
 
 		# define connectivity from HD to HR as inhibiting all but the corresponding group along the diagonal
