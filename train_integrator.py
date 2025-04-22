@@ -68,14 +68,11 @@ input_end = int(100e-3/dt)
 input_len = input_end - input_start
 input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
 t = np.linspace(0, T, int(T / dt))
-n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
-n_e_side = 15
+n_e_pool = 40 # Number excitatory cells in sequence (also length of sequence)
+n_e_side = 40
 n_i = 1 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
-
-layer_colors = get_ordered_colors('gist_rainbow', 15)
-np.random.shuffle(layer_colors)
 
 rule_names = [ # Define labels for all rules to be run during simulations
 	r'',
@@ -156,9 +153,9 @@ write_csv(test_data_path, header)
 
 
 # scaling these 3 parameters by a factor 10 up will give appropriate values for ring attracting circuit
-w_e_e = 0.6e-4 / dt * 0.1
-w_pool_side = -0.2e-4 / dt * 0.1
-w_side_pool = 0.6e-4 / dt * 0.1
+w_e_e = 9e-4 / dt * 0.1 / n_e_pool
+w_pool_side = -3e-4 / dt * 0.1 / n_e_pool
+w_side_pool = 9e-4 / dt * 0.1 / n_e_side
 
 w_e_i = 2.5e-4 / dt / n_e_pool
 w_i_e = -1e-4 / dt / n_i
