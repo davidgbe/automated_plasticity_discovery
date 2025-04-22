@@ -167,12 +167,14 @@ def create_shift_matrix(size, k=1):
 	if k >= 1:
 		for k_p in np.arange(1, k+1):
 			w += np.diag(np.ones((size - k_p,)), k=k_p)
-			w[(size - k_p):, k - k_p] = 1
+			### Add to make into a ring structure
+			# w[(size - k_p):, k - k_p] = 1
 
 	elif k <= -1:
 		for k_p in np.arange(1, -k+1):
 			w += np.diag(np.ones((size - k_p,)), k=-k_p)
-			w[-k - k_p, (size - k_p):] = 1
+			### Add to make into a ring structure
+			# w[-k - k_p, (size - k_p):] = 1
 	return w
 
 def create_shuffled_one_to_one(size):
@@ -486,7 +488,8 @@ def simulate_single_network(index, x, train, track_params=True):
 			running_input_sums[j] += filtered_input_to_sum[j]
 
 		r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
-		input_slice = slice(5, 11)
+		input_size = 6
+		input_slice = slice(int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
 		r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), 6))
 
 		r_in_spks[input_start:input_end, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
