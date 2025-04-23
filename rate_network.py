@@ -167,7 +167,6 @@ def simulate_inner_loop(
         w_not_almost_zero = np.where(np.abs(w) > 2e-6, 1.0, 0.0)
 
         # compute the same for 3 factor rules
-        # what's the operative synapse here?
         tc_offset = 8
         for k, pop_indices in enumerate([[0, 0, 1], [1, 0, 0]]):
             p_i = pop_indices[0]

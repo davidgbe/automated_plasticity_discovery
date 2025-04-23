@@ -2,6 +2,7 @@
 import numpy as np
 import os
 from copy import deepcopy as copy
+from time import time
 
 
 class Generic(object):
@@ -109,3 +110,11 @@ def zero_pad(s, n):
     pad = n - len(s_str)
     zero_padding = '0' * pad
     return zero_padding + s_str
+
+def start_timer():
+    start_time = time()
+    def end_time():
+        diff = time() - start_time
+        print(f'Completed in {diff} seconds')
+        return diff
+    return end_time

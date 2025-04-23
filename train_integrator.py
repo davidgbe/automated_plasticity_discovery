@@ -4,7 +4,7 @@ import os
 import time
 from functools import partial
 from disp import get_ordered_colors
-from aux import gaussian_if_under_val, exp_if_under_val, rev_argsort, set_smallest_n_zero
+from aux import gaussian_if_under_val, start_timer
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from datetime import datetime
@@ -16,6 +16,7 @@ from scipy.sparse import csc_matrix
 from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
 from csv_writer import write_csv
+
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
@@ -463,6 +464,9 @@ def simulate_single_network(index, x, train, track_params=True):
 	for i in range(n_inner_loop_iters):
 		# print(f'Activation number: {i}')
 		# Define input for activation of the network
+
+		timer = start_timer()
+
 		input_spks = np.zeros((input_len, 2 * n_e_side))
 		inputs = np.zeros((input_len,)).astype(int)
 		inputs[0] = 1
@@ -513,8 +517,16 @@ def simulate_single_network(index, x, train, track_params=True):
 		# 	w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
 		# 	w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
+		print('Setup')
+		timer()
+
+		timer = start_timer()
+
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=5e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+
+		print('Sim')
+		timer()
 
 		if (np.isnan(r).any()
 	  		or (np.abs(w_out) > 100).any()
