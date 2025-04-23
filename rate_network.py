@@ -2,7 +2,6 @@ import numpy as np
 from copy import deepcopy as copy
 from numba import njit
 import numba
-numba.set_num_threads(1)
 
 ### For initiating activity
 
@@ -31,6 +30,8 @@ def threshold_power(s : np.ndarray, v_th : float, p : float):
 
 ### Simulate dynamics
 def simulate(t : np.ndarray, n_e_pool : int, n_e_side : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, rule_time_constants : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, tau_e=5e-3, tau_i=5e-3, dt=1e-6, g=1, w_u=1, track_params=False):    
+    numba.set_num_threads(1)
+    
     len_t = len(t)
 
     network_size = n_e_pool + 2 * n_e_side + n_i
@@ -47,7 +48,6 @@ def simulate(t : np.ndarray, n_e_pool : int, n_e_side : int, n_i : int, inp : np
     n_params = len(plasticity_coefs)
 
     w_copy, effects = simulate_inner_loop(t, n_e_pool, n_e_side, n_i, inp, plasticity_coefs, rule_time_constants, w, w_plastic, dt, g, w_u, track_params, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
-    print(simulate_inner_loop.inspect_types())
 
     return r, s, v, w_copy, effects, r_exp_filtered
 

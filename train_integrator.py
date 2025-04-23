@@ -12,7 +12,7 @@ from datetime import datetime
 import multiprocessing as mp
 import argparse
 import cma
-from numba import njit
+import numba
 from scipy.sparse import csc_matrix
 from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
