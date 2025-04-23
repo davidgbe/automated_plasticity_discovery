@@ -45,6 +45,7 @@ def simulate(t : np.ndarray, n_e_pool : int, n_e_side : int, n_i : int, inp : np
     n_params = len(plasticity_coefs)
 
     w_copy, effects = simulate_inner_loop(t, n_e_pool, n_e_side, n_i, inp, plasticity_coefs, rule_time_constants, w, w_plastic, dt, g, w_u, track_params, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
+    print(simulate_inner_loop.inspect_types())
 
     return r, s, v, w_copy, effects, r_exp_filtered
 
