@@ -29,9 +29,7 @@ def threshold_power(s : np.ndarray, v_th : float, p : float):
     return np.power(threshold_linear(s, v_th), p)
 
 ### Simulate dynamics
-def simulate(t : np.ndarray, n_e_pool : int, n_e_side : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, rule_time_constants : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, tau_e=5e-3, tau_i=5e-3, dt=1e-6, g=1, w_u=1, track_params=False):    
-    numba.set_num_threads(1)
-    
+def simulate(t : np.ndarray, n_e_pool : int, n_e_side : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, rule_time_constants : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, tau_e=5e-3, tau_i=5e-3, dt=1e-6, g=1, w_u=1, track_params=False):        
     len_t = len(t)
 
     network_size = n_e_pool + 2 * n_e_side + n_i

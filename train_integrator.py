@@ -18,6 +18,9 @@ from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
 from csv_writer import write_csv
 
+import os
+os.environ["OPENBLAS_NUM_THREADS"] = '10'
+
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
