@@ -51,7 +51,7 @@ def simulate(t : np.ndarray, n_e_pool : int, n_e_side : int, n_i : int, inp : np
 
     return r, s, v, w_copy, effects, r_exp_filtered
 
-@njit
+# @njit
 def simulate_inner_loop(
     t : np.ndarray,
     n_e_pool : int,
@@ -107,9 +107,9 @@ def simulate_inner_loop(
         r_2_pow = np.square(r[i+1, :])
         r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.2
 
-        r_0_pow_split = [r_0_pow[s] for s in pop_slices]
-        r_1_pow_split = [r_1_pow[s] for s in pop_slices]
-        r_exp_filtered_curr_split = [r_exp_filtered_curr[:, s] for s in pop_slices]
+        r_0_pow_split = [np.ascontiguousarray(r_0_pow[s]) for s in pop_slices]
+        r_1_pow_split = [np.ascontiguousarray(r_1_pow[s]) for s in pop_slices]
+        r_exp_filtered_curr_split = [np.ascontiguousarray(r_exp_filtered_curr[:, s]) for s in pop_slices]
 
         # find outer products of zeroth, first powers of firing rates to compute updates due to plasticity rules
         r_0_r_0 = np.outer(r_0_pow, r_0_pow)
@@ -182,7 +182,7 @@ def simulate_inner_loop(
             # first factor is presynaptic neuron from first population (p_i)
             # second factor is postsynaptic neuron from second population (p_j)
             # third factor is summmed integrated inputs from the thid population (p_l) to second pop (p_j) NOTE: this info is only local if `l`` is connected to `j`
-            w_k = w_copy[pop_slices[p_j], pop_slices[p_l]]
+            w_k = np.ascontiguousarray(w_copy[pop_slices[p_j], pop_slices[p_l]])
 
             third_factor = np.dot(w_k, r_exp_filtered_curr_split[p_l][ts_for_pop_start + 1, :]) / 0.5
             r_0_r_exp_r_exp_sum = third_factor.reshape(third_factor.shape[0], 1) * np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start + 0, :], r_0_pow_split[p_i])
