@@ -1,6 +1,8 @@
 import numpy as np
 from copy import deepcopy as copy
 from numba import njit
+import numba
+numba.set_num_threads(1)
 
 ### For initiating activity
 
