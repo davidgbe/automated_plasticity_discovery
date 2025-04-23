@@ -3,6 +3,7 @@ import numpy as np
 import os
 from copy import deepcopy as copy
 from time import time
+import sys
 
 
 class Generic(object):
@@ -116,5 +117,6 @@ def start_timer():
     def end_time():
         diff = time() - start_time
         print(f'Completed in {diff} seconds')
+        sys.stdout.flush()
         return diff
     return end_time
