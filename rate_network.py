@@ -1,7 +1,6 @@
 import numpy as np
 from copy import deepcopy as copy
 from numba import njit
-import numba
 
 ### For initiating activity
 
@@ -49,7 +48,7 @@ def simulate(t : np.ndarray, n_e_pool : int, n_e_side : int, n_i : int, inp : np
 
     return r, s, v, w_copy, effects, r_exp_filtered
 
-# @njit
+@njit
 def simulate_inner_loop(
     t : np.ndarray,
     n_e_pool : int,

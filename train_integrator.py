@@ -4,7 +4,6 @@ import os
 import sys
 import time
 from functools import partial
-from disp import get_ordered_colors
 from aux import gaussian_if_under_val, start_timer
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -17,12 +16,7 @@ from scipy.sparse import csc_matrix
 from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
 from csv_writer import write_csv
-
-import os
-os.environ["OPENBLAS_NUM_THREADS"] = '10'
-
-
-from rate_network import simulate, tanh, generate_gaussian_pulse
+from rate_network import simulate
 
 ### Parse arguments 
 
@@ -49,9 +43,9 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (320, 321) # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (280, 300)
-decoder_test_trial_nums = (300, 320)
+N_INNER_LOOP_RANGE = (10, 11) # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (8, 9)
+decoder_test_trial_nums = (9, 10)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 DW_LAG = 5
@@ -721,7 +715,7 @@ if __name__ == '__main__':
 	es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
 	options['popsize'] = es.opts['popsize']
 
-	eval_all([x0], eval_tracker=eval_tracker, train=False)
+	# eval_all([x0], eval_tracker=eval_tracker, train=False)
 
 	while not es.stop():
 		X = es.ask()
