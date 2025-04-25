@@ -1,7 +1,7 @@
 import numpy as np
 from copy import deepcopy as copy
-from numba import njit
-import numba
+
+import line_profiler
 
 ### For initiating activity
 
@@ -50,6 +50,7 @@ def simulate(t : np.ndarray, n_e_pool : int, n_e_side : int, n_i : int, inp : np
     return r, s, v, w_copy, effects, r_exp_filtered
 
 # @njit
+@line_profiler.profile
 def simulate_inner_loop(
     t : np.ndarray,
     n_e_pool : int,
@@ -98,6 +99,7 @@ def simulate_inner_loop(
         r[i+1, n_e:] = g * shifted_s_i
         
         # calculate exponential filtered of firing rate to use for STDP-like plasticity rules
+        # n_rules x n_time x n_neuron
         r_exp_filtered[:, i+1, :] = r_exp_filtered[:, i, :] * (1 - dt / int_time_consts) + r[i, :] * (dt / int_time_consts)
 
         r_0_pow = np.ones(n_e + n_i)
@@ -218,6 +220,8 @@ def simulate_inner_loop(
             num_rules = w_updates_unweighted[-1].shape[0]
             w_updates_unweighted[-1][int(0.5 * num_rules):num_rules] = w_copy[pop_slices[p_j], pop_slices[p_i]] * w_updates_unweighted[-1][int(0.5 * num_rules):num_rules]
 
+        # dw = delta weight
+        # (n_rules x n_pop1 x n_pop2)
         coefs_0_pair = plasticity_coefs[coefficient_for_division_pair[0]]
         dw_hd_hd_unsummed = coefs_0_pair.reshape(coefs_0_pair.shape[0], 1, 1) * (w_updates_unweighted[0] * w_plastic[:n_e_pool, :n_e_pool] * w_not_almost_zero[:n_e_pool, :n_e_pool])
         effects_hd_hd_delta = np.sum(np.abs(dw_hd_hd_unsummed), axis=1)
