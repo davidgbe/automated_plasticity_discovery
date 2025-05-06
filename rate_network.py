@@ -198,13 +198,13 @@ def learning_dynamics(t, y, args):
         ]
     )
 
-    delta_syn = eta * jnp.concatenate((
+    delta_syn = eta * jnp.concatenate([
         delta_syn_11_two_factor,
         delta_syn_21_two_factor,
         delta_syn_12_two_factor,
         delta_syn_11_three_factor,
         delta_syn_12_three_factor,
-    ))
+    ])
 
     return delta_v, delta_s, delta_r_exp, delta_W, delta_syn
 

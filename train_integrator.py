@@ -2,7 +2,7 @@ from copy import deepcopy as copy
 import numpy as np
 import os
 import time
-from aux import jax_gaussian_if_under_val, start_timer
+from aux_funcs import jax_gaussian_if_under_val, start_timer
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from datetime import datetime

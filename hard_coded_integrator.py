@@ -4,7 +4,7 @@ import os
 import time
 from functools import partial
 from disp import get_ordered_colors
-from aux import gaussian_if_under_val, exp_if_under_val, rev_argsort, set_smallest_n_zero
+from aux_funcs import gaussian_if_under_val, exp_if_under_val, rev_argsort, set_smallest_n_zero
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from datetime import datetime
