@@ -4,6 +4,10 @@ import os
 from copy import deepcopy as copy
 from time import time
 import sys
+import jax
+import jax.numpy as jnp
+import jax.random as jr
+from functools import partial
 
 
 class Generic(object):
@@ -71,6 +75,15 @@ def mat_1_if_under_val(val, shape):
 
 def gaussian_if_under_val(val, shape, mean, std):
     return np.where(np.random.rand(*shape) < val, np.random.normal(loc=mean, scale=std, size=shape), 0)
+
+@partial(jax.jit, static_argnames=['shape'])
+def jax_gaussian_if_under_val(key, val, shape, mean=0, std=1):
+    key1, key2 = jr.split(key)
+    return jnp.where(
+        jr.uniform(key1, shape) < val,
+        jr.normal(key2, shape) * std + mean,
+        0,
+    )
 
 def exp_if_under_val(val, shape, scale):
     return np.where(np.random.rand(*shape) < val, np.random.exponential(scale=scale, size=shape), 0)

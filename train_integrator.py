@@ -1,28 +1,22 @@
 from copy import deepcopy as copy
 import numpy as np
 import os
-import sys
 import time
-from functools import partial
-from disp import get_ordered_colors
-from aux import gaussian_if_under_val, start_timer
+from aux import jax_gaussian_if_under_val, start_timer
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from datetime import datetime
 import multiprocessing as mp
 import argparse
 import cma
-import numba
-from scipy.sparse import csc_matrix
+import jax
+import jax.numpy as jnp
+import jax.random as jr
 from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
 from csv_writer import write_csv
+from rate_network import simulate
 
-import os
-os.environ["OPENBLAS_NUM_THREADS"] = '10'
-
-
-from rate_network import simulate, tanh, generate_gaussian_pulse
 
 ### Parse arguments 
 
@@ -49,8 +43,8 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (320, 321) # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (280, 300)
+N_INNER_LOOP = 320 # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (0, 300)
 decoder_test_trial_nums = (300, 320)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
@@ -65,19 +59,31 @@ INPUT_RATE_PER_CELL = 1000
 INPUT_BLOCK_DURATION = 5e-3
 N_RULES = 60 + 16
 N_TIMECONSTS = 36 + 32
+ETA = 0.0005
 
 T = 0.100 # Total duration of one network simulation
-dt = 1e-4 # Timestep
-input_start = int(20e-3/dt)
-input_end = int(100e-3/dt)
-input_len = input_end - input_start
-input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
-t = np.linspace(0, T, int(T / dt))
+DT = 1e-4 # Timestep
+INPUT_START = int(20e-3/DT)
+INPUT_END = int(100e-3/DT)
+INPUT_LEN = INPUT_END - INPUT_START
+input_block_timesteps = int(INPUT_BLOCK_DURATION / DT)
+
+t = np.linspace(0, T, int(T / DT))
 n_e_pool = 40 # Number excitatory cells in sequence (also length of sequence)
 n_e_side = 40
+n_e = n_e_pool + 2 * n_e_side
 n_i = 1 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
+
+# scaling these 3 parameters by a factor 10 up will give appropriate values for ring attracting circuit
+w_e_e = 9e-4 / DT * 0.1 / n_e_pool
+w_pool_side = -3e-4 / DT * 0.1 / n_e_pool
+w_side_pool = 9e-4 / DT * 0.1 / n_e_side
+w_e_i = 2.5e-4 / DT / n_e_pool
+w_i_e = -1e-4 / DT / n_i
+TAU_E = 5e-3
+TAU_I = 0.1e-3
 
 rule_names = [ # Define labels for all rules to be run during simulations
 	r'',
@@ -157,16 +163,6 @@ test_data_path = os.path.join(out_dir, 'test_data.csv')
 write_csv(test_data_path, header)
 
 
-# scaling these 3 parameters by a factor 10 up will give appropriate values for ring attracting circuit
-w_e_e = 9e-4 / dt * 0.1 / n_e_pool
-w_pool_side = -3e-4 / dt * 0.1 / n_e_pool
-w_side_pool = 9e-4 / dt * 0.1 / n_e_side
-
-w_e_i = 2.5e-4 / dt / n_e_pool
-w_i_e = -1e-4 / dt / n_i
-
-# w_e_e_added = 0.05 * w_e_e * 0.2
-
 def create_shift_matrix(size, k=1):
 	w = np.zeros((size, size))
 	if k >= 1:
@@ -182,6 +178,7 @@ def create_shift_matrix(size, k=1):
 			# w[-k - k_p, (size - k_p):] = 1
 	return w
 
+
 def create_shuffled_one_to_one(size):
 	w = np.diag(np.ones((size)))
 	x = np.arange(size).astype(int)
@@ -190,87 +187,14 @@ def create_shuffled_one_to_one(size):
 	w[order, :] = w[np.arange(size), :]
 	return w
 
-def make_network():
-	'''
-	Generates an excitatory chain with recurrent inhibition and weak recurrent excitation. Weights that form sequence are distored randomly.
 
-	'''
-	w_initial = np.zeros((n_e_pool + 2 * n_e_side + n_i, n_e_pool + 2 * n_e_side + n_i))
+def calc_loss(r_train : np.ndarray, r_test : np.ndarray, targets_train : np.ndarray, targets_test : np.ndarray):
 
-	# sparsify e --> e connectivity to see in ring can be learned on top of heterogenous connectivity
-	w_initial[:n_e_pool, :n_e_pool] = np.where(np.random.rand(n_e_pool, n_e_pool) < args.hd_hd_sparsity, w_e_e * np.random.rand(n_e_pool, n_e_pool), 0)
-
-	### For initializing a ring-like shape in the pool neurons
-
-	# x = np.arange(n_e_pool) / n_e_pool
-	# connectivity_scale = 0.075
-	# exp_ring_connectivity = 4 * w_e_e * (np.exp(-x/connectivity_scale) + np.exp((x-1)/connectivity_scale))
-
-	# for r_idx in np.arange(n_e_pool):
-	# 	w_initial[r_idx:n_e_pool, r_idx] = exp_ring_connectivity[:(n_e_pool - r_idx)]
-	# 	w_initial[0:r_idx, r_idx] = exp_ring_connectivity[(n_e_pool - r_idx):]
-
-	# w_initial[:n_e_pool, :n_e_pool] = w_initial[:n_e_pool, :n_e_pool] * np.random.normal(size=(n_e_pool, n_e_pool), loc=1, scale=0.1)
-
-	###
-	
-	if args.struct_prior == 'shift':
-		# define connectivity from HR to HD neurons as "shift" matrix
-		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=3), 0)
-		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool *  np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=-3), 0)
-
-		# define connectivity from HD to HR as inhibiting all but the corresponding group along the diagonal
-		left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=3) + create_shift_matrix(n_e_side, k=-3)))
-		np.fill_diagonal(left_input_cells, 0)
-		right_input_cells = copy(left_input_cells)
-
-		w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = np.where(np.random.rand(n_e_side, n_e_pool) < args.hd_hr_sparsity, left_input_cells, 0)
-		w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = np.where(np.random.rand(n_e_side, n_e_pool) < args.hd_hr_sparsity, right_input_cells, 0)
-	else:
-		# define connectivity from HR to HD neurons as random, semi-sparse matrix
-		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, np.random.rand(n_e_pool, n_e_side), 0)
-		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, np.random.rand(n_e_pool, n_e_side), 0)
-
-		# define connectivity from HD to HR neurons as random, semi-sparse matrix
-		w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = w_pool_side * np.where(np.random.rand(n_e_side, n_e_pool) < args.hd_hr_sparsity, np.random.rand(n_e_side, n_e_pool), 0)
-		w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = w_pool_side * np.where(np.random.rand(n_e_side, n_e_pool) < args.hd_hr_sparsity, np.random.rand(n_e_side, n_e_pool), 0)
-
-	w_initial[-n_i:, :n_e_pool] = gaussian_if_under_val(1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
-	w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, 0 * np.abs(w_i_e))
-
-	np.fill_diagonal(w_initial, 0)
-	return w_initial
-
-
-def calc_loss(r : np.ndarray, train_diff_drives : np.ndarray, test_diff_drives : np.ndarray, readout_times : np.ndarray):
-
-	if np.isnan(r).any():
+	if np.isnan(r_train).any() or np.isnan(r_test).any():
 		return 10000
 
-	r_readout = r[:, :, :n_e_pool]
-
-	stacked_activities_train = []
-	y_train = []
-	stacked_activities_test = []
-	y_test = []
-
-	for i in range(readout_times.shape[0]):
-		trial_num = int(i / READOUTS_PER_TRIAL)
-		if i < train_diff_drives.shape[0] * READOUTS_PER_TRIAL:
-			stacked_activities_train.append(r_readout[trial_num, readout_times[i], :].flatten())
-			y_train.append(train_diff_drives[trial_num, readout_times[i] - input_start])
-		else:
-			stacked_activities_test.append(r_readout[trial_num, readout_times[i], :].flatten())
-			y_test.append(test_diff_drives[trial_num - train_diff_drives.shape[0], readout_times[i] - input_start])
-
-	X_train = np.stack(stacked_activities_train)
-	y_train = np.array(y_train)
-
-	X_test = np.stack(stacked_activities_test)
-	y_test = np.array(y_test)
-
-	reg = LinearRegression().fit(X_train, y_train)
-	loss = 1000 * (1 - reg.score(X_test, y_test))
+	reg = LinearRegression().fit(r_train, targets_train)
+	loss = 1000 * (1 - reg.score(r_test, targets_test))
 
 	return loss
 
@@ -408,9 +332,98 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	plt.close('all')
 
 
+@jax.jit
+def make_network(key):
+    '''
+    Generates an excitatory chain with recurrent inhibition and weak recurrent excitation.
+    Weights that form sequence are distorted randomly.
+    '''
+    total_size = n_e_pool + 2 * n_e_side + n_i
+    w_initial = jnp.zeros((total_size, total_size))
+
+    # Pre-split all keys
+    num_keys = 15  # You may need to increase if more randomness is added
+    key, *keys = jr.split(key, num_keys)
+
+    # --- E to E (sparse random) ---
+    ee_mask = jr.uniform(keys[0], (n_e_pool, n_e_pool)) < args.hd_hd_sparsity
+    ee_weights = w_e_e * jr.uniform(keys[1], (n_e_pool, n_e_pool))
+    w_initial = w_initial.at[:n_e_pool, :n_e_pool].set(jnp.where(ee_mask, ee_weights, 0))
+
+	### For initializing a ring-like shape in the pool neurons
+
+	# x = np.arange(n_e_pool) / n_e_pool
+	# connectivity_scale = 0.075
+	# exp_ring_connectivity = 4 * w_e_e * (np.exp(-x/connectivity_scale) + np.exp((x-1)/connectivity_scale))
+
+	# for r_idx in np.arange(n_e_pool):
+	# 	w_initial[r_idx:n_e_pool, r_idx] = exp_ring_connectivity[:(n_e_pool - r_idx)]
+	# 	w_initial[0:r_idx, r_idx] = exp_ring_connectivity[(n_e_pool - r_idx):]
+
+	# w_initial[:n_e_pool, :n_e_pool] = w_initial[:n_e_pool, :n_e_pool] * (.jr.normal(key, size=(n_e_pool, n_e_pool)) * 0.1 + 1)
+
+    # --- HR to HD connections ---
+    if args.struct_prior == 'shift':
+        shift_left = create_shift_matrix(n_e_side, k=3)
+        shift_right = create_shift_matrix(n_e_side, k=-3)
+
+        left_mask = jr.uniform(keys[2], (n_e_pool, n_e_side)) < args.hd_hr_sparsity
+        right_mask = jr.uniform(keys[3], (n_e_pool, n_e_side)) < args.hd_hr_sparsity
+
+        w_initial = w_initial.at[:n_e_pool, n_e_pool:n_e_pool + n_e_side].set(
+            w_side_pool * jnp.where(left_mask, shift_left, 0)
+        )
+        w_initial = w_initial.at[:n_e_pool, n_e_pool + n_e_side:n_e_pool + 2 * n_e_side].set(
+            w_side_pool * jnp.where(right_mask, shift_right, 0)
+        )
+
+        # Inhibitory backward connections from HD to HR
+        input_template = w_pool_side * (1 - (shift_left + shift_right))
+        input_template = input_template.at[jnp.diag_indices(n_e_side)].set(0)
+
+        back_mask_L = jr.uniform(keys[4], (n_e_side, n_e_pool)) < args.hd_hr_sparsity
+        back_mask_R = jr.uniform(keys[5], (n_e_side, n_e_pool)) < args.hd_hr_sparsity
+
+        w_initial = w_initial.at[n_e_pool:n_e_pool + n_e_side, :n_e_pool].set(
+            jnp.where(back_mask_L, input_template, 0)
+        )
+        w_initial = w_initial.at[n_e_pool + n_e_side:n_e_pool + 2 * n_e_side, :n_e_pool].set(
+            jnp.where(back_mask_R, input_template, 0)
+        )
+
+    else:
+        # Random sparse connections instead of structured shift
+        for i in range(2):  # left and right
+            mask = jr.uniform(keys[2 + i], (n_e_pool, n_e_side)) < args.hd_hr_sparsity
+            weights = jr.uniform(keys[4 + i], (n_e_pool, n_e_side))
+            w_initial = w_initial.at[
+                :n_e_pool, n_e_pool + i * n_e_side:n_e_pool + (i + 1) * n_e_side
+            ].set(w_side_pool * jnp.where(mask, weights, 0))
+
+        for i in range(2):  # back to pool
+            mask = jr.uniform(keys[6 + i], (n_e_side, n_e_pool)) < args.hd_hr_sparsity
+            weights = jr.uniform(keys[8 + i], (n_e_side, n_e_pool))
+            w_initial = w_initial.at[
+                n_e_pool + i * n_e_side:n_e_pool + (i + 1) * n_e_side, :n_e_pool
+            ].set(w_pool_side * jnp.where(mask, weights, 0))
+
+    # --- E to I ---
+    ei_weights = jax_gaussian_if_under_val(keys[10], 1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
+    w_initial = w_initial.at[-n_i:, :n_e_pool].set(ei_weights)
+
+    # --- I to E ---
+    ie_weights = jax_gaussian_if_under_val(keys[11], 1, (n_e_pool, n_i), w_i_e, 0 * jnp.abs(w_i_e))
+    w_initial = w_initial.at[:n_e_pool, -n_i:].set(ie_weights)
+
+    # --- Zero out diagonal ---
+    w_initial = w_initial.at[jnp.diag_indices(total_size)].set(0)
+
+    return w_initial
+
+
 def calc_alpha_func(tau_alpha):
-	alpha_func_n_steps = int(10 * tau_alpha / dt)
-	t_alpha = np.arange(0, alpha_func_n_steps) * dt
+	alpha_func_n_steps = int(10 * tau_alpha / DT)
+	t_alpha = np.arange(0, alpha_func_n_steps) * DT
 	return np.e * t_alpha / tau_alpha * np.exp(-t_alpha/tau_alpha)
 
 
@@ -423,160 +436,194 @@ def poisson_arrivals_to_inputs(arrivals, tau_alpha):
 	return input_current
 
 
-def simulate_single_network(index, x, train, track_params=True):
-	'''
-	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
-	'''
-	plasticity_coefs = x[:N_RULES]
-	rule_time_constants = x[N_RULES:]
+def construct_inputs(key, input_size=6):
+	input_spks = np.zeros((INPUT_LEN, 2 * n_e_side))
+	inputs = np.zeros((INPUT_LEN,)).astype(int)
+	inputs[0] = 1
 
-	if FIXED_DATA:
-		if train:
-			print(train_seeds[index])
-			np.random.seed(train_seeds[index])
-		else:
-			np.random.seed(test_seeds[index])
-	else:
-		np.random.seed()
-
-	w_initial = make_network() # make a new ring attractor
-
-	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
-
-	num_readouts = (decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]) * READOUTS_PER_TRIAL
-	readout_times = (np.random.rand(num_readouts) * (input_end - input_start) + input_start).astype(int)
-
-	input_signal_totals = np.zeros((n_inner_loop_iters, input_len))
-
-	w = copy(w_initial)
-	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
-
-	all_effects = np.zeros(plasticity_coefs.shape)
-	normed_loss = 10000	
-	rs_for_loss = []
-	r_in_for_loss = []
-	targets_for_loss = []
-
-	w_hist = []
-	all_weight_deltas = []
-	w_hist.append(w)
-
-	blew_up = False
-
-	surviving_synapse_mask = np.ones((n_e_pool, n_e_pool)).astype(bool)
-
-	for i in range(n_inner_loop_iters):
-		# print(f'Activation number: {i}')
-		# Define input for activation of the network
-
-		timer = start_timer()
-
-		input_spks = np.zeros((input_len, 2 * n_e_side))
-		inputs = np.zeros((input_len,)).astype(int)
-		inputs[0] = 1
-
-		for k in range(input_len):
-			if k % input_block_timesteps == 0:
-				inputs[k] = np.random.choice([-1, 0, 1])
+	for k in range(INPUT_LEN):
+		if k % input_block_timesteps == 0:
+			inputs[k] = np.random.choice([-1, 0, 1])
+			if inputs[k] != 0:
+				input_block = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * DT, size=(input_block_timesteps, n_e_side))
 				if inputs[k] == -1:
-					input_block = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, n_e_side))
 					input_spks[k : k + input_block_timesteps, :n_e_side] = input_block
 				elif inputs[k] == 1:
-					input_block = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, n_e_side))
 					input_spks[k : k + input_block_timesteps, n_e_side : 2 * n_e_side] = input_block
-			else:
-				inputs[k] = inputs[k-1]
-
-		filtered_input_to_sum_per_neuron = poisson_arrivals_to_inputs(input_spks, 3e-3)
-		filtered_input_to_sum = filtered_input_to_sum_per_neuron[:, n_e_side:2 * n_e_side].sum(axis=1) - filtered_input_to_sum_per_neuron[:, :n_e_side].sum(axis=1)
-		running_input_sums = np.zeros_like(filtered_input_to_sum)
-		for j in range(len(running_input_sums)):
-			if j > 0:
-				running_input_sums[j] += running_input_sums[j-1]
-			running_input_sums[j] += filtered_input_to_sum[j]
-
-		r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
-		input_size = 6
-		input_slice = slice(int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
-		r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), 6))
-
-		r_in_spks[input_start:input_end, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
-		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
+		inputs[k] = inputs[k-1]
 		
-		input_signal_totals[i, :] = running_input_sums / input_len
+	filtered_input_to_sum_per_neuron = poisson_arrivals_to_inputs(input_spks, 3e-3)
+	filtered_input_to_sum = filtered_input_to_sum_per_neuron[:, n_e_side:2 * n_e_side].sum(axis=1) - filtered_input_to_sum_per_neuron[:, :n_e_side].sum(axis=1)
+	running_input_sums = np.cumsum(filtered_input_to_sum) / INPUT_LEN
+	
+	r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
+	
+	input_slice = slice(int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
+	r_in_spks[:int(10e-3/DT), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * DT, size=(int(10e-3/DT), input_size))
+	
+	r_in_spks[INPUT_START:INPUT_END, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
+	r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
 
-		r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
-		r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = 0.1 * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
+	r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
+	r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = 0.1 * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
+	r_in[:, :n_e_pool] += 0.02 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * DT, size=(len(t), n_e_pool)), 3e-3)
 
-		r_in[:, :n_e_pool] += 0.02 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(len(t), n_e_pool)), 3e-3)
+	return jnp.array(r_in), jnp.array(running_input_sums)
 
-		# if i <= 400:
-		# 	synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
 
-		# 	drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
-		# 	birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
+def batchify(x, n_batch):
+    x = jnp.array(x)
+    return jnp.tile(x, (n_batch, *jnp.ones(x.ndim).astype(int)))
 
-		# 	surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
 
-		# 	w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
-		# 	w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
+def simulate_all(keys, X, train, track_params=True):
+	c = jnp.tile(jnp.array([x[:N_RULES] for x in X]), (keys.shape[0], 1))
+	tau_rules = jnp.tile(jnp.array([x[N_RULES:] for x in X]), (keys.shape[0], 1))
 
-		print('Setup')
-		timer()
+	ws_base = jax.vmap(make_network, (0,))(keys)
+	w_plastic_base = jnp.where(ws_base != 0, 1, 0).astype(int)
 
+	ws = jnp.tile(ws_base, (len(X), *jnp.ones(ws_base.ndim - 1).astype(int)))
+	ws_plastic = jnp.tile(w_plastic_base, (len(X), *jnp.ones(ws_base.ndim - 1).astype(int)))
+
+	jax_construct_inputs = jax.vmap(construct_inputs, (0,))
+
+	s_offsets = jnp.concatenate((jnp.full(n_e, 0.1), jnp.full(n_i, 0)))
+	g = 1
+	w_u = 1
+	tau_s = jnp.concatenate((jnp.full(n_e, TAU_E), jnp.full(n_i, TAU_I)))
+
+	args = (
+        c,
+        tau_rules,
+        g,
+        s_offsets,
+        w_u,
+        tau_s,
+        ETA,
+        n_e,
+        n_i,
+        n_e_pool,
+        n_e_side,
+    )
+
+	readout_times_train = np.empty((decoder_train_trial_nums[1] - decoder_train_trial_nums[0], READOUTS_PER_TRIAL))
+	readout_times_test = np.empty((decoder_test_trial_nums[1] - decoder_test_trial_nums[0], READOUTS_PER_TRIAL))
+
+	for i in range(N_INNER_LOOP):
 		timer = start_timer()
 
-		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=5e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+		r_in, running_input_sums = jax_construct_inputs(keys) # construct inputs and integration targets for simulation
+		r_in = jnp.tile(r_in, (len(X), *jnp.ones(r_in.ndim - 1).astype(int)))
 
-		print('Sim')
+		train_trial_flag = (i >= decoder_train_trial_nums[0] and i < decoder_train_trial_nums[1])
+		test_trial_flag = (i >= decoder_test_trial_nums[0] and i < decoder_test_trial_nums[1])
+
+		if train_trial_flag or test_trial_flag:
+			readouts_for_trial = np.sort((np.random.rand(READOUTS_PER_TRIAL) * INPUT_LEN + INPUT_START) * DT)
+			targets_for_readouts = running_input_sums[:, ((readouts_for_trial - INPUT_START) / DT).astype(int)]
+			if train_trial_flag:
+				pass
+			else:
+				pass
+		else:
+			readouts_for_trial = np.array([])
+
+		sol = simulate(t, ws, ws_plastic, r_in, c, tau_rules, n_e + n_i, DT, readouts_for_trial, args)
+
+		print(sol)
+
 		timer()
 
-		if (np.isnan(r).any()
-	  		or (np.abs(w_out) > 100).any()
-			or (np.abs(w_out[:n_e_pool, :n_e_pool]) < 1.5e-6).all() 
-			or (np.abs(w_out[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)]) < 1.5e-6).all()
-			or (np.abs(w_out[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool]) < 1.5e-6).all()): # if simulation turns up nans in firing rate matrix, end the simulation
+
+
+	# num_readouts = (decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]) * READOUTS_PER_TRIAL
+	# readout_times = (np.random.rand(num_readouts) * (input_end - input_start) + input_start).astype(int)
+
+	# w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
+
+	# all_effects = np.zeros(plasticity_coefs.shape)
+	# normed_loss = 10000	
+	# rs_for_loss = []
+	# r_in_for_loss = []
+	# targets_for_loss = []
+
+	# w_hist = []
+	# all_weight_deltas = []
+	# w_hist.append(w)
+
+	# blew_up = False
+
+	# surviving_synapse_mask = np.ones((n_e_pool, n_e_pool)).astype(bool)
+
+
+	# 	# if i <= 400:
+	# 	# 	synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
+
+	# 	# 	drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
+	# 	# 	birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
+
+	# 	# 	surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
+
+	# 	# 	w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
+	# 	# 	w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
+
+	# 	print('Setup')
+	# 	timer()
+
+	# 	timer = start_timer()
+
+	# 	# below, simulate one activation of the network for the period T
+	# 	r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=5e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+
+	# 	print('Sim')
+	# 	timer()
+
+	# 	if (np.isnan(r).any()
+	#   		or (np.abs(w_out) > 100).any()
+	# 		or (np.abs(w_out[:n_e_pool, :n_e_pool]) < 1.5e-6).all() 
+	# 		or (np.abs(w_out[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)]) < 1.5e-6).all()
+	# 		or (np.abs(w_out[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool]) < 1.5e-6).all()): # if simulation turns up nans in firing rate matrix, end the simulation
 			
-			return {
-				'blew_up': True,
-			}
+	# 		return {
+	# 			'blew_up': True,
+	# 		}
 			
-		if (i >= decoder_train_trial_nums[0] and i < decoder_train_trial_nums[1]) or (i >= decoder_test_trial_nums[0] and i < decoder_test_trial_nums[1]):
-			rs_for_loss.append(r)
-			r_in_for_loss.append(r_in)
-			targets_for_loss.append(running_input_sums)
+	# 	if (i >= decoder_train_trial_nums[0] and i < decoder_train_trial_nums[1]) or (i >= decoder_test_trial_nums[0] and i < decoder_test_trial_nums[1]):
+	# 		rs_for_loss.append(r)
+	# 		r_in_for_loss.append(r_in)
+	# 		targets_for_loss.append(running_input_sums)
 
-		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
+	# 	all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
 
-		w_hist.append(w_out)
-		if len(w_hist) > DW_LAG:
-			w_hist.pop(0)
+	# 	w_hist.append(w_out)
+	# 	if len(w_hist) > DW_LAG:
+	# 		w_hist.pop(0)
 
-		if effects is not None:
-			all_effects += effects[:N_RULES]
+	# 	if effects is not None:
+	# 		all_effects += effects[:N_RULES]
 
-		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
+	# 	w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
-	train_diffs = input_signal_totals[decoder_train_trial_nums[0]:decoder_train_trial_nums[1], :]
-	test_diffs = input_signal_totals[decoder_test_trial_nums[0]:decoder_test_trial_nums[1], :]
+	# train_diffs = input_signal_totals[decoder_train_trial_nums[0]:decoder_train_trial_nums[1], :]
+	# test_diffs = input_signal_totals[decoder_test_trial_nums[0]:decoder_test_trial_nums[1], :]
 
-	rs_for_loss = np.stack(rs_for_loss)
-	normed_loss = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
+	# rs_for_loss = np.stack(rs_for_loss)
+	# normed_loss = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
 
-	return {
-		'loss': normed_loss,
-		'blew_up': False,
-		'r': r,
-		'rs_for_loss': rs_for_loss,
-		'r_in_for_loss': np.stack(r_in_for_loss),
-		'targets_for_loss': np.stack(targets_for_loss),
-		'r_exp_filtered': r_exp_filtered,
-		'w': w,
-		'w_initial': w_initial,
-		'syn_effects': all_effects,
-		'all_weight_deltas': all_weight_deltas,
-	}
+	# return {
+	# 	'loss': normed_loss,
+	# 	'blew_up': False,
+	# 	'r': r,
+	# 	'rs_for_loss': rs_for_loss,
+	# 	'r_in_for_loss': np.stack(r_in_for_loss),
+	# 	'targets_for_loss': np.stack(targets_for_loss),
+	# 	'r_exp_filtered': r_exp_filtered,
+	# 	'w': w,
+	# 	'w_initial': w_initial,
+	# 	'syn_effects': all_effects,
+	# 	'all_weight_deltas': all_weight_deltas,
+	# }
 
 
 def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects):
@@ -651,39 +698,22 @@ def load_best_params(file_name):
 	best_params = df_params.iloc[min_loss_idx][5:]
 	return np.array(best_params)
 
+	# # make this into jax
+	# simulate_all(task_vars)
 
-def simulate_single_network_wrapper(tup):
-	return simulate_single_network(*tup)
-
-
-def eval_all(X, eval_tracker=None, train=True):
-	start = time.time()
-
-	indices = np.arange(BATCH_SIZE)
-	pool = mp.Pool(POOL_SIZE)
-
-	task_vars = []
-	for x in X:
-		for idx in indices:
-			task_vars.append((idx, x, train))
-	results = pool.map(simulate_single_network_wrapper, task_vars)
-
-	pool.close()
-	pool.join()
-
-	losses = []
-	for i in range(len(X)):
-		loss, true_losses, syn_effects, syn_effect_penalties, total_activities = process_plasticity_rule_results(results[BATCH_SIZE * i: BATCH_SIZE * (i+1)], X[i], eval_tracker=eval_tracker, train=train)
-		losses.append(loss)
-		if train:
-			log_sim_results(train_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
-		else:
-			log_sim_results(test_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
+	# losses = []
+	# for i in range(len(X)):
+	# 	loss, true_losses, syn_effects, syn_effect_penalties, total_activities = process_plasticity_rule_results(results[BATCH_SIZE * i: BATCH_SIZE * (i+1)], X[i], eval_tracker=eval_tracker, train=train)
+	# 	losses.append(loss)
+	# 	if train:
+	# 		log_sim_results(train_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
+	# 	else:
+	# 		log_sim_results(test_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
 	
-	dur = time.time() - start
-	print('dur:', dur)
+	# dur = time.time() - start
+	# print('dur:', dur)
 
-	return losses
+	# return losses
 
 def process_params_str(s):
 	params = []
@@ -707,7 +737,7 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	eval_all([x0], eval_tracker=eval_tracker)
+	# eval_all([x0], eval_tracker=eval_tracker)
 
 	options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
@@ -721,11 +751,16 @@ if __name__ == '__main__':
 	es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
 	options['popsize'] = es.opts['popsize']
 
-	eval_all([x0], eval_tracker=eval_tracker, train=False)
+	# eval_all([x0], eval_tracker=eval_tracker, train=False)
+
+	key = jr.key(0)
+	keys = jr.split(key, len(train_seeds))
 
 	while not es.stop():
 		X = es.ask()
-		es.tell(X, eval_all(X, eval_tracker=eval_tracker))
-		if eval_tracker['best_changed']:
-			eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
-		es.disp()
+		a = simulate_all(keys, X, True, track_params=True)
+
+		# es.tell(X, eval_all(X, eval_tracker=eval_tracker))
+		# if eval_tracker['best_changed']:
+		# 	eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
+		# es.disp()
