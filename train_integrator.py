@@ -199,6 +199,11 @@ def transform_zero_mean_unit_norm(X):
 def calc_loss(r_train, r_test, targets_train, targets_test):
 
 	invalid = jnp.any(jnp.isnan(r_train)) | jnp.any(jnp.isnan(r_test))
+
+	print(r_train)
+	print(r_train.shape)
+	print(r_test)
+	print(r_test.shape)
 	
 	r_train_normed = transform_zero_mean_unit_norm(r_train)
 	r_test_normed = transform_zero_mean_unit_norm(r_test)
@@ -208,11 +213,6 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 
 	RtR = jnp.matmul(jnp.transpose(r_train_normed), r_train_normed)
 	Rty = jnp.matmul(jnp.transpose(r_train_normed), targets_train_normed[:, None])
-
-	print(RtR)
-	print(RtR.shape)
-	print(Rty)
-	print(Rty.shape)
 
 	w = jnp.linalg.solve(RtR, Rty)
 
