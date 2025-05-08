@@ -46,20 +46,6 @@ delta_W_ij_two_factor = jax.vmap(
 
 
 @jax.jit
-def _delta_W_ij_three_factor(w_ij, r_i, r_j, r_exp_i, r_exp_j, f_i, c):
-    return (
-        c[0] * r_exp_i[0] * f_i[0]
-        + c[1] * r_exp_i[1] * r_j * f_i[1]
-        + c[2] * r_exp_j[2] * f_i[2]
-        + c[3] * r_exp_j[3] * r_i * f_i[3]
-        + c[4] * w_ij * r_exp_i[4] * f_i[4]
-        + c[5] * w_ij * r_exp_i[5] * w_ij * r_j * f_i[5]
-        + c[6] * w_ij * r_exp_j[6] * f_i[6]
-        + c[7] * w_ij * r_exp_j[7] * r_i * f_i[7]
-    )
-
-
-@jax.jit
 def _delta_W_ij_three_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j, f_i):
     return jnp.array([
         r_exp_i[0] * f_i[0],
@@ -83,6 +69,13 @@ delta_W_ij_three_factor = jax.vmap(
     (0, 0, None, 0, None, 0, None),
 )
 
+
+def calc_r_from_s(s, s_offsets, g, n_e):
+    s_thresh = jnp.maximum(s - s_offsets, 0)
+    r = g * jnp.concatenate((jnp.tanh(s_thresh[:n_e]), s_thresh[n_e:])) # excitatory cells get a tanh threshold, inhibition is left as threshold linear
+    return r
+
+
 def learning_dynamics(t, y, args):
     c, tau_rules, g, s_offsets, w_u, tau_s, eta, n_e, n_i, n_e_pool, n_e_side, time, r_in = args
 
@@ -95,8 +88,7 @@ def learning_dynamics(t, y, args):
 
     v, s, r_exp, W, syn = y
 
-    s_thresh = jnp.maximum(s - s_offsets, 0)
-    r = g * jnp.concatenate((jnp.tanh(s_thresh[:n_e]), s_thresh[n_e:])) # excitatory cells get a tanh threshold, inhibition is left as threshold linear
+    r = calc_r_from_s(s, s_offsets, g, n_e)
     delta_v = W @ r + w_u * u(t)
     delta_s = (v - s) / tau_s
     delta_r_exp = (r[:, None] - r_exp) / tau_rules

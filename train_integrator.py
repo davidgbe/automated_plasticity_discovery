@@ -15,7 +15,7 @@ import jax.random as jr
 from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
 from csv_writer import write_csv
-from rate_network import simulate
+from rate_network import simulate, calc_r_from_s
 
 
 ### Parse arguments 
@@ -38,14 +38,12 @@ parser.add_argument('--struct_prior', metavar='sp', type=str, default='shift')
 args = parser.parse_args()
 print(args)
 
-np.random.seed(args.seed)
-
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP = 320 # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (0, 300)
-decoder_test_trial_nums = (300, 320)
+N_INNER_LOOP = 20 # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (10, 15)
+decoder_test_trial_nums = (15, 20)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 DW_LAG = 5
@@ -61,7 +59,7 @@ N_RULES = 60 + 16
 N_TIMECONSTS = 36 + 32
 ETA = 0.0005
 
-T = 0.100 # Total duration of one network simulation
+T = 0.1 # Total duration of one network simulation
 DT = 1e-4 # Timestep
 INPUT_START = int(20e-3/DT)
 INPUT_END = int(100e-3/DT)
@@ -84,6 +82,11 @@ w_e_i = 2.5e-4 / DT / n_e_pool
 w_i_e = -1e-4 / DT / n_i
 TAU_E = 5e-3
 TAU_I = 0.1e-3
+
+s_offsets = jnp.concatenate((jnp.full(n_e, 0.1), jnp.full(n_i, 0)))
+g = 1
+w_u = 1
+tau_s = jnp.concatenate((jnp.full(n_e, TAU_E), jnp.full(n_i, TAU_I)))
 
 rule_names = [ # Define labels for all rules to be run during simulations
 	r'',
@@ -188,15 +191,29 @@ def create_shuffled_one_to_one(size):
 	return w
 
 
-def calc_loss(r_train : np.ndarray, r_test : np.ndarray, targets_train : np.ndarray, targets_test : np.ndarray):
+def transform_zero_mean_unit_norm(X):
+	X_zero_mean = X - jnp.mean(X, axis=0)
+	return X_zero_mean / jnp.std(X_zero_mean, axis=0)
 
-	if np.isnan(r_train).any() or np.isnan(r_test).any():
-		return 10000
 
-	reg = LinearRegression().fit(r_train, targets_train)
-	loss = 1000 * (1 - reg.score(r_test, targets_test))
+def calc_loss(r_train, r_test, targets_train, targets_test):
 
-	return loss
+	invalid = jnp.any(jnp.isnan(r_train)) | jnp.any(jnp.isnan(r_test))
+	
+	r_train_normed = transform_zero_mean_unit_norm(r_train)
+	r_test_normed = transform_zero_mean_unit_norm(r_test)
+
+	targets_train_normed = transform_zero_mean_unit_norm(targets_train)
+	targets_test_normed = transform_zero_mean_unit_norm(targets_test)
+
+	RtR = jnp.matmul(jnp.transpose(r_train_normed), r_train_normed)
+	Rty = jnp.matmul(jnp.transpose(r_train_normed), targets_train_normed[:, None])
+
+	w = jnp.linalg.solve(RtR, Rty)
+
+	residual = jnp.square((targets_test_normed - r_test_normed @ w)).sum()
+	total = jnp.square((targets_test_normed - targets_test_normed.mean())).sum()
+	return jnp.where(invalid, 10, residual / total)
 
 
 def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, total_activity_penalties, train=True):
@@ -436,21 +453,23 @@ def poisson_arrivals_to_inputs(arrivals, tau_alpha):
 	return input_current
 
 
-def construct_inputs(key, input_size=6):
+def construct_inputs(input_size=6):
 	input_spks = np.zeros((INPUT_LEN, 2 * n_e_side))
 	inputs = np.zeros((INPUT_LEN,)).astype(int)
 	inputs[0] = 1
 
 	for k in range(INPUT_LEN):
 		if k % input_block_timesteps == 0:
-			inputs[k] = np.random.choice([-1, 0, 1])
-			if inputs[k] != 0:
+			input_state = np.random.choice([-1, 0, 1])
+			inputs[k] = input_state
+			if input_state != 0:
 				input_block = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * DT, size=(input_block_timesteps, n_e_side))
-				if inputs[k] == -1:
+				if input_state == -1:
 					input_spks[k : k + input_block_timesteps, :n_e_side] = input_block
-				elif inputs[k] == 1:
+				elif input_state == 1:
 					input_spks[k : k + input_block_timesteps, n_e_side : 2 * n_e_side] = input_block
-		inputs[k] = inputs[k-1]
+		else:
+			inputs[k] = inputs[k-1]
 		
 	filtered_input_to_sum_per_neuron = poisson_arrivals_to_inputs(input_spks, 3e-3)
 	filtered_input_to_sum = filtered_input_to_sum_per_neuron[:, n_e_side:2 * n_e_side].sum(axis=1) - filtered_input_to_sum_per_neuron[:, :n_e_side].sum(axis=1)
@@ -458,17 +477,20 @@ def construct_inputs(key, input_size=6):
 	
 	r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
 	
-	input_slice = slice(int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
-	r_in_spks[:int(10e-3/DT), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * DT, size=(int(10e-3/DT), input_size))
+	input_slice = (int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
+	r_in_spks[:int(10e-3/DT), input_slice[0]:input_slice[1]] = np.random.poisson(lam=INPUT_RATE_PER_CELL * DT, size=(int(10e-3/DT), input_size))
 	
 	r_in_spks[INPUT_START:INPUT_END, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
 	r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
 
-	r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
+	r_in[:, :n_e_pool] = 0.25 * r_in[:, :n_e_pool]
 	r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = 0.1 * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
-	r_in[:, :n_e_pool] += 0.02 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * DT, size=(len(t), n_e_pool)), 3e-3)
 
-	return jnp.array(r_in), jnp.array(running_input_sums)
+	r_in[:, :n_e_pool] += (
+		0.02 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * DT, size=(len(t), n_e_pool)), 3e-3)
+	)
+
+	return r_in, running_input_sums
 
 
 def batchify(x, n_batch):
@@ -476,22 +498,40 @@ def batchify(x, n_batch):
     return jnp.tile(x, (n_batch, *jnp.ones(x.ndim).astype(int)))
 
 
-def simulate_all(keys, X, train, track_params=True):
-	c = jnp.tile(jnp.array([x[:N_RULES] for x in X]), (keys.shape[0], 1))
-	tau_rules = jnp.tile(jnp.array([x[N_RULES:] for x in X]), (keys.shape[0], 1))
+jax_calc_r = jax.vmap(
+	jax.vmap(calc_r_from_s, (0, None, None, None)),
+	(0, None, None, None)
+)
 
-	ws_base = jax.vmap(make_network, (0,))(keys)
+
+def simulate_all(keys, X, train, track_params=True):
+	np.random.seed(SEED)
+
+	# c will have form like:
+	# [
+	# 	c_1 (key 1)
+	# 	c_1 (key 2)
+	# 	c_1 (key 3)
+	#	c_2 (key 1)
+	#   c_2 (key 2)
+	#   c_2 (key 3)
+	# ]
+
+	c = jnp.concatenate([
+		jnp.tile(jnp.array(x[:N_RULES]), (keys.shape[0], 1))
+		for x in X
+	])
+
+	tau_rules = jnp.concatenate([
+		jnp.tile(jnp.array(x[N_RULES:]), (keys.shape[0], 1))
+		for x in X
+	])
+
+	ws_base = jax.vmap(make_network, (0,))(keys) # generate a weight matrix for each key
 	w_plastic_base = jnp.where(ws_base != 0, 1, 0).astype(int)
 
-	ws = jnp.tile(ws_base, (len(X), *jnp.ones(ws_base.ndim - 1).astype(int)))
+	ws = jnp.tile(ws_base, (len(X), *jnp.ones(ws_base.ndim - 1).astype(int))) # duplicate the block of all weight matrices for the number of rules 
 	ws_plastic = jnp.tile(w_plastic_base, (len(X), *jnp.ones(ws_base.ndim - 1).astype(int)))
-
-	jax_construct_inputs = jax.vmap(construct_inputs, (0,))
-
-	s_offsets = jnp.concatenate((jnp.full(n_e, 0.1), jnp.full(n_i, 0)))
-	g = 1
-	w_u = 1
-	tau_s = jnp.concatenate((jnp.full(n_e, TAU_E), jnp.full(n_i, TAU_I)))
 
 	args = (
         c,
@@ -507,33 +547,67 @@ def simulate_all(keys, X, train, track_params=True):
         n_e_side,
     )
 
-	readout_times_train = np.empty((decoder_train_trial_nums[1] - decoder_train_trial_nums[0], READOUTS_PER_TRIAL))
-	readout_times_test = np.empty((decoder_test_trial_nums[1] - decoder_test_trial_nums[0], READOUTS_PER_TRIAL))
+	train_size = (decoder_train_trial_nums[1] - decoder_train_trial_nums[0]) * READOUTS_PER_TRIAL
+	test_size = (decoder_test_trial_nums[1] - decoder_test_trial_nums[0]) * READOUTS_PER_TRIAL
+
+	r_train = np.empty((c.shape[0], train_size, n_e_pool))
+	r_test = np.empty((c.shape[0], test_size, n_e_pool))
+
+	targets_train = np.empty((c.shape[0], train_size))
+	targets_test = np.empty((c.shape[0], test_size))
+
+	train_idx = 0
+	test_idx = 0
 
 	for i in range(N_INNER_LOOP):
 		timer = start_timer()
 
-		r_in, running_input_sums = jax_construct_inputs(keys) # construct inputs and integration targets for simulation
-		r_in = jnp.tile(r_in, (len(X), *jnp.ones(r_in.ndim - 1).astype(int)))
+		r_in = np.empty((BATCH_SIZE, len(t), n_e_pool + 2 * n_e_side + n_i))
+		running_input_sums = np.empty((BATCH_SIZE, INPUT_LEN))
+		for i_k, key in enumerate(keys):
+			r_in_k, running_input_sums_k = construct_inputs()
+			r_in[i_k, :] = r_in_k
+			running_input_sums[i_k, :] = running_input_sums_k
+
+		r_in = jnp.tile(r_in, (len(X), *jnp.ones(r_in.ndim - 1).astype(int))) # duplicate block of inputs and integration targets by number of rules to test
 
 		train_trial_flag = (i >= decoder_train_trial_nums[0] and i < decoder_train_trial_nums[1])
 		test_trial_flag = (i >= decoder_test_trial_nums[0] and i < decoder_test_trial_nums[1])
 
 		if train_trial_flag or test_trial_flag:
-			readouts_for_trial = np.sort((np.random.rand(READOUTS_PER_TRIAL) * INPUT_LEN + INPUT_START) * DT)
-			targets_for_readouts = running_input_sums[:, ((readouts_for_trial - INPUT_START) / DT).astype(int)]
-			if train_trial_flag:
-				pass
-			else:
-				pass
+			readout_times_for_trial = np.sort((np.random.rand(READOUTS_PER_TRIAL) * INPUT_LEN + INPUT_START) * DT)
+			targets_for_readouts = running_input_sums[:, (readout_times_for_trial / DT).astype(int) - INPUT_START]
+			targets_for_readouts = jnp.tile(targets_for_readouts, (len(X), *jnp.ones(targets_for_readouts.ndim - 1).astype(int)))
 		else:
-			readouts_for_trial = np.array([])
+			readout_times_for_trial = np.array([])
 
-		sol = simulate(t, ws, ws_plastic, r_in, c, tau_rules, n_e + n_i, DT, readouts_for_trial, args)
+		readout_times_for_trial = np.concatenate([readout_times_for_trial, np.array(t[-1:])])
 
-		print(sol)
+		sol = simulate(t, ws, ws_plastic, r_in, c, tau_rules, n_e + n_i, DT, readout_times_for_trial, args)
 
+		v, s, r_exp, W, syn = sol.ys
+
+		if train_trial_flag or test_trial_flag:
+			if train_trial_flag:
+				r_train[:, train_idx * READOUTS_PER_TRIAL : (train_idx + 1) * READOUTS_PER_TRIAL, :] = jnp.transpose(jax_calc_r(s[:-1, :, :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2))
+				targets_train[:, train_idx * READOUTS_PER_TRIAL : (train_idx + 1) * READOUTS_PER_TRIAL] = targets_for_readouts
+				train_idx += 1
+			else:
+				r_test[:, test_idx * READOUTS_PER_TRIAL : (test_idx + 1) * READOUTS_PER_TRIAL, :] = jnp.transpose(jax_calc_r(s[:-1, :, :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2))
+				targets_test[:, test_idx * READOUTS_PER_TRIAL : (test_idx + 1) * READOUTS_PER_TRIAL] = targets_for_readouts
+				test_idx += 1
 		timer()
+
+	jax_calc_loss = jax.vmap(calc_loss, (0, 0, 0, 0))
+	losses = jax_calc_loss(r_train, r_test, targets_train, targets_test)
+	losses_for_coefs = jnp.reshape(losses, (len(X), keys.shape[0])).mean(axis=1)
+	return losses_for_coefs
+
+
+		
+	
+
+
 
 
 
@@ -624,6 +698,8 @@ def simulate_all(keys, X, train, track_params=True):
 	# 	'syn_effects': all_effects,
 	# 	'all_weight_deltas': all_weight_deltas,
 	# }
+
+
 
 
 def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects):
@@ -756,11 +832,14 @@ if __name__ == '__main__':
 	key = jr.key(0)
 	keys = jr.split(key, len(train_seeds))
 
+	X0 = [x0]
+	base_losses = simulate_all(keys, X0, True, track_params=True)
+	print(base_losses)
+
 	while not es.stop():
 		X = es.ask()
-		a = simulate_all(keys, X, True, track_params=True)
-
-		# es.tell(X, eval_all(X, eval_tracker=eval_tracker))
+		losses = simulate_all(keys, X, True, track_params=True)
+		es.tell(X, losses)
 		# if eval_tracker['best_changed']:
 		# 	eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
 		# es.disp()
