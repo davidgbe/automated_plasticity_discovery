@@ -594,7 +594,7 @@ def simulate_all(keys, X, train, track_params=True):
 
 		print('w abs summed', np.abs(ws).sum())
 		print(syn.shape)
-		print('syn', jnp.mean(syn, axis=0))
+		print('syn', jnp.mean(syn[0, ...], axis=0))
 
 		if train_trial_flag or test_trial_flag:
 			if train_trial_flag:
