@@ -5,6 +5,8 @@ import jax.numpy as jnp
 import diffrax
 import jax.random as jr
 
+R_RESCALING = 5
+R_EXP_RESCALING = 5
 
 @jax.jit
 def _delta_W_ij_two_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j):
@@ -97,10 +99,10 @@ def learning_dynamics(t, y, args):
 
     delta_W_11_two_factor_raw = delta_W_ij_two_factor(
         W[:n_1, :n_1],
-        r[:n_1],
-        r[:n_1],
-        r_exp[:n_1, :12],
-        r_exp[:n_1, :12],
+        r[:n_1] * R_RESCALING,
+        r[:n_1] * R_RESCALING,
+        r_exp[:n_1, :12] * R_EXP_RESCALING,
+        r_exp[:n_1, :12] * R_EXP_RESCALING,
         c[:20],
     )
 
@@ -110,12 +112,12 @@ def learning_dynamics(t, y, args):
 
     delta_W_11_three_factor_raw = delta_W_ij_three_factor(
         W[:n_1, :n_1],
-        r[:n_1],
-        r[:n_1],
-        r_exp[:n_1, 36:44],
-        r_exp[:n_1, 36:44],
+        r[:n_1] * R_RESCALING,
+        r[:n_1] * R_RESCALING,
+        r_exp[:n_1, 36:44] * R_EXP_RESCALING,
+        r_exp[:n_1, 36:44] * R_EXP_RESCALING,
         # (2) -> (1)
-        W[:n_1, n_1:n_plastic] @ r_exp[n_1:n_plastic, 44:52],
+        W[:n_1, n_1:n_plastic] @ r_exp[n_1:n_plastic, 44:52] * R_EXP_RESCALING,
         c[60:68],
     )
 
@@ -134,10 +136,10 @@ def learning_dynamics(t, y, args):
 
     delta_W_21_two_factor_raw = delta_W_ij_two_factor(
         W[n_1:n_plastic, :n_1],
-        r[n_1:n_plastic],
-        r[:n_1],
-        r_exp[n_1:n_plastic, 12:24],
-        r_exp[:n_1, 12:24],
+        r[n_1:n_plastic] * R_RESCALING,
+        r[:n_1] * R_RESCALING,
+        r_exp[n_1:n_plastic, 12:24] * R_EXP_RESCALING,
+        r_exp[:n_1, 12:24] * R_EXP_RESCALING,
         c[20:40],
     )
 
@@ -149,10 +151,10 @@ def learning_dynamics(t, y, args):
 
     delta_W_12_two_factor_raw = delta_W_ij_two_factor(
         W[:n_1, n_1:n_plastic],
-        r[:n_1],
-        r[n_1:n_plastic],
-        r_exp[:n_1, 24:36],
-        r_exp[n_1:n_plastic, 24:36],
+        r[:n_1] * R_RESCALING,
+        r[n_1:n_plastic] * R_RESCALING,
+        r_exp[:n_1, 24:36] * R_EXP_RESCALING,
+        r_exp[n_1:n_plastic, 24:36] * R_EXP_RESCALING,
         c[40:60],
     )
 
@@ -162,12 +164,12 @@ def learning_dynamics(t, y, args):
 
     delta_W_12_three_factor_raw = delta_W_ij_three_factor(
         W[:n_1, n_1:n_plastic],
-        r[:n_1],
-        r[n_1:n_plastic],
-        r_exp[:n_1, 52:60],
-        r_exp[n_1:n_plastic, 52:60],
+        r[:n_1] * R_RESCALING,
+        r[n_1:n_plastic] * R_RESCALING,
+        r_exp[:n_1, 52:60] * R_EXP_RESCALING,
+        r_exp[n_1:n_plastic, 52:60] * R_EXP_RESCALING,
         # (1) -> (1)
-        W[:n_1, :n_1] @ r_exp[:n_1, 60:68],
+        W[:n_1, :n_1] @ r_exp[:n_1, 60:68] * R_EXP_RESCALING,
         c[68:76],
     )
 

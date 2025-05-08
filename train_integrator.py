@@ -607,7 +607,7 @@ def simulate_all(keys, X, train, track_params=True):
 	losses = jax_calc_loss(r_train, r_test, targets_train, targets_test)
 	print('raw losses')
 	print(losses)
-	losses_for_coefs = jnp.reshape(losses, (len(X), keys.shape[0])).mean(axis=1)
+	losses_for_coefs = 1000 * jnp.reshape(losses, (len(X), keys.shape[0])).mean(axis=1)
 	return losses_for_coefs
 
 
