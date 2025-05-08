@@ -592,7 +592,7 @@ def simulate_all(keys, X, train, track_params=True):
 		v, s, r_exp, W, syn = sol.ys
 		ws = W[-1, :]
 
-		print(jnp.transpose(jax_calc_r(s[-1:, :, :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2)))
+		print(jnp.mean(jnp.transpose(jax_calc_r(s[-1:, :, :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2))))
 
 		print('w abs summed', np.abs(ws).sum())
 		print(syn.shape)
