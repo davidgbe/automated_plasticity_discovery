@@ -592,7 +592,8 @@ def simulate_all(keys, X, train, track_params=True):
 		v, s, r_exp, W, syn = sol.ys
 		ws = W[-1, :]
 
-		print(np.abs(ws).sum())
+		print('w abs summed', np.abs(ws).sum())
+		print('syn', jnp.mean(syn, axis=0))
 
 		if train_trial_flag or test_trial_flag:
 			if train_trial_flag:
