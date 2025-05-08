@@ -832,13 +832,16 @@ if __name__ == '__main__':
 	key = jr.key(0)
 	keys = jr.split(key, len(train_seeds))
 
-	X0 = [x0]
-	base_losses = simulate_all(keys, X0, True, track_params=True)
-	print(base_losses)
+	# X0 = [x0]
+	# base_losses = simulate_all(keys, X0, True, track_params=True)
+	# print(base_losses)
 
 	while not es.stop():
 		X = es.ask()
 		losses = simulate_all(keys, X, True, track_params=True)
+		print(type(losses))
+		print(losses)
+		print(losses.shape)
 		es.tell(X, losses)
 		# if eval_tracker['best_changed']:
 		# 	eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
