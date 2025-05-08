@@ -592,6 +592,8 @@ def simulate_all(keys, X, train, track_params=True):
 		v, s, r_exp, W, syn = sol.ys
 		ws = W[-1, :]
 
+		print(np.abs(ws).sum())
+
 		if train_trial_flag or test_trial_flag:
 			if train_trial_flag:
 				r_train[:, train_idx * READOUTS_PER_TRIAL : (train_idx + 1) * READOUTS_PER_TRIAL, :] = jnp.transpose(jax_calc_r(s[:-1, :, :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2))
