@@ -218,7 +218,7 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 
 	w_screened = jnp.where(singular_matrices_detected, 0, w)
 
-	residual = jnp.square((targets_test_normed - (r_test_normed @ w_screened).squeeze())).sum()
+	residual = jnp.square((targets_test_normed - (r_test_normed @ w_screened).squeeze(1))).sum()
 	total = jnp.square(targets_test_normed).sum()
 
 	print(targets_test_normed)
