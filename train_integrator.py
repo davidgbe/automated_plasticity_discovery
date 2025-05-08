@@ -215,8 +215,6 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 
 	w_screened = jnp.where(singular_matrices_detected, 0, w)
 
-	print(r_test_normed @ w_screened)
-
 	residual = jnp.square((targets_test_normed - r_test_normed @ w_screened)).sum()
 	total = jnp.square((targets_test_normed - targets_test_normed.mean())).sum()
 
@@ -610,6 +608,8 @@ def simulate_all(keys, X, train, track_params=True):
 
 	jax_calc_loss = jax.vmap(calc_loss, (0, 0, 0, 0))
 	losses = jax_calc_loss(r_train, r_test, targets_train, targets_test)
+	print('raw losses')
+	print(losses)
 	losses_for_coefs = jnp.reshape(losses, (len(X), keys.shape[0])).mean(axis=1)
 	return losses_for_coefs
 
