@@ -209,6 +209,11 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 	RtR = jnp.matmul(jnp.transpose(r_train_normed), r_train_normed)
 	Rty = jnp.matmul(jnp.transpose(r_train_normed), targets_train_normed[:, None])
 
+	print(RtR)
+	print(RtR.shape)
+	print(Rty)
+	print(Rty.shape)
+
 	w = jnp.linalg.solve(RtR, Rty)
 
 	residual = jnp.square((targets_test_normed - r_test_normed @ w)).sum()
