@@ -199,6 +199,9 @@ def transform_zero_mean(X):
 def calc_loss(r_train, r_test, targets_train, targets_test):
 
 	invalid = jnp.any(jnp.isnan(r_train)) | jnp.any(jnp.isnan(r_test))
+
+	print(r_train.shape)
+	print(targets_train.shape)
 	
 	r_train_normed = transform_zero_mean(r_train)
 	r_test_normed = transform_zero_mean(r_test)
@@ -216,9 +219,9 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 	w_screened = jnp.where(singular_matrices_detected, 0, w)
 
 	residual = jnp.square((targets_test_normed - r_test_normed @ w_screened)).sum()
-	total = jnp.square((targets_test_normed - targets_test_normed.mean())).sum()
+	total = jnp.square(targets_test_normed).sum()
 
-	print(targets_test_normed.shape)
+	print(targets_test_normed)
 	print(residual)
 	print(total)
 	return jnp.where(invalid, 10, residual / total)
@@ -849,7 +852,6 @@ if __name__ == '__main__':
 	while not es.stop():
 		X = es.ask()
 		losses = simulate_all(keys, X, True, track_params=True)
-		print(type(losses))
 		print(losses)
 		print(losses.shape)
 		es.tell(X, losses)
