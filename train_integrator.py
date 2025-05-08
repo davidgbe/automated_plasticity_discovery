@@ -199,11 +199,6 @@ def transform_zero_mean_unit_norm(X):
 def calc_loss(r_train, r_test, targets_train, targets_test):
 
 	invalid = jnp.any(jnp.isnan(r_train)) | jnp.any(jnp.isnan(r_test))
-	print(invalid)
-	print(r_train)
-	print(r_train.shape)
-	print(r_test)
-	print(r_test.shape)
 	
 	r_train_normed = transform_zero_mean_unit_norm(r_train)
 	r_test_normed = transform_zero_mean_unit_norm(r_test)
@@ -216,7 +211,11 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 
 	w = jnp.linalg.solve(RtR, Rty)
 
-	residual = jnp.square((targets_test_normed - r_test_normed @ w)).sum()
+	singular_matrices_detected = jnp.any(jnp.isnan(w)) | jnp.any(jnp.isinf(w))
+
+	w_screened = jnp.where(singular_matrices_detected, 0, w)
+
+	residual = jnp.square((targets_test_normed - r_test_normed @ w_screened)).sum()
 	total = jnp.square((targets_test_normed - targets_test_normed.mean())).sum()
 	return jnp.where(invalid, 10, residual / total)
 
