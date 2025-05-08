@@ -199,7 +199,7 @@ def transform_zero_mean_unit_norm(X):
 def calc_loss(r_train, r_test, targets_train, targets_test):
 
 	invalid = jnp.any(jnp.isnan(r_train)) | jnp.any(jnp.isnan(r_test))
-
+	print(invalid)
 	print(r_train)
 	print(r_train.shape)
 	print(r_test)
