@@ -75,11 +75,11 @@ train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 
 # scaling these 3 parameters by a factor 10 up will give appropriate values for ring attracting circuit
-w_e_e = 9e-4 / DT * 0.1 / n_e_pool
-w_pool_side = -3e-4 / DT * 0.1 / n_e_pool
-w_side_pool = 9e-4 / DT * 0.1 / n_e_side
-w_e_i = 2.5e-4 / DT / n_e_pool
-w_i_e = -1e-4 / DT / n_i
+w_e_e = 9e-4 / DT * 0.1 / np.sqrt(n_e_pool)
+w_pool_side = -3e-4 / DT * 0.1 / np.sqrt(n_e_pool)
+w_side_pool = 9e-4 / DT * 0.1 / np.sqrt(n_e_side)
+w_e_i = 2.5e-4 / DT / np.sqrt(n_e_pool)
+w_i_e = -1e-4 / DT / np.sqrt(n_i)
 TAU_E = 5e-3
 TAU_I = 0.1e-3
 
@@ -591,6 +591,8 @@ def simulate_all(keys, X, train, track_params=True):
 
 		v, s, r_exp, W, syn = sol.ys
 		ws = W[-1, :]
+
+		print(jnp.transpose(jax_calc_r(s[-1:, :, :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2)))
 
 		print('w abs summed', np.abs(ws).sum())
 		print(syn.shape)
