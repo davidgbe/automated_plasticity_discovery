@@ -199,9 +199,6 @@ def transform_zero_mean(X):
 def calc_loss(r_train, r_test, targets_train, targets_test):
 
 	invalid = jnp.any(jnp.isnan(r_train)) | jnp.any(jnp.isnan(r_test))
-
-	print(r_train.shape)
-	print(targets_train.shape)
 	
 	r_train_normed = transform_zero_mean(r_train)
 	r_test_normed = transform_zero_mean(r_test)
@@ -221,9 +218,6 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 	residual = jnp.square((targets_test_normed - (r_test_normed @ w_screened).squeeze(1))).sum()
 	total = jnp.square(targets_test_normed).sum()
 
-	print(targets_test_normed)
-	print(residual)
-	print(total)
 	return jnp.where(invalid, 10, residual / total)
 
 
@@ -854,7 +848,7 @@ if __name__ == '__main__':
 		losses = simulate_all(keys, X, True, track_params=True)
 		print(losses)
 		print(losses.shape)
-		es.tell(X, losses)
+		es.tell(X, losses.tolist())
 		# if eval_tracker['best_changed']:
 		# 	eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
 		# es.disp()
