@@ -533,10 +533,7 @@ def simulate_all(keys, X, train, track_params=True):
 	])
 
 	ws_base = jax.vmap(make_network, (0,))(keys) # generate a weight matrix for each key
-	w_plastic_base = jnp.where(ws_base != 0, 1, 0).astype(int)
-
 	ws = jnp.tile(ws_base, (len(X), *jnp.ones(ws_base.ndim - 1).astype(int))) # duplicate the block of all weight matrices for the number of rules 
-	ws_plastic = jnp.tile(w_plastic_base, (len(X), *jnp.ones(ws_base.ndim - 1).astype(int)))
 
 	args = (
         c,
@@ -588,9 +585,12 @@ def simulate_all(keys, X, train, track_params=True):
 
 		readout_times_for_trial = np.concatenate([readout_times_for_trial, np.array(t[-1:])])
 
+		ws_plastic = jnp.where(ws != 0, 1, 0).astype(int)
+
 		sol = simulate(t, ws, ws_plastic, r_in, c, tau_rules, n_e + n_i, DT, readout_times_for_trial, args)
 
 		v, s, r_exp, W, syn = sol.ys
+		ws = W[-1, :]
 
 		if train_trial_flag or test_trial_flag:
 			if train_trial_flag:
