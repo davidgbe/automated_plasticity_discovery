@@ -205,7 +205,7 @@ def learning_dynamics(t, y, args):
 
 def blow_up_event(t, y, args, **kwargs):
     s, r_exp, W, syn = y
-    return(jnp.any(s > 5) | jnp.any(jnp.abs(W) > 15))
+    return (jnp.any(s > 5) | jnp.any(jnp.abs(W) > 15))
 
 
 def simulate(t, w, w_plastic, r_in, c, tau_rules, n, dt, readout_times, args, save_for_viewing=False):

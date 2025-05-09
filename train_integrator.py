@@ -465,6 +465,8 @@ def simulate_all(keys, X, train, track_params=True):
 		save_for_viewing = False # (i % 5 == 0)
 		sol = simulate(t, ws, ws_plastic, r_in, c, tau_rules, n_e + n_i, DT, readout_times_for_trial, args, save_for_viewing=save_for_viewing)
 
+		print(sol)
+
 		s, r_exp, W, syn = sol.ys
 		
 		ws = W[-1, :]
