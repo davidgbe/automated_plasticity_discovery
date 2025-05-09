@@ -443,12 +443,6 @@ def simulate_all(keys, X, train, track_params=True):
 			r_in[i_k, :] = r_in_k
 			running_input_sums[i_k, :] = running_input_sums_k
 
-		def u(t_prime):
-			return jax.vmap(jnp.interp, (None, None, 1),)(t_prime, t, r_in[0, ...])
-		
-		print(u(0.05))
-		print(u(0.07))
-
 		r_in = jnp.tile(r_in, (len(X), *jnp.ones(r_in.ndim - 1).astype(int))) # duplicate block of inputs and integration targets by number of rules to test
 		if i == 0:
 			plot_heatmap(r_in[0, ...].T, cmap='hot', vmin=0, save_path='./figures/r_in_sample.png')
@@ -470,17 +464,12 @@ def simulate_all(keys, X, train, track_params=True):
 		sol = simulate(t, ws, ws_plastic, r_in, c, tau_rules, n_e + n_i, DT, readout_times_for_trial, args)
 
 		s, r_exp, W, syn = sol.ys
-
-		print(s[-1, ...].max())
-		print(s[-1, ...].shape)
 		
 		ws = W[-1, :]
 
-		# print(jnp.mean(jnp.transpose(jax_calc_r(s[-1:, :, :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2))))
-
-		# print('w abs summed', np.abs(ws).sum())
-		# print(syn.shape)
-		# print('syn', jnp.mean(syn[0, ...], axis=0))
+		print('w abs summed', np.abs(ws).sum())
+		print(syn.shape)
+		print('syn', jnp.mean(syn[0, ...], axis=0))
 
 		if train_trial_flag or test_trial_flag:
 			if train_trial_flag:
