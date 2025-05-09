@@ -59,7 +59,7 @@ INPUT_RATE_PER_CELL = 1000
 INPUT_BLOCK_DURATION = 5e-3
 N_RULES = 60 + 16
 N_TIMECONSTS = 36 + 32
-ETA = 0.0005
+ETA = 1
 
 T = 0.1 # Total duration of one network simulation
 DT = 1e-4 # Timestep
@@ -462,12 +462,10 @@ def simulate_all(keys, X, train, track_params=True):
 
 		ws_plastic = jnp.where(ws != 0, 1, 0).astype(int)
 
-		save_for_viewing = (i % 5 == 0)
+		save_for_viewing = False # (i % 5 == 0)
 		sol = simulate(t, ws, ws_plastic, r_in, c, tau_rules, n_e + n_i, DT, readout_times_for_trial, args, save_for_viewing=save_for_viewing)
 
 		s, r_exp, W, syn = sol.ys
-
-		print(s.shape)
 		
 		ws = W[-1, :]
 
@@ -637,8 +635,7 @@ if __name__ == '__main__':
 
 	while not es.stop():
 		X = es.ask()
-		X[0][0] = 0.1
-		losses = simulate_all(keys, [X[0]], True, track_params=True)
+		losses = simulate_all(keys, X, True, track_params=True)
 		print(losses)
 		print(losses.shape)
 		es.tell(X, losses.tolist())
