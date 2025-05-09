@@ -476,7 +476,7 @@ def simulate_all(keys, X, train, track_params=True):
 			
 			r = jnp.transpose(jax_calc_r(s, s_offsets, g, n_e), (1, 0, 2))
 			print(r.shape)
-			plot_heatmap(r[0, ...], cmap='hot', vmin=0, save_path=f'./figures/dynamics_{zero_pad(i, 3)}.png', figsize=(4, 3))
+			plot_heatmap(r[0, ...].T, cmap='hot', vmin=0, save_path=f'./figures/dynamics_{zero_pad(i, 3)}.png', figsize=(4, 3))
 
 		# print('w abs summed', np.abs(ws).sum())
 		# print(syn.shape)
@@ -637,6 +637,7 @@ if __name__ == '__main__':
 
 	while not es.stop():
 		X = es.ask()
+		X[0][0] = 0.1
 		losses = simulate_all(keys, [X[0]], True, track_params=True)
 		print(losses)
 		print(losses.shape)
