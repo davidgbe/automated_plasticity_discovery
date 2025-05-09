@@ -202,6 +202,12 @@ def learning_dynamics(t, y, args):
 
     return delta_s, delta_r_exp, delta_W, delta_syn
 
+
+def blow_up_event(t, y, args):
+    s, r_exp, W, syn = y
+    return(jnp.any(s > 5) | jnp.any(jnp.abs(W) > 15))
+
+
 def simulate(t, w, w_plastic, r_in, c, tau_rules, n, dt, readout_times, args, save_for_viewing=False):
     s0 = jnp.zeros((w.shape[0], n))
     r_exp0 = jnp.zeros((w.shape[0], n, tau_rules.shape[1]))
@@ -232,5 +238,6 @@ def simulate(t, w, w_plastic, r_in, c, tau_rules, n, dt, readout_times, args, sa
         args=args + (t, r_in),
         saveat=saveat,
         stepsize_controller=stepsize_controller,
+        event=diffrax.Event(blow_up_event),
     )
     return jax.block_until_ready(sol)
