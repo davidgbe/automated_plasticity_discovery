@@ -16,6 +16,7 @@ from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
 from csv_writer import write_csv
 from rate_network import simulate, calc_r_from_s
+from viz import plot_heatmap
 
 
 ### Parse arguments 
@@ -82,6 +83,7 @@ w_e_i = 2.5e-4 / DT / np.sqrt(n_e_pool)
 w_i_e = -1e-4 / DT / np.sqrt(n_i)
 TAU_E = 5e-3
 TAU_I = 0.1e-3
+TAU_ALPHA_INPUT = 3e-3
 
 s_offsets = jnp.concatenate((jnp.full(n_e, 0.1), jnp.full(n_i, 0)))
 g = 1
@@ -221,139 +223,6 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 	return jnp.where(invalid, 10, residual / total)
 
 
-def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, total_activity_penalties, train=True):
-	scale = 3
-	n_res_to_show = BATCH_SIZE
-
-	gs = gridspec.GridSpec(4 * n_res_to_show + 3, 2)
-	fig = plt.figure(figsize=(4  * scale, (4 * n_res_to_show + 3) * scale), tight_layout=True)
-	axs = [[fig.add_subplot(gs[i, 0]), fig.add_subplot(gs[i, 1])] for i in range(4 * n_res_to_show)]
-	axs += [fig.add_subplot(gs[4 * n_res_to_show, :])]
-	axs += [fig.add_subplot(gs[4 * n_res_to_show + 1, :])]
-	axs += [fig.add_subplot(gs[4 * n_res_to_show + 2, :])]
-
-	all_effects = []
-
-	for i in np.arange(BATCH_SIZE):
-		# for each network in the batch, graph its excitatory, inhibitory activity, as well as the target activity
-		res = results[i]
-		r = res['r']
-		r_exp_filtered = res['r_exp_filtered']
-		w = res['w']
-		w_initial = res['w_initial']
-		effects = res['syn_effects']
-		all_weight_deltas = res['all_weight_deltas']
-		rs_for_loss = res['rs_for_loss']
-		r_in_for_loss = res['r_in_for_loss']
-		targets_for_loss = res['targets_for_loss']
-
-		all_effects.append(effects)
-
-		plotted_trial_count = 0
-
-		for trial_idx in range(rs_for_loss.shape[0]):
-			if trial_idx < rs_for_loss.shape[0] - 3:
-				continue
-			r = rs_for_loss[trial_idx, ...]
-			r_in = r_in_for_loss[trial_idx, ...]
-			targets = targets_for_loss[trial_idx, ...]
-
-			# scale = 1
-			# fig_r_in, axs_r_in = plt.subplots(1, 1, figsize=(4 * scale, 2 * scale), sharex=True, sharey=True)
-			# axs_r_in.plot(np.arange(len(targets)), targets, color='red')
-			# input_diffs = r_in[input_start:, n_e_pool + n_e_side : n_e_pool + 2 * n_e_side].sum(axis=1) - r_in[input_start:, n_e_pool:n_e_pool + n_e_side].sum(axis=1)
-			# input_summed = [input_diffs[:j].sum() for j in range(len(input_diffs))]
-			# axs_r_in.plot(np.arange(len(targets)), input_summed, color='black')
-
-			# fig_r_in.savefig(f'{out_dir}/r_in_trial_{trial_idx}.png')
-
-			for l_idx in range(r.shape[1]):
-				if l_idx < n_e_pool:
-					pass
-					# if l_idx % 1 == 0:
-					# 	axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
-				elif l_idx >= (r.shape[1] - n_i):
-					axs[4 * i + plotted_trial_count][1].plot(t, r[:, l_idx], c='black') # graph inh activity
-
-			axs[4 * i + plotted_trial_count][0].matshow(r[:, :n_e_pool + 2 * n_e_side].T, aspect=1/0.1)
-			plotted_trial_count += 1
-
-		r_exc = r[:, :n_e_pool]
-		r_summed = np.sum(r_exc, axis=0)
-		r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
-		r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
-		r_normed = r_exc / r_summed_safe_divide
-		t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
-		# t_ordering = np.argsort(t_means)
-		# t_ordering = np.concatenate([t_ordering, np.arange(n_e, n_e + n_i)])
-
-		# sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
-		# sorted_w = w[t_ordering, :][:, t_ordering]
-
-		vmin = np.min([w_initial.min(), w.min()])
-		vmax = np.max([w_initial.max(), w.max()])
-
-		vbound = np.max(w)
-
-		mappable = axs[4 * i + 3][0].matshow(w_initial, vmin=-vbound, vmax=vbound, cmap='bwr') # plot initial weight matrix
-		plt.colorbar(mappable, ax=axs[4 * i + 3][0])
-
-		mappable = axs[4 * i + 3][1].matshow(w, vmin=-vbound, vmax=vbound, cmap='bwr') # plot final weight matrix
-		plt.colorbar(mappable, ax=axs[4 * i + 3][1])
-
-		axs[4 * i][0].set_title(f'{true_losses[i]} + {syn_effect_penalties[i]} + {total_activity_penalties[i]}')
-		for i_axs in range(2):
-			axs[2 * i][i_axs].set_xlabel('Time (s)')
-			axs[2 * i][i_axs].set_ylabel('Firing rate')
-
-		axs[4 * n_res_to_show + 2].plot(np.arange(len(all_weight_deltas)), np.log(all_weight_deltas), label=f'{i}')
-
-	partial_rules_len = int(len(plasticity_coefs))
-
-	all_effects = np.array(all_effects)
-	effects = np.mean(all_effects, axis=0)
-
-	axs[4 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
-	effects_argsort = []
-	for l in range(1):
-		effects_partial = effects[l * partial_rules_len: (l+1) * partial_rules_len]
-		effects_argsort_partial = np.flip(np.argsort(effects_partial))
-		effects_argsort.append(effects_argsort_partial + l * partial_rules_len)
-		x = np.arange(len(effects_argsort_partial)) + l * partial_rules_len
-		axs[4 * n_res_to_show + 1].bar(x, effects_partial[effects_argsort_partial], zorder=0)
-		for i_e in x:
-			axs[4 * n_res_to_show + 1].scatter(i_e * np.ones(all_effects.shape[0]), all_effects[:, effects_argsort_partial][:, i_e], c='black', zorder=1, s=3)
-	axs[4 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
-	axs[4 * n_res_to_show + 1].set_xlim(-1, len(effects))
-
-	true_loss = np.sum(true_losses)
-	syn_effect_penalty = np.sum(syn_effect_penalties)
-	total_activity_penalty = np.sum(total_activity_penalties)
-	axs[4 * n_res_to_show].set_title(f'Loss: {true_loss + syn_effect_penalty}, {true_loss}, {syn_effect_penalty}, {total_activity_penalty}')
-
-	# plot the coefficients assigned to each plasticity rule (unsorted by size)
-	for l in range(1):
-		axs[4 * n_res_to_show].bar(np.arange(partial_rules_len) + l * partial_rules_len, plasticity_coefs[l * partial_rules_len: (l+1) * partial_rules_len])
-	axs[4 * n_res_to_show].set_xticks(np.arange(len(plasticity_coefs)))
-	axs[4 * n_res_to_show].set_xticklabels(rule_names, rotation=60, ha='right')
-	axs[4 * n_res_to_show].set_xlim(-1, len(plasticity_coefs))
-
-	axs[4 * n_res_to_show + 2].set_xlabel('Epochs')
-	axs[4 * n_res_to_show + 2].set_ylabel('log(delta W)')
-	axs[4 * n_res_to_show + 2].legend()
-
-	pad = 4 - len(str(eval_tracker['evals']))
-	zero_padding = '0' * pad
-	evals = eval_tracker['evals']
-
-	# fig.tight_layout()
-	if train:
-		fig.savefig(f'{out_dir}/{zero_padding}{evals}.png')
-	else:
-		fig.savefig(f'{out_dir}/{zero_padding}{evals}_test.png')
-	plt.close('all')
-
-
 @jax.jit
 def make_network(key):
     '''
@@ -476,7 +345,7 @@ def construct_inputs(input_size=6):
 		else:
 			inputs[k] = inputs[k-1]
 		
-	filtered_input_to_sum_per_neuron = poisson_arrivals_to_inputs(input_spks, 3e-3)
+	filtered_input_to_sum_per_neuron = poisson_arrivals_to_inputs(input_spks, TAU_ALPHA_INPUT)
 	filtered_input_to_sum = filtered_input_to_sum_per_neuron[:, n_e_side:2 * n_e_side].sum(axis=1) - filtered_input_to_sum_per_neuron[:, :n_e_side].sum(axis=1)
 	running_input_sums = np.cumsum(filtered_input_to_sum) / INPUT_LEN
 	
@@ -486,13 +355,13 @@ def construct_inputs(input_size=6):
 	r_in_spks[:int(10e-3/DT), input_slice[0]:input_slice[1]] = np.random.poisson(lam=INPUT_RATE_PER_CELL * DT, size=(int(10e-3/DT), input_size))
 	
 	r_in_spks[INPUT_START:INPUT_END, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
-	r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
+	r_in = poisson_arrivals_to_inputs(r_in_spks, TAU_ALPHA_INPUT)
 
 	r_in[:, :n_e_pool] = 0.25 * r_in[:, :n_e_pool]
 	r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = 0.1 * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
 
 	r_in[:, :n_e_pool] += (
-		0.02 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * DT, size=(len(t), n_e_pool)), 3e-3)
+		0.02 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * DT, size=(len(t), n_e_pool)), TAU_ALPHA_INPUT)
 	)
 
 	return r_in, running_input_sums
@@ -535,6 +404,9 @@ def simulate_all(keys, X, train, track_params=True):
 	ws_base = jax.vmap(make_network, (0,))(keys) # generate a weight matrix for each key
 	ws = jnp.tile(ws_base, (len(X), *jnp.ones(ws_base.ndim - 1).astype(int))) # duplicate the block of all weight matrices for the number of rules 
 
+	m = np.abs(ws[0, ...]).max()
+	plot_heatmap(ws[0, ...], cmap='bwr', vmin=-m, vmax=m, save_path='./figures/initial_matrix.png', figsize=(4, 3))
+
 	args = (
         c,
         tau_rules,
@@ -571,7 +443,15 @@ def simulate_all(keys, X, train, track_params=True):
 			r_in[i_k, :] = r_in_k
 			running_input_sums[i_k, :] = running_input_sums_k
 
+		def u(t_prime):
+			return jax.vmap(jnp.interp, (None, None, 1),)(t_prime, t, r_in[0, ...])
+		
+		print(u(0.05))
+		print(u(0.07))
+
 		r_in = jnp.tile(r_in, (len(X), *jnp.ones(r_in.ndim - 1).astype(int))) # duplicate block of inputs and integration targets by number of rules to test
+		if i == 0:
+			plot_heatmap(r_in[0, ...].T, cmap='hot', vmin=0, save_path='./figures/r_in_sample.png')
 
 		train_trial_flag = (i >= decoder_train_trial_nums[0] and i < decoder_train_trial_nums[1])
 		test_trial_flag = (i >= decoder_test_trial_nums[0] and i < decoder_test_trial_nums[1])
@@ -589,14 +469,18 @@ def simulate_all(keys, X, train, track_params=True):
 
 		sol = simulate(t, ws, ws_plastic, r_in, c, tau_rules, n_e + n_i, DT, readout_times_for_trial, args)
 
-		v, s, r_exp, W, syn = sol.ys
+		s, r_exp, W, syn = sol.ys
+
+		print(s[-1, ...].max())
+		print(s[-1, ...].shape)
+		
 		ws = W[-1, :]
 
-		print(jnp.mean(jnp.transpose(jax_calc_r(s[-1:, :, :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2))))
+		# print(jnp.mean(jnp.transpose(jax_calc_r(s[-1:, :, :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2))))
 
-		print('w abs summed', np.abs(ws).sum())
-		print(syn.shape)
-		print('syn', jnp.mean(syn[0, ...], axis=0))
+		# print('w abs summed', np.abs(ws).sum())
+		# print(syn.shape)
+		# print('syn', jnp.mean(syn[0, ...], axis=0))
 
 		if train_trial_flag or test_trial_flag:
 			if train_trial_flag:
