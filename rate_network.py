@@ -203,7 +203,7 @@ def learning_dynamics(t, y, args):
     return delta_s, delta_r_exp, delta_W, delta_syn
 
 
-def blow_up_event(t, y, args):
+def blow_up_event(t, y, args, **kwargs):
     s, r_exp, W, syn = y
     return(jnp.any(s > 5) | jnp.any(jnp.abs(W) > 15))
 
