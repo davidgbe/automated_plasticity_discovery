@@ -634,7 +634,7 @@ if __name__ == '__main__':
 
 	while not es.stop():
 		X = es.ask()
-		losses = simulate_all(keys, X, True, track_params=True)
+		losses = simulate_all(keys, [X[0]], True, track_params=True)
 		print(losses)
 		print(losses.shape)
 		es.tell(X, losses.tolist())
