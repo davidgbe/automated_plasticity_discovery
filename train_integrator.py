@@ -474,7 +474,7 @@ def simulate_all(keys, X, train, track_params=True):
 		if i % 5 == 0 and i > 0:
 			plot_heatmap(ws[0, ...], cmap='bwr', vmin=-m, vmax=m, save_path=f'./figures/weight_matrix_{zero_pad(i, 3)}.png', figsize=(4, 3))
 			
-			r = jax_calc_r(s[:1, ...], s_offsets, g, n_e)
+			r = jnp.transpose(jax_calc_r(s[:1, ...], s_offsets, g, n_e), (1, 0, 2))
 			print(r.shape)
 			plot_heatmap(r[0, ...], cmap='hot', vmin=0, save_path=f'./figures/dynamics_{zero_pad(i, 3)}.png', figsize=(4, 3))
 
