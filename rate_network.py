@@ -202,7 +202,7 @@ def learning_dynamics(t, y, args):
 
     return delta_s, delta_r_exp, delta_W, delta_syn
 
-def simulate(t, w, w_plastic, r_in, c, tau_rules, n, dt, readout_times, args):
+def simulate(t, w, w_plastic, r_in, c, tau_rules, n, dt, readout_times, args, save_for_viewing=False):
     s0 = jnp.zeros((w.shape[0], n))
     r_exp0 = jnp.zeros((w.shape[0], n, tau_rules.shape[1]))
     W0 = w
@@ -217,6 +217,11 @@ def simulate(t, w, w_plastic, r_in, c, tau_rules, n, dt, readout_times, args):
     solver = diffrax.Tsit5()
     stepsize_controller = diffrax.PIDController(rtol=1e-5, atol=1e-5)
 
+    if save_for_viewing:
+        saveat = diffrax.SaveAt(ts=jnp.linspace(t.min(), t.max(), 1000))
+    else:
+        saveat = diffrax.SaveAt(ts=readout_times)
+
     sol = diffrax.diffeqsolve(
         term,
         solver,
@@ -225,7 +230,7 @@ def simulate(t, w, w_plastic, r_in, c, tau_rules, n, dt, readout_times, args):
         dt0=dt,
         y0=(s0, r_exp0, w, syn0),
         args=args + (t, r_in),
-        saveat=diffrax.SaveAt(ts=readout_times),
+        saveat=saveat,
         stepsize_controller=stepsize_controller,
     )
     return jax.block_until_ready(sol)

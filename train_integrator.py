@@ -462,7 +462,8 @@ def simulate_all(keys, X, train, track_params=True):
 
 		ws_plastic = jnp.where(ws != 0, 1, 0).astype(int)
 
-		sol = simulate(t, ws, ws_plastic, r_in, c, tau_rules, n_e + n_i, DT, readout_times_for_trial, args)
+		save_for_viewing = (i % 5 == 0)
+		sol = simulate(t, ws, ws_plastic, r_in, c, tau_rules, n_e + n_i, DT, readout_times_for_trial, args, save_for_viewing=save_for_viewing)
 
 		s, r_exp, W, syn = sol.ys
 		
@@ -470,6 +471,9 @@ def simulate_all(keys, X, train, track_params=True):
 
 		if i % 5 == 0 and i > 0:
 			plot_heatmap(ws[0, ...], cmap='bwr', vmin=-m, vmax=m, save_path=f'./figures/weight_matrix_{zero_pad(i, 3)}.png', figsize=(4, 3))
+			
+			r = jax_calc_r(s[0, ...], s_offsets, g, n_e)
+			plot_heatmap(r, cmap='hot', vmin=0, save_path=f'./figures/dynamics_{zero_pad(i, 3)}.png', figsize=(4, 3))
 
 		# print('w abs summed', np.abs(ws).sum())
 		# print(syn.shape)
@@ -492,104 +496,6 @@ def simulate_all(keys, X, train, track_params=True):
 	print(losses)
 	losses_for_coefs = 1000 * jnp.reshape(losses, (len(X), keys.shape[0])).mean(axis=1)
 	return losses_for_coefs
-
-
-		
-	
-
-
-
-
-
-	# num_readouts = (decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]) * READOUTS_PER_TRIAL
-	# readout_times = (np.random.rand(num_readouts) * (input_end - input_start) + input_start).astype(int)
-
-	# w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
-
-	# all_effects = np.zeros(plasticity_coefs.shape)
-	# normed_loss = 10000	
-	# rs_for_loss = []
-	# r_in_for_loss = []
-	# targets_for_loss = []
-
-	# w_hist = []
-	# all_weight_deltas = []
-	# w_hist.append(w)
-
-	# blew_up = False
-
-	# surviving_synapse_mask = np.ones((n_e_pool, n_e_pool)).astype(bool)
-
-
-	# 	# if i <= 400:
-	# 	# 	synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
-
-	# 	# 	drop_mask_for_i = np.logical_and(synapse_change_mask_for_i, surviving_synapse_mask)
-	# 	# 	birth_mask_for_i = np.logical_and(synapse_change_mask_for_i, ~surviving_synapse_mask)
-
-	# 	# 	surviving_synapse_mask[synapse_change_mask_for_i] = ~surviving_synapse_mask[synapse_change_mask_for_i]
-
-	# 	# 	w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
-	# 	# 	w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
-
-	# 	print('Setup')
-	# 	timer()
-
-	# 	timer = start_timer()
-
-	# 	# below, simulate one activation of the network for the period T
-	# 	r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=5e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
-
-	# 	print('Sim')
-	# 	timer()
-
-	# 	if (np.isnan(r).any()
-	#   		or (np.abs(w_out) > 100).any()
-	# 		or (np.abs(w_out[:n_e_pool, :n_e_pool]) < 1.5e-6).all() 
-	# 		or (np.abs(w_out[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)]) < 1.5e-6).all()
-	# 		or (np.abs(w_out[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool]) < 1.5e-6).all()): # if simulation turns up nans in firing rate matrix, end the simulation
-			
-	# 		return {
-	# 			'blew_up': True,
-	# 		}
-			
-	# 	if (i >= decoder_train_trial_nums[0] and i < decoder_train_trial_nums[1]) or (i >= decoder_test_trial_nums[0] and i < decoder_test_trial_nums[1]):
-	# 		rs_for_loss.append(r)
-	# 		r_in_for_loss.append(r_in)
-	# 		targets_for_loss.append(running_input_sums)
-
-	# 	all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
-
-	# 	w_hist.append(w_out)
-	# 	if len(w_hist) > DW_LAG:
-	# 		w_hist.pop(0)
-
-	# 	if effects is not None:
-	# 		all_effects += effects[:N_RULES]
-
-	# 	w = w_out # use output weights evolved under plasticity rules to begin the next simulation
-
-	# train_diffs = input_signal_totals[decoder_train_trial_nums[0]:decoder_train_trial_nums[1], :]
-	# test_diffs = input_signal_totals[decoder_test_trial_nums[0]:decoder_test_trial_nums[1], :]
-
-	# rs_for_loss = np.stack(rs_for_loss)
-	# normed_loss = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
-
-	# return {
-	# 	'loss': normed_loss,
-	# 	'blew_up': False,
-	# 	'r': r,
-	# 	'rs_for_loss': rs_for_loss,
-	# 	'r_in_for_loss': np.stack(r_in_for_loss),
-	# 	'targets_for_loss': np.stack(targets_for_loss),
-	# 	'r_exp_filtered': r_exp_filtered,
-	# 	'w': w,
-	# 	'w_initial': w_initial,
-	# 	'syn_effects': all_effects,
-	# 	'all_weight_deltas': all_weight_deltas,
-	# }
-
-
 
 
 def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects):
