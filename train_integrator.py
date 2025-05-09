@@ -2,7 +2,8 @@ from copy import deepcopy as copy
 import numpy as np
 import os
 import time
-from aux_funcs import jax_gaussian_if_under_val, start_timer
+from tqdm import tqdm
+from aux_funcs import jax_gaussian_if_under_val, start_timer, zero_pad
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from datetime import datetime
@@ -433,7 +434,7 @@ def simulate_all(keys, X, train, track_params=True):
 	train_idx = 0
 	test_idx = 0
 
-	for i in range(N_INNER_LOOP):
+	for i in tqdm(range(N_INNER_LOOP)):
 		timer = start_timer()
 
 		r_in = np.empty((BATCH_SIZE, len(t), n_e_pool + 2 * n_e_side + n_i))
@@ -467,9 +468,12 @@ def simulate_all(keys, X, train, track_params=True):
 		
 		ws = W[-1, :]
 
-		print('w abs summed', np.abs(ws).sum())
-		print(syn.shape)
-		print('syn', jnp.mean(syn[0, ...], axis=0))
+		if i % 5 == 0 and i > 0:
+			plot_heatmap(ws[0, ...], cmap='bwr', vmin=-m, vmax=m, save_path=f'./figures/weight_matrix_{zero_pad(i, 3)}.png', figsize=(4, 3))
+
+		# print('w abs summed', np.abs(ws).sum())
+		# print(syn.shape)
+		# print('syn', jnp.mean(syn[0, ...], axis=0))
 
 		if train_trial_flag or test_trial_flag:
 			if train_trial_flag:
