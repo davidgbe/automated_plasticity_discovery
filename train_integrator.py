@@ -43,9 +43,9 @@ print(args)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP = 320 # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (280, 300)
-decoder_test_trial_nums = (300, 320)
+N_INNER_LOOP = 60 # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (20, 40)
+decoder_test_trial_nums = (40, 60)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 DW_LAG = 5
