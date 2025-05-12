@@ -89,11 +89,11 @@ def learning_dynamics(t, y, args):
     n_plastic = n_1 + n_2
 
     s, r_exp, W, syn, unstable = y
-    unstable_int = unstable.astype(int)
+    unstable_bool = unstable > 0
 
-    delta_unstable = jnp.any(jnp.abs(W) > 20) | jnp.any(s > 10) | unstable_int
+    delta_unstable = jnp.any(jnp.abs(W) > 20) | jnp.any(s > 10) | unstable_bool
 
-    r = calc_r_from_s(s, s_offsets, g, n_e) * ~(delta_unstable | unstable_int)
+    r = calc_r_from_s(s, s_offsets, g, n_e) * ~(delta_unstable | unstable_bool)
     v = W @ r + w_u * u(t)
     delta_s = (v - s) / tau_s
     delta_r_exp = (r[:, None] - r_exp) / tau_rules
@@ -203,7 +203,7 @@ def learning_dynamics(t, y, args):
         delta_syn_12_three_factor,
     ])
 
-    return delta_s, delta_r_exp, delta_W, delta_syn, delta_unstable & (~unstable_int)
+    return delta_s, delta_r_exp, delta_W, delta_syn, delta_unstable & (~unstable_bool)
 
 
 def simulate(t, w, w_plastic, r_in, c, tau_rules, n, dt, readout_times, args, save_for_viewing=False):
