@@ -35,7 +35,7 @@ parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
 parser.add_argument('--hd_hd_sparsity', metavar='dds', type=float, default=1.)
 parser.add_argument('--hd_hr_sparsity', metavar='drs', type=float, default=1.)
-parser.add_argument('--struct_prior', metavar='sp', type=str, default='shift')
+parser.add_argument('--struct_prior', metavar='sp', type=str, default='random')
 
 args = parser.parse_args()
 print(args)
@@ -465,10 +465,7 @@ def simulate_all(keys, X, train, track_params=True):
 		save_for_viewing = False # (i % 5 == 0)
 		sol = simulate(t, ws, ws_plastic, r_in, c, tau_rules, n_e + n_i, DT, readout_times_for_trial, args, save_for_viewing=save_for_viewing)
 
-		print(sol)
-		print(sol.event_mask)
-
-		s, r_exp, W, syn = sol.ys
+		s, r_exp, W, syn, unstable = sol.ys
 		
 		ws = W[-1, :]
 
