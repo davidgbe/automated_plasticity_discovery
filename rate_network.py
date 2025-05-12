@@ -91,10 +91,9 @@ def learning_dynamics(t, y, args):
     s, r_exp, W, syn, unstable = y
     unstable_int = unstable.astype(int)
 
-    delta_unstable_prime = jnp.any(jnp.abs(W) > 20) | jnp.any(s > 10)
-    delta_unstable = delta_unstable_prime | unstable_int
+    delta_unstable = jnp.any(jnp.abs(W) > 20) | jnp.any(s > 10) | unstable_int
 
-    r = calc_r_from_s(s, s_offsets, g, n_e) * (~delta_unstable)
+    r = calc_r_from_s(s, s_offsets, g, n_e) * ~(delta_unstable | unstable_int)
     v = W @ r + w_u * u(t)
     delta_s = (v - s) / tau_s
     delta_r_exp = (r[:, None] - r_exp) / tau_rules
