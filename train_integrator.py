@@ -468,6 +468,8 @@ def simulate_all(keys, X, train, track_params=True):
 		s, r_exp, W, syn, unstable = sol.ys
 
 		print(unstable)
+		print(unstable.shape)
+		print(jnp.sum(unstable))
 		
 		ws = W[-1, :]
 
