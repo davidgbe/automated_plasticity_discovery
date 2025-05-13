@@ -43,9 +43,9 @@ print(args)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP = 40 # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (20, 30)
-decoder_test_trial_nums = (30, 40)
+N_INNER_LOOP = 320 # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (280, 300)
+decoder_test_trial_nums = (300, 320)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 DW_LAG = 5
@@ -490,15 +490,11 @@ def simulate_all(keys, X, train, track_params=True):
 
 		ws = W[-1, ...]
 
-		print(unstable)
-		print(unstable.shape)
-		print(jnp.sum(unstable))
+		# print('max W', jnp.abs(W).max())
+		# print('max s', s.max())
 
-		print('max W', jnp.abs(W).max())
-		print('max s', s.max())
-
-		print('max W', jnp.abs(W[:, ~(unstable[-1, ...] > 0), ...]).max())
-		print('max s', s[:, ~(unstable[-1, ...] > 0), ...].max())
+		# print('max W', jnp.abs(W[:, ~(unstable[-1, ...] > 0), ...]).max())
+		# print('max s', s[:, ~(unstable[-1, ...] > 0), ...].max())
 
 		
 		inv_soft_w = inv_soft_w_all[-1, :]
@@ -508,12 +504,8 @@ def simulate_all(keys, X, train, track_params=True):
 			plot_heatmap(ws[0, ...], cmap='bwr', vmin=-m, vmax=m, save_path=f'./figures/weight_matrix_{zero_pad(i, 3)}.png', figsize=(4, 3))
 			
 			r = jnp.transpose(jax_calc_r(s, s_offsets, g, n_e), (1, 0, 2))
-			print(r.shape)
 			plot_heatmap(r[0, ...].T, cmap='hot', vmin=0, save_path=f'./figures/dynamics_{zero_pad(i, 3)}.png', figsize=(4, 3))
 
-		# print('w abs summed', np.abs(ws).sum())
-		print(syn.shape)
-		print('syn', jnp.mean(syn[0, ...], axis=0))
 
 		if train_trial_flag or test_trial_flag:
 			if train_trial_flag:
