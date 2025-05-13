@@ -486,7 +486,7 @@ def simulate_all(keys, X, train, track_params=True):
 
 		s, r_exp, inv_soft_w_all, syn, unstable = sol.ys
 
-		W = softplus(inv_soft_w_all)
+		W = softplus(inv_soft_w_all) * ws_polarity * ws_nonzero
 
 		ws = W[-1, ...]
 
