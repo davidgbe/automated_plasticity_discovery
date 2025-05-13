@@ -486,9 +486,6 @@ def simulate_all(keys, X, train, track_params=True):
 
 		s, r_exp, inv_soft_w_all, syn, unstable = sol.ys
 
-		W = softplus(inv_soft_w_all) * ws_polarity * ws_nonzero
-
-		ws = W[-1, ...]
 
 		# print('max W', jnp.abs(W).max())
 		# print('max s', s.max())
@@ -496,10 +493,13 @@ def simulate_all(keys, X, train, track_params=True):
 		# print('max W', jnp.abs(W[:, ~(unstable[-1, ...] > 0), ...]).max())
 		# print('max s', s[:, ~(unstable[-1, ...] > 0), ...].max())
 
-		
 		inv_soft_w = inv_soft_w_all[-1, :]
 
-		if i % 5 == 0 and i > 0:
+		if i % 20 == 0 and i > 0:
+
+			W = softplus(inv_soft_w_all) * ws_polarity * ws_nonzero
+			ws = W[-1, ...]
+
 			m = np.abs(ws[0, ...]).max()
 			plot_heatmap(ws[0, ...], cmap='bwr', vmin=-m, vmax=m, save_path=f'./figures/weight_matrix_{zero_pad(i, 3)}.png', figsize=(4, 3))
 
