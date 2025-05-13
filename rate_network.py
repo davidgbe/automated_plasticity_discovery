@@ -7,8 +7,9 @@ import jax.random as jr
 
 R_RESCALING = 5
 R_EXP_RESCALING = 5
-ALPHA = 10
+ALPHA = 1000
 BETA = 1/ALPHA
+SOFTPLUS_TRANSITION = 1e-3
 
 @jax.jit
 def _delta_W_ij_two_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j):
@@ -76,7 +77,11 @@ delta_W_ij_three_factor = jax.vmap(
 
 @jax.jit
 def _softplus(a):
-    return 1/ALPHA * jnp.log(1 + jnp.exp(a/BETA))
+    return jnp.where(
+        a > SOFTPLUS_TRANSITION,
+        a,
+        1/ALPHA * jnp.log(1 + jnp.exp(a/BETA))
+    )
 
 
 softplus = jax.vmap(
@@ -87,9 +92,9 @@ softplus = jax.vmap(
 
 def inv_softplus(w):
     return jnp.where(
-        jnp.abs(w) > 1e-8,
+        jnp.abs(w) < SOFTPLUS_TRANSITION,
         BETA * jnp.log(jnp.exp(ALPHA * jnp.abs(w)) - 1), 
-        -100,
+        jnp.abs(w),
     )
 
 
@@ -228,14 +233,11 @@ def learning_dynamics(t, y, args):
     return delta_s, delta_r_exp, delta_a, delta_syn, delta_unstable & (~unstable_bool)
 
 
-def simulate(t, w, r_in, c, tau_rules, n, dt, readout_times, args, save_for_viewing=False):
-    s0 = jnp.zeros((w.shape[0], n))
-    r_exp0 = jnp.zeros((w.shape[0], n, tau_rules.shape[1]))
-    syn0 = jnp.zeros((w.shape[0], c.shape[1]))
-    unstable = jnp.zeros((w.shape[0],), dtype=int)
-    w_polarity = (w >= 0)
-    w_nonzero = jnp.where(w != 0, 1, 0).astype(int)
-    a0 = inv_softplus(w)
+def simulate(t, a0, w_polarity, w_nonzero, r_in, c, tau_rules, n, dt, readout_times, args, save_for_viewing=False):
+    s0 = jnp.zeros((a0.shape[0], n))
+    r_exp0 = jnp.zeros((a0.shape[0], n, tau_rules.shape[1]))
+    syn0 = jnp.zeros((a0.shape[0], c.shape[1]))
+    unstable = jnp.zeros((a0.shape[0],), dtype=int)
 
     term = diffrax.ODETerm(
         jax.vmap(
@@ -263,12 +265,4 @@ def simulate(t, w, r_in, c, tau_rules, n, dt, readout_times, args, save_for_view
         stepsize_controller=stepsize_controller,
     )
 
-    finished_sol = jax.block_until_ready(sol)
-
-    return (
-        sol.ys[0], # raw s traces
-        sol.ys[1], # raw r_exp traces
-        softplus(sol.ys[2]), # a transformed into W
-        sol.ys[3], # raw synaptic change traces
-        sol.ys[4] > 0, # instability flag
-    )
+    return jax.block_until_ready(sol)

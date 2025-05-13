@@ -403,7 +403,15 @@ def simulate_all(keys, X, train, track_params=True):
 	])
 
 	ws_base = jax.vmap(make_network, (0,))(keys) # generate a weight matrix for each key
-	ws = jnp.tile(ws_base, (len(X), *jnp.ones(ws_base.ndim - 1).astype(int))) # duplicate the block of all weight matrices for the number of rules 
+	inv_soft_w_base = inv_softplus(ws_base)
+	ws_polarity_base = jnp.where(ws_base >= 0, 1, -1)
+	ws_nonzero_base = jnp.where(ws_base != 0, 1, 0).astype(int)
+
+	inv_soft_w = jnp.tile(inv_soft_w_base, (len(X), *jnp.ones(inv_soft_w_base.ndim - 1).astype(int))) # duplicate the block of all weight matrices for the number of rules 
+	ws_polarity = jnp.tile(ws_polarity_base, (len(X), *jnp.ones(ws_polarity_base.ndim - 1).astype(int)))
+	ws_nonzero = jnp.tile(ws_nonzero_base, (len(X), *jnp.ones(ws_nonzero_base.ndim - 1).astype(int))) 
+
+	ws = softplus(inv_soft_w) * ws_polarity * ws_nonzero
 
 	m = np.abs(ws[0, ...]).max()
 	plot_heatmap(ws[0, ...], cmap='bwr', vmin=-m, vmax=m, save_path='./figures/initial_matrix.png', figsize=(4, 3))
@@ -463,7 +471,9 @@ def simulate_all(keys, X, train, track_params=True):
 		save_for_viewing = False # (i % 5 == 0)
 		sol = simulate(
 			t,
-			ws,
+			inv_soft_w,
+			ws_polarity,
+			ws_nonzero,
 			r_in,
 			c,
 			tau_rules,
@@ -474,10 +484,11 @@ def simulate_all(keys, X, train, track_params=True):
 			save_for_viewing=save_for_viewing
 		)
 
-		s, r_exp, W, syn, unstable = sol
+		s, r_exp, inv_soft_w_all, syn, unstable = sol.ys
 
-		print(W.shape)
-		print(s.shape)
+		W = softplus(inv_soft_w_all)
+
+		ws = W[-1, ...]
 
 		print(unstable)
 		print(unstable.shape)
@@ -490,7 +501,7 @@ def simulate_all(keys, X, train, track_params=True):
 		print('max s', s[:, ~unstable[-1, ...], ...].max())
 
 		
-		ws = W[-1, :]
+		inv_soft_w = inv_soft_w_all[-1, :]
 
 		if i % 5 == 0 and i > 0:
 			m = np.abs(ws[0, ...]).max()
