@@ -486,8 +486,8 @@ def simulate_all(keys, X, train, track_params=True):
 		print('max W', jnp.abs(W).max())
 		print('max s', s.max())
 
-		print('max W', jnp.abs(W[:, ~(unstable[-1, ...] > 0), ...]).max())
-		print('max s', s[:, ~(unstable[-1, ...] > 0), ...].max())
+		print('max W', jnp.abs(W[:, ~unstable[-1, ...], ...]).max())
+		print('max s', s[:, ~unstable[-1, ...], ...].max())
 
 		
 		ws = W[-1, :]
