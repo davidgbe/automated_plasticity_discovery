@@ -16,7 +16,7 @@ import jax.random as jr
 from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
 from csv_writer import write_csv
-from rate_network import simulate, calc_r_from_s
+from rate_network import simulate, calc_r_from_s, inv_softplus, softplus
 from viz import plot_heatmap
 
 
@@ -460,12 +460,21 @@ def simulate_all(keys, X, train, track_params=True):
 
 		readout_times_for_trial = np.concatenate([readout_times_for_trial, np.array(t[-1:])])
 
-		ws_plastic = jnp.where(ws != 0, 1, 0).astype(int)
-
 		save_for_viewing = False # (i % 5 == 0)
-		sol = simulate(t, ws, ws_plastic, r_in, c, tau_rules, n_e + n_i, DT, readout_times_for_trial, args, save_for_viewing=save_for_viewing)
+		sol = simulate(
+			t,
+			ws,
+			r_in,
+			c,
+			tau_rules,
+			n_e + n_i,
+			DT,
+			readout_times_for_trial,
+			args,
+			save_for_viewing=save_for_viewing
+		)
 
-		s, r_exp, W, syn, unstable = sol.ys
+		s, r_exp, W, syn, unstable = sol
 
 		print(W.shape)
 		print(s.shape)

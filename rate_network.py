@@ -7,6 +7,8 @@ import jax.random as jr
 
 R_RESCALING = 5
 R_EXP_RESCALING = 5
+ALPHA = 10
+BETA = 1/ALPHA
 
 @jax.jit
 def _delta_W_ij_two_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j):
@@ -72,6 +74,25 @@ delta_W_ij_three_factor = jax.vmap(
 )
 
 
+@jax.jit
+def _softplus(a):
+    return 1/ALPHA * jnp.log(1 + jnp.exp(a/BETA))
+
+
+softplus = jax.vmap(
+    jax.vmap(_softplus, (0,)),
+    (0,),
+)
+
+
+def inv_softplus(w):
+    return jnp.where(
+        jnp.abs(w) > 1e-8,
+        BETA * jnp.log(jnp.exp(ALPHA * jnp.abs(w)) - 1), 
+        -100,
+    )
+
+
 def calc_r_from_s(s, s_offsets, g, n_e):
     s_thresh = jnp.maximum(s - s_offsets, 0)
     r = g * jnp.concatenate((jnp.tanh(s_thresh[:n_e]), s_thresh[n_e:])) # excitatory cells get a tanh threshold, inhibition is left as threshold linear
@@ -79,7 +100,7 @@ def calc_r_from_s(s, s_offsets, g, n_e):
 
 
 def learning_dynamics(t, y, args):
-    c, tau_rules, g, s_offsets, w_u, tau_s, eta, n_e, n_i, n_e_pool, n_e_side, time, r_in = args
+    c, tau_rules, g, s_offsets, w_u, tau_s, eta, n_e, n_i, n_e_pool, n_e_side, time, r_in, w_polarity, w_nonzero = args
 
     def u(t_prime):
         return jax.vmap(jnp.interp, (None, None, 1),)(t_prime, time, r_in)
@@ -88,10 +109,11 @@ def learning_dynamics(t, y, args):
     n_2 = 2 * n_e_side
     n_plastic = n_1 + n_2
 
-    s, r_exp, W, syn, unstable = y
+    s, r_exp, a, syn, unstable = y
+    W = w_polarity * softplus(a) * w_nonzero
     unstable_bool = unstable > 0
 
-    delta_unstable = jnp.any(jnp.abs(W) > 20) | jnp.any(s > 10) | unstable_bool
+    delta_unstable = jnp.any(a > 20) | jnp.any(s > 10) | unstable_bool
 
     r = calc_r_from_s(s, s_offsets, g, n_e) * ~(delta_unstable | unstable_bool)
     v = W @ r + w_u * u(t)
@@ -187,14 +209,14 @@ def learning_dynamics(t, y, args):
         + delta_W_12_three_factor
     )
 
-    delta_W = eta * jnp.block(
+    delta_a = eta * w_nonzero * jnp.block(
         [
             [delta_W_11, delta_W_12, jnp.zeros((n_1, n_i),)],
             [delta_W_21_two_factor, jnp.zeros((n_2, n_2 + n_i))],
             [jnp.zeros((n_i, n_e + n_i))]
         ]
     )
-
+    
     delta_syn = eta * jnp.concatenate([
         delta_syn_11_two_factor,
         delta_syn_21_two_factor,
@@ -203,20 +225,22 @@ def learning_dynamics(t, y, args):
         delta_syn_12_three_factor,
     ])
 
-    return delta_s, delta_r_exp, delta_W, delta_syn, delta_unstable & (~unstable_bool)
+    return delta_s, delta_r_exp, delta_a, delta_syn, delta_unstable & (~unstable_bool)
 
 
-def simulate(t, w, w_plastic, r_in, c, tau_rules, n, dt, readout_times, args, save_for_viewing=False):
+def simulate(t, w, r_in, c, tau_rules, n, dt, readout_times, args, save_for_viewing=False):
     s0 = jnp.zeros((w.shape[0], n))
     r_exp0 = jnp.zeros((w.shape[0], n, tau_rules.shape[1]))
-    W0 = w
     syn0 = jnp.zeros((w.shape[0], c.shape[1]))
     unstable = jnp.zeros((w.shape[0],), dtype=int)
+    w_polarity = (w >= 0)
+    w_nonzero = jnp.where(w != 0, 1, 0).astype(int)
+    a0 = inv_softplus(w)
 
     term = diffrax.ODETerm(
         jax.vmap(
             learning_dynamics,
-            (None, (0,) * 5, (0,) * 2 + (None,) * 10 + (0,)),
+            (None, (0,) * 5, (0,) * 2 + (None,) * 10 + (0,) * 3),
         )
     )
     solver = diffrax.Tsit5()
@@ -233,9 +257,18 @@ def simulate(t, w, w_plastic, r_in, c, tau_rules, n, dt, readout_times, args, sa
         t0=t[0],
         t1=t[-1],
         dt0=dt,
-        y0=(s0, r_exp0, w, syn0, unstable),
-        args=args + (t, r_in),
+        y0=(s0, r_exp0, a0, syn0, unstable),
+        args=args + (t, r_in, w_polarity, w_nonzero),
         saveat=saveat,
         stepsize_controller=stepsize_controller,
     )
-    return jax.block_until_ready(sol)
+
+    finished_sol = jax.block_until_ready(sol)
+
+    return (
+        sol.ys[0], # raw s traces
+        sol.ys[1], # raw r_exp traces
+        softplus(sol.ys[2]), # a transformed into W
+        sol.ys[3], # raw synaptic change traces
+        sol.ys[4] > 0, # instability flag
+    )
