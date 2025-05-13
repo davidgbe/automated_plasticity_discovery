@@ -27,6 +27,7 @@ def plot_heatmap(matrix, xlabel='Time', ylabel='Neuron index', title='Activity h
     if save_path:
         plt.savefig(save_path, dpi=300)
         print(f"Figure saved to: {save_path}")
+        plt.close()
 
 
 # def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, total_activity_penalties, train=True):
