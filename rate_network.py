@@ -4,6 +4,7 @@ import jax
 import jax.numpy as jnp
 import diffrax
 import jax.random as jr
+from aux_funcs import merge_with_indices_jax
 
 R_RESCALING = 5
 R_EXP_RESCALING = 5
@@ -249,7 +250,10 @@ def simulate(t, a0, w_polarity, w_nonzero, r_in, c, tau_rules, n, dt, readout_ti
     stepsize_controller = diffrax.PIDController(rtol=1e-5, atol=1e-5)
 
     if save_for_viewing:
-        saveat = diffrax.SaveAt(ts=jnp.linspace(t.min(), t.max(), 1000))
+        viewing_points = jnp.linspace(t.min(), t.max(), 1000)
+        merged_save_times, indices_viewing, indices_readout = merge_with_indices_jax(viewing_points, readout_times)
+        sorted_indices = jnp.concatenate((indices_readout, indices_viewing))
+        saveat = diffrax.SaveAt(ts=merged_save_times)
     else:
         saveat = diffrax.SaveAt(ts=readout_times)
 
@@ -265,4 +269,9 @@ def simulate(t, a0, w_polarity, w_nonzero, r_in, c, tau_rules, n, dt, readout_ti
         stepsize_controller=stepsize_controller,
     )
 
-    return jax.block_until_ready(sol)
+    finished_sol = jax.block_until_ready(sol)
+
+    if save_for_viewing:
+        return [y[sorted_indices, ...] for y in finished_sol.ys]
+    else:
+        return finished_sol.ys

@@ -70,11 +70,14 @@ def rand_n_ones_in_vec_len_l(n, l):
 def rand_per_row_mat(n, shape):
     return np.stack([rand_n_ones_in_vec_len_l(n, shape[1]) for i in range(shape[0])])
 
+
 def mat_1_if_under_val(val, shape):
     return np.where(np.random.rand(*shape) < val, 1, 0)
 
+
 def gaussian_if_under_val(val, shape, mean, std):
     return np.where(np.random.rand(*shape) < val, np.random.normal(loc=mean, scale=std, size=shape), 0)
+
 
 @partial(jax.jit, static_argnames=['shape'])
 def jax_gaussian_if_under_val(key, val, shape, mean=0, std=1):
@@ -85,8 +88,10 @@ def jax_gaussian_if_under_val(key, val, shape, mean=0, std=1):
         0,
     )
 
+
 def exp_if_under_val(val, shape, scale):
     return np.where(np.random.rand(*shape) < val, np.random.exponential(scale=scale, size=shape), 0)
+
 
 def dropout_on_mat(mat, percent, min_idx=0, max_idx=None):
     if max_idx is None:
@@ -101,12 +106,14 @@ def dropout_on_mat(mat, percent, min_idx=0, max_idx=None):
     m[:, survival_indices == 0] = 0
     return m, survival_indices
 
+
 def rev_argsort(arr):
     arr_argsort = np.flip(np.argsort(arr))
     rev_argsorted = np.zeros(len(arr))
     for i, ind in enumerate(arr_argsort):
         rev_argsorted[ind] = i
     return rev_argsorted
+
 
 def set_smallest_n_zero(arr_ref, n, arr_set=None):
     if arr_set is None:
@@ -119,11 +126,13 @@ def set_smallest_n_zero(arr_ref, n, arr_set=None):
             arr_set[i] = 0
     return arr_set
 
+
 def zero_pad(s, n):
     s_str = str(s)
     pad = n - len(s_str)
     zero_padding = '0' * pad
     return zero_padding + s_str
+
 
 def start_timer():
     start_time = time()
@@ -133,3 +142,23 @@ def start_timer():
         sys.stdout.flush()
         return diff
     return end_time
+
+
+def merge_with_indices_jax(a, b):
+    a = jnp.asarray(a)
+    b = jnp.asarray(b)
+
+    merged = jnp.concatenate([a, b])
+    sort_order = jnp.argsort(merged)
+    sorted_merged = merged[sort_order]
+
+    origin = jnp.concatenate([
+        jnp.zeros(len(a), dtype=int),
+        jnp.ones(len(b), dtype=int)
+    ])
+    origin_sorted = origin[sort_order]
+
+    a_indices = jnp.nonzero(origin_sorted == 0, size=len(a))[0]
+    b_indices = jnp.nonzero(origin_sorted == 1, size=len(b))[0]
+
+    return sorted_merged, a_indices, b_indices

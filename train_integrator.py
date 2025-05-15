@@ -26,9 +26,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--std_expl', metavar='std', type=float, help='Initial standard deviation for parameter search via CMA-ES')
 parser.add_argument('--l1_pen', metavar='l1', type=float, nargs=1, help='Prefactor for L1 penalties on loss function')
 parser.add_argument('--asp', metavar='asp', type=float, help='', default=0.)
-parser.add_argument('--pool_size', metavar='ps', type=int, help='Number of processes to start for each loss function evaluation')
 parser.add_argument('--batch', metavar='b', type=int, help='Number of simulations that should be batched per loss function evaluation')
-parser.add_argument('--fixed_data', metavar='fd', type=int, help='')
 parser.add_argument('--load_initial', metavar='li', type=str, help='File from which to load the best params as an initial guess')
 parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
 parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
@@ -41,7 +39,6 @@ args = parser.parse_args()
 print(args)
 
 SEED = args.seed
-POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
 N_INNER_LOOP = 320 # Number of times to simulate network and plasticity rules per loss function evaluation
 decoder_train_trial_nums = (280, 300)
@@ -49,7 +46,6 @@ decoder_test_trial_nums = (300, 320)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 DW_LAG = 5
-FIXED_DATA = bool(args.fixed_data)
 L1_PENALTIES = args.l1_pen
 CALC_TEST_SET_LOSS_FREQ = 11
 ACTIVITY_LOSS_COEF = args.asp
@@ -150,7 +146,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/int_preexist_n40_speed_test_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/int_preexist_n40_speed_test_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -379,7 +375,7 @@ jax_calc_r = jax.vmap(
 )
 
 
-def simulate_all(keys, X, train, track_params=True):
+def simulate_all(all_keys, X, train, eval_tracker):
 	np.random.seed(SEED)
 
 	# c will have form like:
@@ -391,6 +387,11 @@ def simulate_all(keys, X, train, track_params=True):
 	#   c_2 (key 2)
 	#   c_2 (key 3)
 	# ]
+
+	if train:
+		keys = all_keys[:BATCH_SIZE]
+	else:
+		keys = all_keys[BATCH_SIZE:]
 
 	c = jnp.concatenate([
 		jnp.tile(jnp.array(x[:N_RULES]), (keys.shape[0], 1))
@@ -430,6 +431,8 @@ def simulate_all(keys, X, train, track_params=True):
         n_e_side,
     )
 
+	total_abs_synaptic_change = np.zeros((c.shape[0], N_RULES))
+
 	train_size = (decoder_train_trial_nums[1] - decoder_train_trial_nums[0]) * READOUTS_PER_TRIAL
 	test_size = (decoder_test_trial_nums[1] - decoder_test_trial_nums[0]) * READOUTS_PER_TRIAL
 
@@ -468,7 +471,7 @@ def simulate_all(keys, X, train, track_params=True):
 
 		readout_times_for_trial = np.concatenate([readout_times_for_trial, np.array(t[-1:])])
 
-		save_for_viewing = False # (i % 5 == 0)
+
 		sol = simulate(
 			t,
 			inv_soft_w,
@@ -481,10 +484,10 @@ def simulate_all(keys, X, train, track_params=True):
 			DT,
 			readout_times_for_trial,
 			args,
-			save_for_viewing=save_for_viewing
+			save_for_viewing=not train
 		)
 
-		s, r_exp, inv_soft_w_all, syn, unstable = sol.ys
+		s, r_exp, inv_soft_w_all, syn, unstable = sol
 
 
 		# print('max W', jnp.abs(W).max())
@@ -494,6 +497,8 @@ def simulate_all(keys, X, train, track_params=True):
 		# print('max s', s[:, ~(unstable[-1, ...] > 0), ...].max())
 
 		inv_soft_w = inv_soft_w_all[-1, :]
+		final_synaptic_change = syn[-1, ...]
+		total_abs_synaptic_change += final_synaptic_change
 
 		if i % 20 == 0 and i > 0:
 
@@ -509,11 +514,11 @@ def simulate_all(keys, X, train, track_params=True):
 
 		if train_trial_flag or test_trial_flag:
 			if train_trial_flag:
-				r_train[:, train_idx * READOUTS_PER_TRIAL : (train_idx + 1) * READOUTS_PER_TRIAL, :] = jnp.transpose(jax_calc_r(s[:-1, :, :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2))
+				r_train[:, train_idx * READOUTS_PER_TRIAL : (train_idx + 1) * READOUTS_PER_TRIAL, :] = jnp.transpose(jax_calc_r(s[:READOUTS_PER_TRIAL, :, :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2))
 				targets_train[:, train_idx * READOUTS_PER_TRIAL : (train_idx + 1) * READOUTS_PER_TRIAL] = targets_for_readouts
 				train_idx += 1
 			else:
-				r_test[:, test_idx * READOUTS_PER_TRIAL : (test_idx + 1) * READOUTS_PER_TRIAL, :] = jnp.transpose(jax_calc_r(s[:-1, :, :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2))
+				r_test[:, test_idx * READOUTS_PER_TRIAL : (test_idx + 1) * READOUTS_PER_TRIAL, :] = jnp.transpose(jax_calc_r(s[:READOUTS_PER_TRIAL, :, :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2))
 				targets_test[:, test_idx * READOUTS_PER_TRIAL : (test_idx + 1) * READOUTS_PER_TRIAL] = targets_for_readouts
 				test_idx += 1
 		timer()
@@ -526,16 +531,30 @@ def simulate_all(keys, X, train, track_params=True):
 	print('raw losses')
 	print(losses)
 	losses_for_coefs = 1000 * jnp.reshape(losses, (len(X), keys.shape[0])).mean(axis=1)
+
+	write_path = train_data_path if train else test_data_path
+	log_results(write_path, eval_tracker, losses_for_coefs, jnp.array(X), total_abs_synaptic_change)
+
+	min_loss_index = np.argmin(losses_for_coefs)
+	if train:
+		eval_tracker['evals'] += 1
+		if (losses_for_coefs[min_loss_index] < eval_tracker['best_loss']):
+			eval_tracker['best_x'] = X[min_loss_index]
+			eval_tracker['best_loss'] = losses_for_coefs[min_loss_index]
+			eval_tracker['best_changed'] = True
+
 	return losses_for_coefs
 
 
-def log_sim_results(write_path, eval_tracker, loss, true_losses, plasticity_coefs, syn_effects):
+def log_results(write_path, eval_tracker, losses, plasticity_coefs, syn_effects):
 	# eval_num, loss, true_losses, plastic_coefs, syn_effects
 	syn_effect_means = np.mean(syn_effects, axis=0)
 	syn_effect_stds = np.std(syn_effects, axis=0)
-	to_save = np.concatenate([[eval_tracker['evals'], loss], true_losses, plasticity_coefs, syn_effect_means, syn_effect_stds]).flatten()
-	print(to_save)
-	write_csv(write_path, list(to_save))
+	all_save_data = np.concatenate([[eval_tracker['evals']], losses, plasticity_coefs, syn_effect_means]).flatten()
+	for i in range(all_save_data.shape[0]):
+		save_data = all_save_data[i]
+		print(save_data)
+		write_csv(write_path, list(save_data))
 
 
 def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
@@ -636,7 +655,8 @@ if __name__ == '__main__':
 
 	eval_tracker = {
 		'evals': 0,
-		'best_loss': np.nan,
+		'best_loss': np.inf,
+		'best_x': np.nan,
 		'best_changed': False,
 	}
 
@@ -657,7 +677,7 @@ if __name__ == '__main__':
 	# eval_all([x0], eval_tracker=eval_tracker, train=False)
 
 	key = jr.key(0)
-	keys = jr.split(key, len(train_seeds))
+	keys = jr.split(key, 2 * BATCH_SIZE)
 
 	# X0 = [x0]
 	# base_losses = simulate_all(keys, X0, True, track_params=True)
@@ -665,10 +685,9 @@ if __name__ == '__main__':
 
 	while not es.stop():
 		X = es.ask()
-		losses = simulate_all(keys, X, True, track_params=True)
-		print(losses)
-		print(losses.shape)
+		losses = simulate_all(keys, X, True, eval_tracker)
 		es.tell(X, losses.tolist())
-		# if eval_tracker['best_changed']:
-		# 	eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
-		# es.disp()
+		if eval_tracker['evals'] % 2 == 0 and eval_tracker['best_changed']:
+			x_best = eval_tracker['best_x']
+			test_losses = simulate_all(keys, [x_best], False, eval_tracker)
+		es.disp()
