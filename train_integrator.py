@@ -553,7 +553,7 @@ def log_results(write_path, eval_tracker, losses, plasticity_coefs, syn_effects)
 	print(plasticity_coefs.shape)
 	print(syn_effects.shape)
 	evals = np.full((losses.shape[0], 1), eval_tracker['evals']) 
-	all_save_data = np.concatenate([evals, losses.reshape((losses.shape[0], 1)), plasticity_coefs, syn_effects]).flatten()
+	all_save_data = np.concatenate([evals, losses.reshape((losses.shape[0], 1)), plasticity_coefs, syn_effects], axis=1).flatten()
 	for i in range(all_save_data.shape[0]):
 		save_data = all_save_data[i]
 		print(save_data)
