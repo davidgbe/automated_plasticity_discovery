@@ -712,7 +712,7 @@ if __name__ == '__main__':
 		X = es.ask()
 		losses = simulate_all(keys, X, True, eval_tracker)
 		es.tell(X, losses.tolist())
-		if eval_tracker['evals'] % 2 == 0 and eval_tracker['best_changed']:
+		if eval_tracker['evals'] % 1 == 0 and eval_tracker['best_changed']:
 			x_best = eval_tracker['best_x']
 			test_losses = simulate_all(keys, [x_best], False, eval_tracker)
 		es.disp()
