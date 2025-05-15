@@ -531,9 +531,10 @@ def simulate_all(all_keys, X, train, eval_tracker):
 	print('raw losses')
 	print(losses)
 	losses_for_coefs = 1000 * jnp.reshape(losses, (len(X), keys.shape[0])).mean(axis=1)
+	syn_effects_for_coefs = jnp.reshape(total_abs_synaptic_change, (len(X), keys.shape[0], total_abs_synaptic_change.shape[1])).mean(axis=1)
 
 	write_path = train_data_path if train else test_data_path
-	log_results(write_path, eval_tracker, losses_for_coefs, jnp.array(X), total_abs_synaptic_change)
+	log_results(write_path, eval_tracker, losses_for_coefs, jnp.array(X), syn_effects_for_coefs)
 
 	min_loss_index = np.argmin(losses_for_coefs)
 	if train:
@@ -551,10 +552,8 @@ def log_results(write_path, eval_tracker, losses, plasticity_coefs, syn_effects)
 	print(losses.shape)
 	print(plasticity_coefs.shape)
 	print(syn_effects.shape)
-	syn_effect_means = np.mean(syn_effects, axis=1)
-	syn_effect_stds = np.std(syn_effects, axis=1)
 	evals = np.full((losses.shape[0], 1), eval_tracker['evals']) 
-	all_save_data = np.concatenate([evals, losses, plasticity_coefs, syn_effect_means]).flatten()
+	all_save_data = np.concatenate([evals, losses, plasticity_coefs, syn_effects]).flatten()
 	for i in range(all_save_data.shape[0]):
 		save_data = all_save_data[i]
 		print(save_data)
