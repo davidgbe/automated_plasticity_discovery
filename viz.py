@@ -1,34 +1,44 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_heatmap(matrix, xlabel='Time', ylabel='Neuron index', title='Activity heatmap',
-                 cmap='viridis', save_path=None, vmin=None, vmax=None, figsize=(4, 2)):
+def plot_heatmap(matrix, ax=None, xlabel='Time', ylabel='Neuron index', title='Activity heatmap',
+                 cmap='viridis', vmin=None, vmax=None, figsize=None, save_path=None):
     """
-    Plots an N x T matrix as a heatmap.
+    Plots an N x T matrix as a heatmap into the provided axis.
 
     Parameters:
     - matrix: 2D NumPy array of shape (N, T)
-    - xlabel, ylabel, title: Labels for plot
-    - cmap: Colormap for heatmap
-    - save_path: If provided, saves the figure to this file path
+    - ax: Matplotlib Axes object where the heatmap will be plotted
+    - xlabel, ylabel, title: Labels for the plot
+    - cmap: Colormap for the heatmap
     - vmin, vmax: Color scale limits (set to None for automatic scaling)
     """
     matrix = np.asarray(matrix)
     assert matrix.ndim == 2, "Input must be a 2D matrix (N x T)"
-    
-    plt.figure(figsize=figsize)
-    plt.imshow(matrix, aspect='auto', origin='upper', cmap=cmap, vmin=vmin, vmax=vmax)
-    plt.colorbar(label='Activity')
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.title(title)
-    plt.tight_layout()
-    
-    if save_path:
-        plt.savefig(save_path, dpi=300)
+
+    if ax is None:
+        kwargs = {}
+        if figsize is not None:
+            kwargs['figsize'] = figsize
+
+        fig, ax = fig, axs = plt.subplots(1, 1, **kwargs)
+    else:
+        fig = None
+
+    im = ax.imshow(matrix, aspect='auto', origin='upper', cmap=cmap, vmin=vmin, vmax=vmax)
+    cbar = plt.colorbar(im, ax=ax)
+    cbar.set_label('Activity')
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+
+    if save_path is not None:
+        fig.tight_layout()
+        fig.savefig(save_path, dpi=300)
         print(f"Figure saved to: {save_path}")
         plt.close()
 
+    return ax, fig
 
 # def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, total_activity_penalties, train=True):
 # 	scale = 3

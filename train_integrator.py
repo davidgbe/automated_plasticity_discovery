@@ -415,7 +415,8 @@ def simulate_all(all_keys, X, train, eval_tracker):
 	ws = softplus(inv_soft_w) * ws_polarity * ws_nonzero
 
 	m = np.abs(ws[0, ...]).max()
-	plot_heatmap(ws[0, ...], cmap='bwr', vmin=-m, vmax=m, save_path='./figures/initial_matrix.png', figsize=(4, 3))
+	save_path = os.path.join(out_dir, 'initial_matrix.png')
+	plot_heatmap(ws[0, ...], cmap='bwr', vmin=-m, vmax=m, save_path=save_path, figsize=(4, 3))
 
 	args = (
         c,
@@ -445,6 +446,8 @@ def simulate_all(all_keys, X, train, eval_tracker):
 	train_idx = 0
 	test_idx = 0
 
+	all_rs_for_viz = np.empty((c.shape[0], train_size + test_size, 1000, n_e + n_i)) # (batch_index, T, neurons)
+
 	for i in tqdm(range(N_INNER_LOOP)):
 		timer = start_timer()
 
@@ -457,7 +460,8 @@ def simulate_all(all_keys, X, train, eval_tracker):
 
 		r_in = jnp.tile(r_in, (len(X), *jnp.ones(r_in.ndim - 1).astype(int))) # duplicate block of inputs and integration targets by number of rules to test
 		if i == 0:
-			plot_heatmap(r_in[0, ...].T, cmap='hot', vmin=0, save_path='./figures/r_in_sample.png')
+			save_path = os.path.join(out_dir, 'r_in_sample.png')
+			plot_heatmap(r_in[0, ...].T, cmap='hot', vmin=0, save_path=save_path)
 
 		train_trial_flag = (i >= decoder_train_trial_nums[0] and i < decoder_train_trial_nums[1])
 		test_trial_flag = (i >= decoder_test_trial_nums[0] and i < decoder_test_trial_nums[1])
@@ -469,7 +473,8 @@ def simulate_all(all_keys, X, train, eval_tracker):
 		else:
 			readout_times_for_trial = np.array([])
 
-		readout_times_for_trial = np.concatenate([readout_times_for_trial, np.array(t[-1:])])
+		if train:
+			readout_times_for_trial = np.concatenate([readout_times_for_trial, np.array(t[-1:])])
 
 
 		sol = simulate(
@@ -489,36 +494,22 @@ def simulate_all(all_keys, X, train, eval_tracker):
 
 		s, r_exp, inv_soft_w_all, syn, unstable = sol
 
-
-		# print('max W', jnp.abs(W).max())
-		# print('max s', s.max())
-
-		# print('max W', jnp.abs(W[:, ~(unstable[-1, ...] > 0), ...]).max())
-		# print('max s', s[:, ~(unstable[-1, ...] > 0), ...].max())
-
 		inv_soft_w = inv_soft_w_all[-1, :]
 		final_synaptic_change = syn[-1, ...]
 		total_abs_synaptic_change += final_synaptic_change
 
-		if i % 20 == 0 and i > 0:
-
-			W = softplus(inv_soft_w_all) * ws_polarity * ws_nonzero
-			ws = W[-1, ...]
-
-			m = np.abs(ws[0, ...]).max()
-			plot_heatmap(ws[0, ...], cmap='bwr', vmin=-m, vmax=m, save_path=f'./figures/weight_matrix_{zero_pad(i, 3)}.png', figsize=(4, 3))
-
-			r = jnp.transpose(jax_calc_r(s, s_offsets, g, n_e), (1, 0, 2))
-			plot_heatmap(r[0, ...].T, cmap='hot', vmin=0, save_path=f'./figures/dynamics_{zero_pad(i, 3)}.png', figsize=(4, 3))
-
-
 		if train_trial_flag or test_trial_flag:
+			r = jnp.transpose(jax_calc_r(s[..., :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2))
+
+			if not train:
+				all_rs_for_viz[:, i, ...] = r[:, READOUTS_PER_TRIAL:, :] # (batch_index, T, neurons)
+
 			if train_trial_flag:
-				r_train[:, train_idx * READOUTS_PER_TRIAL : (train_idx + 1) * READOUTS_PER_TRIAL, :] = jnp.transpose(jax_calc_r(s[:READOUTS_PER_TRIAL, :, :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2))
+				r_train[:, train_idx * READOUTS_PER_TRIAL : (train_idx + 1) * READOUTS_PER_TRIAL, :] = r[:, :READOUTS_PER_TRIAL, :]
 				targets_train[:, train_idx * READOUTS_PER_TRIAL : (train_idx + 1) * READOUTS_PER_TRIAL] = targets_for_readouts
 				train_idx += 1
 			else:
-				r_test[:, test_idx * READOUTS_PER_TRIAL : (test_idx + 1) * READOUTS_PER_TRIAL, :] = jnp.transpose(jax_calc_r(s[:READOUTS_PER_TRIAL, :, :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2))
+				r_test[:, test_idx * READOUTS_PER_TRIAL : (test_idx + 1) * READOUTS_PER_TRIAL, :] = r[:, :READOUTS_PER_TRIAL, :]
 				targets_test[:, test_idx * READOUTS_PER_TRIAL : (test_idx + 1) * READOUTS_PER_TRIAL] = targets_for_readouts
 				test_idx += 1
 		timer()
@@ -544,6 +535,13 @@ def simulate_all(all_keys, X, train, eval_tracker):
 			eval_tracker['best_x'] = X[min_loss_index]
 			eval_tracker['best_loss'] = losses_for_coefs[min_loss_index]
 			eval_tracker['best_changed'] = True
+	else:
+		eval_tracker['best_changed'] = False
+
+		W = softplus(inv_soft_w_all) * ws_polarity * ws_nonzero
+		ws = W[-1, ...]
+
+		plot_run(losses, ws, all_rs_for_viz)
 
 	return losses_for_coefs
 
@@ -555,6 +553,33 @@ def log_results(write_path, eval_tracker, losses, plasticity_coefs, syn_effects)
 	for i in range(all_save_data.shape[0]):
 		save_data = all_save_data[i, :]
 		write_csv(write_path, list(save_data))
+
+
+def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
+	print(losses.shape)
+	print(ws.shape)
+	print(all_rs_for_viz)
+
+	padded_idx = zero_pad(eval_tracker['evals'], 4)
+	save_path = os.path.join(out_dir, f'{padded_idx}.png')
+
+	for i in range(3):
+		w = ws[-i, ...]
+		rs_for_trials = all_rs_for_viz[-i, ...]
+
+		    
+		fig, axs = plt.subplots(3, 2)
+
+		m = np.abs(w).max()
+		plot_heatmap(w, axs, cmap='bwr', vmin=-m, vmax=m)
+
+		for j in range(all_rs_for_viz):
+			plot_heatmap(rs_for_trials[j, ...].T, axs, cmap='hot', vmin=0)
+
+		fig.tight_layout()
+		fig.savefig(save_path, dpi=300)
+		print(f"Figure saved to: {save_path}")
+		plt.close()
 
 
 def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
