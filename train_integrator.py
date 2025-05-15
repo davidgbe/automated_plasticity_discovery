@@ -548,9 +548,13 @@ def simulate_all(all_keys, X, train, eval_tracker):
 
 def log_results(write_path, eval_tracker, losses, plasticity_coefs, syn_effects):
 	# eval_num, loss, true_losses, plastic_coefs, syn_effects
-	syn_effect_means = np.mean(syn_effects, axis=0)
-	syn_effect_stds = np.std(syn_effects, axis=0)
-	all_save_data = np.concatenate([[eval_tracker['evals']], losses, plasticity_coefs, syn_effect_means]).flatten()
+	print(losses.shape)
+	print(plasticity_coefs.shape)
+	print(syn_effects.shape)
+	syn_effect_means = np.mean(syn_effects, axis=1)
+	syn_effect_stds = np.std(syn_effects, axis=1)
+	evals = np.full((losses.shape[0], 1), eval_tracker['evals']) 
+	all_save_data = np.concatenate([evals, losses, plasticity_coefs, syn_effect_means]).flatten()
 	for i in range(all_save_data.shape[0]):
 		save_data = all_save_data[i]
 		print(save_data)
