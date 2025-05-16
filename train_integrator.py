@@ -499,17 +499,17 @@ def simulate_all(all_keys, X, train, eval_tracker):
 		total_abs_synaptic_change += final_synaptic_change
 
 		if train_trial_flag or test_trial_flag:
-			r = jnp.transpose(jax_calc_r(s[..., :n_e_pool], s_offsets[:n_e_pool], g, n_e), (1, 0, 2))
+			r = jnp.transpose(jax_calc_r(s, s_offsets, g, n_e), (1, 0, 2))
 
 			if not train:
 				all_rs_for_viz[:, i, ...] = r[:, READOUTS_PER_TRIAL:, :] # (batch_index, T, neurons)
 
 			if train_trial_flag:
-				r_train[:, train_idx * READOUTS_PER_TRIAL : (train_idx + 1) * READOUTS_PER_TRIAL, :] = r[:, :READOUTS_PER_TRIAL, :]
+				r_train[:, train_idx * READOUTS_PER_TRIAL : (train_idx + 1) * READOUTS_PER_TRIAL, :n_e_pool] = r[:, :READOUTS_PER_TRIAL, :n_e_pool]
 				targets_train[:, train_idx * READOUTS_PER_TRIAL : (train_idx + 1) * READOUTS_PER_TRIAL] = targets_for_readouts
 				train_idx += 1
 			else:
-				r_test[:, test_idx * READOUTS_PER_TRIAL : (test_idx + 1) * READOUTS_PER_TRIAL, :] = r[:, :READOUTS_PER_TRIAL, :]
+				r_test[:, test_idx * READOUTS_PER_TRIAL : (test_idx + 1) * READOUTS_PER_TRIAL, :n_e_pool] = r[:, :READOUTS_PER_TRIAL, :n_e_pool]
 				targets_test[:, test_idx * READOUTS_PER_TRIAL : (test_idx + 1) * READOUTS_PER_TRIAL] = targets_for_readouts
 				test_idx += 1
 		timer()
