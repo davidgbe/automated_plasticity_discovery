@@ -446,7 +446,7 @@ def simulate_all(all_keys, X, train, eval_tracker):
 	train_idx = 0
 	test_idx = 0
 
-	all_rs_for_viz = np.empty((c.shape[0], train_size + test_size, 1000, n_e + n_i)) # (batch_index, T, neurons)
+	all_rs_for_viz = np.empty((c.shape[0], train_size + test_size, 1000, n_e + n_i)) # (batch_index, activation_index, T, neurons)
 
 	for i in tqdm(range(N_INNER_LOOP)):
 		timer = start_timer()
@@ -502,7 +502,8 @@ def simulate_all(all_keys, X, train, eval_tracker):
 			r = jnp.transpose(jax_calc_r(s, s_offsets, g, n_e), (1, 0, 2))
 
 			if not train:
-				all_rs_for_viz[:, i, ...] = r[:, READOUTS_PER_TRIAL:, :] # (batch_index, T, neurons)
+				saved_activation_num = i - decoder_train_trial_nums[0]
+				all_rs_for_viz[:, saved_activation_num, ...] = r[:, READOUTS_PER_TRIAL:, :] # (batch_index, activation_index, T, neurons)
 
 			if train_trial_flag:
 				r_train[:, train_idx * READOUTS_PER_TRIAL : (train_idx + 1) * READOUTS_PER_TRIAL, :n_e_pool] = r[:, :READOUTS_PER_TRIAL, :n_e_pool]
@@ -557,28 +558,27 @@ def log_results(write_path, eval_tracker, losses, plasticity_coefs, syn_effects)
 def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
 	print(losses.shape)
 	print(ws.shape)
-	print(all_rs_for_viz)
+	print(all_rs_for_viz.shape)
 
 	padded_idx = zero_pad(eval_tracker['evals'], 4)
 	save_path = os.path.join(out_dir, f'{padded_idx}.png')
 
-	for i in range(3):
-		w = ws[-i, ...]
-		rs_for_trials = all_rs_for_viz[-i, ...]
+	fig, axs = plt.subplots(3 * losses.shape[0], 2)
 
-		    
-		fig, axs = plt.subplots(3, 2)
+	for i in range(losses.shape[0]):
+		w = ws[i, ...]
+		rs_for_trials = all_rs_for_viz[i, ...]
 
 		m = np.abs(w).max()
-		plot_heatmap(w, axs[0, 1], cmap='bwr', vmin=-m, vmax=m)
+		plot_heatmap(w, axs[3 * i, 1], cmap='bwr', vmin=-m, vmax=m)
 
-		for j in range(all_rs_for_viz):
-			plot_heatmap(rs_for_trials[j, ...].T, axs[j, 0], cmap='hot', vmin=0)
+		for j in range(3):
+			plot_heatmap(rs_for_trials[-j, ...].T, axs[3 * i + j, 0], cmap='hot', vmin=0)
 
-		fig.tight_layout()
-		fig.savefig(save_path, dpi=300)
-		print(f"Figure saved to: {save_path}")
-		plt.close()
+	fig.tight_layout()
+	fig.savefig(save_path, dpi=300)
+	print(f"Figure saved to: {save_path}")
+	plt.close()
 
 
 def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
