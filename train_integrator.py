@@ -556,14 +556,11 @@ def log_results(write_path, eval_tracker, losses, plasticity_coefs, syn_effects)
 
 
 def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
-	print(losses.shape)
-	print(ws.shape)
-	print(all_rs_for_viz.shape)
-
 	padded_idx = zero_pad(eval_tracker['evals'], 4)
 	save_path = os.path.join(out_dir, f'{padded_idx}.png')
 
-	fig, axs = plt.subplots(3 * losses.shape[0], 2)
+	scale = 0.8
+	fig, axs = plt.subplots(3 * losses.shape[0], 2. figsize=(3 * losses.shape[0] * scale, 2 * scale))
 
 	for i in range(losses.shape[0]):
 		w = ws[i, ...]
