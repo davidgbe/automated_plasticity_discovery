@@ -570,10 +570,10 @@ def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
 		fig, axs = plt.subplots(3, 2)
 
 		m = np.abs(w).max()
-		plot_heatmap(w, axs, cmap='bwr', vmin=-m, vmax=m)
+		plot_heatmap(w, axs[0, 1], cmap='bwr', vmin=-m, vmax=m)
 
 		for j in range(all_rs_for_viz):
-			plot_heatmap(rs_for_trials[j, ...].T, axs, cmap='hot', vmin=0)
+			plot_heatmap(rs_for_trials[j, ...].T, axs[j, 0], cmap='hot', vmin=0)
 
 		fig.tight_layout()
 		fig.savefig(save_path, dpi=300)
