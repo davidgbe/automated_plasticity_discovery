@@ -40,9 +40,9 @@ print(args)
 
 SEED = args.seed
 BATCH_SIZE = args.batch
-N_INNER_LOOP = 10 # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (6, 8)
-decoder_test_trial_nums = (8, 10)
+N_INNER_LOOP = 320 # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (280, 300)
+decoder_test_trial_nums = (300, 320)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 DW_LAG = 5
@@ -560,7 +560,7 @@ def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
 	save_path = os.path.join(out_dir, f'{padded_idx}.png')
 
 	scale = 0.8
-	fig, axs = plt.subplots(3 * losses.shape[0], 2, figsize=(3 * losses.shape[0] * scale, 2 * scale))
+	fig, axs = plt.subplots(3 * losses.shape[0], 2, figsize=(2 * scale, 3 * losses.shape[0] * scale))
 
 	for i in range(losses.shape[0]):
 		w = ws[i, ...]
@@ -708,7 +708,7 @@ if __name__ == '__main__':
 		X = es.ask()
 		losses = simulate_all(keys, X, True, eval_tracker)
 		es.tell(X, losses.tolist())
-		if eval_tracker['evals'] % 1 == 0 and eval_tracker['best_changed']:
+		if eval_tracker['evals'] % 10 == 0 and eval_tracker['best_changed']:
 			x_best = eval_tracker['best_x']
 			test_losses = simulate_all(keys, [x_best], False, eval_tracker)
 		es.disp()
