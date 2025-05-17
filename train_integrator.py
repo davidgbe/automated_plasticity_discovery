@@ -559,7 +559,7 @@ def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
 	padded_idx = zero_pad(eval_tracker['evals'], 4)
 	save_path = os.path.join(out_dir, f'{padded_idx}.png')
 
-	scale = 0.8
+	scale = 1.5
 	fig, axs = plt.subplots(3 * losses.shape[0], 2, figsize=(2 * scale, 3 * losses.shape[0] * scale))
 
 	for i in range(losses.shape[0]):
