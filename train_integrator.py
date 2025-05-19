@@ -157,7 +157,7 @@ def create_shift_matrix(size, k=1, ring=False):
 			### Add to make into a ring structure
 			if ring:
 				w[-k - k_p, (size - k_p):] = 1
-	return w
+	return jnp.array(w)
 
 
 def create_shuffled_one_to_one(size):
