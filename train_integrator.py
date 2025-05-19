@@ -650,9 +650,9 @@ if __name__ == '__main__':
 		out_dir = existing_dirs_with_run_num[-1]
 		train_data_path = os.path.join(out_dir, 'train_data.csv')
 		test_data_path = os.path.join(out_dir, 'test_data.csv')
-		with open(os.path.join(out_dir, 'eval_tracker.pkl', 'rb')) as f:
+		with open(os.path.join(out_dir, 'eval_tracker.pkl'), 'rb') as f:
 			eval_tracker = pickle.loads(f)
-		with open(os.path.join(out_dir, 'es_checkpoint.pkl', 'rb')) as f:
+		with open(os.path.join(out_dir, 'es_checkpoint.pkl'), 'rb') as f:
 			es = pickle.loads(f)
 
 	# eval_all([x0], eval_tracker=eval_tracker)
@@ -671,7 +671,7 @@ if __name__ == '__main__':
 		es.disp()
 
 		# save optimizer state
-		with open('es_checkpoint', 'wb') as f:
+		with open('es_checkpoint.pkl', 'wb') as f:
 			pickle.dump(es, f)
 		# save eval_tracker state
 		with open('eval_tracker.pkl', 'wb') as f:
