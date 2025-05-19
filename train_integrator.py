@@ -647,7 +647,7 @@ if __name__ == '__main__':
 		es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
 		options['popsize'] = es.opts['popsize']
 	else:
-		out_dir = existing_dirs_with_run_num[-1]
+		out_dir = os.path.join('sims_out', existing_dirs_with_run_num[-1])
 		train_data_path = os.path.join(out_dir, 'train_data.csv')
 		test_data_path = os.path.join(out_dir, 'test_data.csv')
 		with open(os.path.join(out_dir, 'eval_tracker.pkl'), 'rb') as f:
