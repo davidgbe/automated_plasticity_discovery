@@ -8,6 +8,7 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 from functools import partial
+import re
 
 
 class Generic(object):
@@ -162,3 +163,11 @@ def merge_with_indices_jax(a, b):
     b_indices = jnp.nonzero(origin_sorted == 1, size=len(b))[0]
 
     return sorted_merged, a_indices, b_indices
+
+
+def find_dirs_with_fragment(base_path, frag):
+    pattern = re.compile(frag)
+    return [
+        name for name in sorted(os.listdir(base_path))
+        if os.path.isdir(os.path.join(base_path, name)) and pattern.search(name)
+    ]

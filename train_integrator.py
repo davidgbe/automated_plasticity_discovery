@@ -3,13 +3,14 @@ import numpy as np
 import os
 import time
 from tqdm import tqdm
-from aux_funcs import jax_gaussian_if_under_val, start_timer, zero_pad
+from aux_funcs import jax_gaussian_if_under_val, start_timer, zero_pad, find_dirs_with_fragment
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from datetime import datetime
 import multiprocessing as mp
 import argparse
 import cma
+import pickle
 import jax
 import jax.numpy as jnp
 import jax.random as jr
@@ -34,10 +35,12 @@ parser.add_argument('--seed', metavar='s', type=int)
 parser.add_argument('--hd_hd_sparsity', metavar='dds', type=float, default=1.)
 parser.add_argument('--hd_hr_sparsity', metavar='drs', type=float, default=1.)
 parser.add_argument('--struct_prior', metavar='sp', type=str, default='random')
+parser.add_argument('--run_num', metavar='rn', type=int)
 
 args = parser.parse_args()
 print(args)
 
+RUN_NUM = args.run_num
 SEED = args.seed
 BATCH_SIZE = args.batch
 N_INNER_LOOP = 320 # Number of times to simulate network and plasticity rules per loss function evaluation
@@ -139,45 +142,21 @@ rule_names = [r for rs in rule_names for r in rs]
 rule_names = np.array(rule_names, dtype=object)
 
 
-# Make directory for outputting simulations
-if not os.path.exists('sims_out'):
-	os.mkdir('sims_out')
-
-# Make subdirectory for this particular experiment
-time_stamp = str(datetime.now()).replace(' ', '_')
-joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/int_preexist_n40_speed_test_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
-os.mkdir(out_dir)
-
-# Make subdirectory for outputting CMAES info
-os.mkdir(os.path.join(out_dir, 'outcmaes'))
-
-# Made CSVs for outputting train & test data
-header = ['evals', 'loss'] + [f'true_loss_{i}' for i in np.arange(BATCH_SIZE)]
-header += list(rule_names)
-header += ['effect_means']
-header += ['effect_stds']
-
-train_data_path = os.path.join(out_dir, 'train_data.csv')
-write_csv(train_data_path, header)
-
-test_data_path = os.path.join(out_dir, 'test_data.csv')
-write_csv(test_data_path, header)
-
-
-def create_shift_matrix(size, k=1):
+def create_shift_matrix(size, k=1, ring=False):
 	w = np.zeros((size, size))
 	if k >= 1:
 		for k_p in np.arange(1, k+1):
 			w += np.diag(np.ones((size - k_p,)), k=k_p)
 			### Add to make into a ring structure
-			# w[(size - k_p):, k - k_p] = 1
+			if ring:
+				w[(size - k_p):, k - k_p] = 1
 
 	elif k <= -1:
 		for k_p in np.arange(1, -k+1):
 			w += np.diag(np.ones((size - k_p,)), k=-k_p)
 			### Add to make into a ring structure
-			# w[-k - k_p, (size - k_p):] = 1
+			if ring:
+				w[-k - k_p, (size - k_p):] = 1
 	return w
 
 
@@ -220,7 +199,6 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 	return jnp.where(invalid, 10, residual / total)
 
 
-@jax.jit
 def make_network(key):
     '''
     Generates an excitatory chain with recurrent inhibition and weak recurrent excitation.
@@ -414,9 +392,23 @@ def simulate_all(all_keys, X, train, eval_tracker):
 
 	ws = softplus(inv_soft_w) * ws_polarity * ws_nonzero
 
-	m = np.abs(ws[0, ...]).max()
-	save_path = os.path.join(out_dir, 'initial_matrix.png')
-	plot_heatmap(ws[0, ...], cmap='bwr', vmin=-m, vmax=m, save_path=save_path, figsize=(4, 3))
+	if eval_tracker['evals'] == 0:
+		m = np.abs(ws[0, ...]).max()
+		save_path = os.path.join(out_dir, 'initial_matrix.png')
+		plot_heatmap(
+			matrix=ws[0, ...],
+			cmap='bwr',
+			vmin=-m,
+			vmax=m,
+			save_path=save_path,
+			figsize=(4, 3),
+			ylabel='Neuron index',
+			xlabel='Neuron index',
+			title=None,
+		)
+
+		(matrix, ax=None, xlabel='Time', ylabel='Neuron index', title='Activity heatmap',
+                 cmap='viridis', vmin=None, vmax=None, figsize=None, save_path=None)
 
 	args = (
         c,
@@ -449,7 +441,6 @@ def simulate_all(all_keys, X, train, eval_tracker):
 	all_rs_for_viz = np.empty((c.shape[0], train_size + test_size, 1000, n_e + n_i)) # (batch_index, activation_index, T, neurons)
 
 	for i in tqdm(range(N_INNER_LOOP)):
-		timer = start_timer()
 
 		r_in = np.empty((BATCH_SIZE, len(t), n_e_pool + 2 * n_e_side + n_i))
 		running_input_sums = np.empty((BATCH_SIZE, INPUT_LEN))
@@ -459,7 +450,8 @@ def simulate_all(all_keys, X, train, eval_tracker):
 			running_input_sums[i_k, :] = running_input_sums_k
 
 		r_in = jnp.tile(r_in, (len(X), *jnp.ones(r_in.ndim - 1).astype(int))) # duplicate block of inputs and integration targets by number of rules to test
-		if i == 0:
+		
+		if i == 0 and eval_tracker['evals'] == 0:
 			save_path = os.path.join(out_dir, 'r_in_sample.png')
 			plot_heatmap(r_in[0, ...].T, cmap='hot', vmin=0, save_path=save_path)
 
@@ -513,7 +505,6 @@ def simulate_all(all_keys, X, train, eval_tracker):
 				r_test[:, test_idx * READOUTS_PER_TRIAL : (test_idx + 1) * READOUTS_PER_TRIAL, :n_e_pool] = r[:, :READOUTS_PER_TRIAL, :n_e_pool]
 				targets_test[:, test_idx * READOUTS_PER_TRIAL : (test_idx + 1) * READOUTS_PER_TRIAL] = targets_for_readouts
 				test_idx += 1
-		timer()
 
 	jax_calc_loss = jax.vmap(calc_loss, (0, 0, 0, 0))
 	losses = jax_calc_loss(r_train, r_test, targets_train, targets_test)
@@ -567,7 +558,16 @@ def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
 		rs_for_trials = all_rs_for_viz[i, ...]
 
 		m = np.abs(w).max()
-		plot_heatmap(w, axs[3 * i, 1], cmap='bwr', vmin=-m, vmax=m)
+		plot_heatmap(
+			matrix=w,
+			ax=axs[3 * i, 1],
+			cmap='bwr',
+			vmin=-m,
+			vmax=m,
+			ylabel='Neuron index',
+			xlabel='Neuron index',
+			title=None,
+		)
 
 		for j in range(3):
 			plot_heatmap(rs_for_trials[-j, ...].T, axs[3 * i + j, 0], cmap='hot', vmin=0)
@@ -578,61 +578,6 @@ def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
 	plt.close()
 
 
-def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
-	plasticity_coefs = x[:N_RULES]
-	rule_time_constants = x[N_RULES:]
-
-	if np.any(np.array([res['blew_up'] for res in results])):
-		if eval_tracker is not None:
-			eval_tracker['evals'] += 1
-		return 1e8 * BATCH_SIZE + 1e7 * np.sum(np.abs(plasticity_coefs)), 1e8 * np.ones((len(results),)), np.zeros((len(results), len(plasticity_coefs))), np.zeros((len(results),)), np.zeros((len(results),))
-
-	true_losses = np.array([res['loss'] for res in results])
-	syn_effects = np.stack([res['syn_effects'] for res in results])
-	total_activity_penalties = ACTIVITY_LOSS_COEF * np.array([res['rs_for_loss'].mean() for res in results])
-	syn_effect_penalties = L1_PENALTIES[0] * np.sum(np.abs(syn_effects), axis=1)
-
-	losses = true_losses + syn_effect_penalties + total_activity_penalties
-	loss = np.sum(losses)
-
-	if eval_tracker is not None:
-		if train:
-			if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
-				if eval_tracker['evals'] > 0:
-					eval_tracker['best_loss'] = loss
-					eval_tracker['best_changed'] = True
-					eval_tracker['params'] = copy(x)
-
-				plot_results(
-					results,
-					eval_tracker,
-					out_dir,
-					plasticity_coefs,
-					true_losses,
-					syn_effect_penalties,
-					total_activity_penalties,
-					train=True,
-				)
-			eval_tracker['evals'] += 1
-		else:
-			plot_results(
-				results,
-				eval_tracker,
-				out_dir,
-				plasticity_coefs,
-				true_losses,
-				syn_effect_penalties,
-				total_activity_penalties,
-				train=False,
-			)
-			eval_tracker['best_changed'] = False
-
-	print('guess:', plasticity_coefs)
-	print('loss:', loss)
-	print('')
-	return loss, true_losses, syn_effects, syn_effect_penalties, total_activity_penalties
-
-
 def load_best_params(file_name):
 	file_path = f'./sims_out/{file_name}/outcmaes/xrecentbest.dat'
 	df_params = read_csv(file_path, read_header=False)
@@ -641,22 +586,6 @@ def load_best_params(file_name):
 	best_params = df_params.iloc[min_loss_idx][5:]
 	return np.array(best_params)
 
-	# # make this into jax
-	# simulate_all(task_vars)
-
-	# losses = []
-	# for i in range(len(X)):
-	# 	loss, true_losses, syn_effects, syn_effect_penalties, total_activities = process_plasticity_rule_results(results[BATCH_SIZE * i: BATCH_SIZE * (i+1)], X[i], eval_tracker=eval_tracker, train=train)
-	# 	losses.append(loss)
-	# 	if train:
-	# 		log_sim_results(train_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
-	# 	else:
-	# 		log_sim_results(test_data_path, eval_tracker, loss, true_losses, X[i], syn_effects)
-	
-	# dur = time.time() - start
-	# print('dur:', dur)
-
-	# return losses
 
 def process_params_str(s):
 	params = []
@@ -669,33 +598,65 @@ def process_params_str(s):
 if __name__ == '__main__':
 	mp.set_start_method('fork')
 
-	if args.load_initial is not None:
-		x0 = load_best_params(args.load_initial)
-	else:
-		x0 = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
+	# Make directory for outputting simulations
+	if not os.path.exists('sims_out'):
+		os.mkdir('sims_out')
 
-	eval_tracker = {
-		'evals': 0,
-		'best_loss': np.inf,
-		'best_x': np.nan,
-		'best_changed': False,
-	}
+	existing_dirs_with_run_num = find_dirs_with_fragment('sims_out', f'run_{RUN_NUM}')
+
+	if len(existing_dirs_with_run_num) == 0: # no existing files
+		# Make subdirectory for this particular experiment
+		time_stamp = str(datetime.now()).replace(' ', '_')
+		joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
+		out_dir = f'sims_out/int_preexist_n40_speed_test_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}_run_{RUN_NUM}'
+		os.mkdir(out_dir)
+
+		# Make subdirectory for outputting CMAES info
+		os.mkdir(os.path.join(out_dir, 'outcmaes'))
+
+		# Made CSVs for outputting train & test data
+		header = ['evals', 'loss'] + [f'true_loss_{i}' for i in np.arange(BATCH_SIZE)]
+		header += list(rule_names)
+		header += ['effect_means']
+		header += ['effect_stds']
+
+		train_data_path = os.path.join(out_dir, 'train_data.csv')
+		write_csv(train_data_path, header)
+
+		test_data_path = os.path.join(out_dir, 'test_data.csv')
+		write_csv(test_data_path, header)
+
+		eval_tracker = {
+			'evals': 0,
+			'best_loss': np.inf,
+			'best_x': np.nan,
+			'best_changed': False,
+		}
+
+		options = {
+			'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+			'popsize': 30,
+			'bounds': [
+				[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
+				[10] * N_RULES + [40e-3] * N_TIMECONSTS,
+			],
+		}
+
+		if args.load_initial is not None:
+			x0 = load_best_params(args.load_initial)
+		else:
+			x0 = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
+
+		es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
+		options['popsize'] = es.opts['popsize']
+	else:
+		out_dir = existing_dirs_with_run_num[-1]
+		train_data_path = os.path.join(out_dir, 'train_data.csv')
+		test_data_path = os.path.join(out_dir, 'test_data.csv')
+		eval_tracker = pickle.load(os.path.join(out_dir, 'eval_tracker.pkl'))
+		es = cma.CMAEvolutionStrategy.load(os.path.join(out_dir, 'es_checkpoint.pkl'))
 
 	# eval_all([x0], eval_tracker=eval_tracker)
-
-	options = {
-		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-		'popsize': 30,
-		'bounds': [
-			[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
-			[10] * N_RULES + [40e-3] * N_TIMECONSTS,
-		],
-	}
-
-	es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
-	options['popsize'] = es.opts['popsize']
-
-	# eval_all([x0], eval_tracker=eval_tracker, train=False)
 
 	key = jr.key(0)
 	keys = jr.split(key, 2 * BATCH_SIZE)
@@ -708,7 +669,18 @@ if __name__ == '__main__':
 		X = es.ask()
 		losses = simulate_all(keys, X, True, eval_tracker)
 		es.tell(X, losses.tolist())
+		es.disp()
+
+		# save optimizer state
+		es.save('es_checkpoint.pkl')
+		# save eval_tracker state
+		with open('eval_tracker.pkl', 'wb') as handle:
+			pickle.dump(eval_tracker, handle)
+			
 		if eval_tracker['evals'] % 10 == 0 and eval_tracker['best_changed']:
 			x_best = eval_tracker['best_x']
 			test_losses = simulate_all(keys, [x_best], False, eval_tracker)
-		es.disp()
+
+			# save eval_tracker state after test if finished
+			with open('eval_tracker.pkl', 'wb') as handle:
+				pickle.dump(eval_tracker, handle)

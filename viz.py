@@ -30,7 +30,8 @@ def plot_heatmap(matrix, ax=None, xlabel='Time', ylabel='Neuron index', title='A
     cbar.set_label('Activity')
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-    ax.set_title(title)
+    if title is not None:
+        ax.set_title(title)
 
     if save_path is not None:
         fig.tight_layout()
