@@ -671,10 +671,10 @@ if __name__ == '__main__':
 		es.disp()
 
 		# save optimizer state
-		with open('es_checkpoint.pkl', 'wb') as f:
+		with open(os.path.join(out_dir, 'es_checkpoint.pkl'), 'wb') as f:
 			pickle.dump(es, f)
 		# save eval_tracker state
-		with open('eval_tracker.pkl', 'wb') as f:
+		with open(os.path.join(out_dir, 'eval_tracker.pkl'), 'wb') as f:
 			pickle.dump(eval_tracker, f)
 			
 		if eval_tracker['evals'] % 10 == 0 and eval_tracker['best_changed']:
