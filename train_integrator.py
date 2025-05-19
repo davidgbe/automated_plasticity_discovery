@@ -651,9 +651,9 @@ if __name__ == '__main__':
 		train_data_path = os.path.join(out_dir, 'train_data.csv')
 		test_data_path = os.path.join(out_dir, 'test_data.csv')
 		with open(os.path.join(out_dir, 'eval_tracker.pkl'), 'rb') as f:
-			eval_tracker = pickle.loads(f)
+			eval_tracker = pickle.load(f)
 		with open(os.path.join(out_dir, 'es_checkpoint.pkl'), 'rb') as f:
-			es = pickle.loads(f)
+			es = pickle.load(f)
 
 	# eval_all([x0], eval_tracker=eval_tracker)
 
