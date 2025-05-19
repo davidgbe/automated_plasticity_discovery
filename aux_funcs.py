@@ -171,3 +171,37 @@ def find_dirs_with_fragment(base_path, frag):
         name for name in sorted(os.listdir(base_path))
         if os.path.isdir(os.path.join(base_path, name)) and pattern.search(name)
     ]
+
+
+def format_plot(
+    axs,
+    linewidth=1,
+    ticklength=8,
+    ticklabelsize=12,
+    axislabelsize=13,
+    tickwidth=1,
+    rightspine=False,
+    leftspine=True,
+    topspine=False,
+    bottomspine=True,
+    ):
+
+    if type(axs) is not list and type(axs) is not np.array and type(axs) is not np.ndarray:
+        axs = [axs]
+
+    if type(axs) is np.ndarray:
+        axs = axs.flatten()
+
+    for ax in axs:
+        ax.spines['top'].set_visible(topspine)
+        ax.spines['right'].set_visible(rightspine)
+        ax.spines['bottom'].set_visible(bottomspine)
+        ax.spines['left'].set_visible(leftspine)
+
+        ax.spines['bottom'].set_linewidth(linewidth)
+        ax.spines['left'].set_linewidth(linewidth)
+
+        ax.tick_params(axis='both', length=ticklength, labelsize=ticklabelsize, width=tickwidth)
+
+        ax.xaxis.label.set_size(axislabelsize)
+        ax.yaxis.label.set_size(axislabelsize)

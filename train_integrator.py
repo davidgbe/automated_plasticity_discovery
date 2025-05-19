@@ -3,7 +3,7 @@ import numpy as np
 import os
 import time
 from tqdm import tqdm
-from aux_funcs import jax_gaussian_if_under_val, start_timer, zero_pad, find_dirs_with_fragment
+from aux_funcs import jax_gaussian_if_under_val, start_timer, zero_pad, find_dirs_with_fragment, format_plot
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from datetime import datetime
@@ -569,6 +569,7 @@ def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
 		for j in range(3):
 			plot_heatmap(rs_for_trials[-j, ...].T, axs[3 * i + j, 0], cmap='hot', vmin=0)
 
+	format_plot(axs)
 	fig.tight_layout()
 	fig.savefig(save_path, dpi=300)
 	print(f"Figure saved to: {save_path}")
@@ -657,7 +658,7 @@ if __name__ == '__main__':
 
 	# eval_all([x0], eval_tracker=eval_tracker)
 
-	key = jr.key(0)
+	key = jr.key(SEED)
 	keys = jr.split(key, 2 * BATCH_SIZE)
 
 	# X0 = [x0]
