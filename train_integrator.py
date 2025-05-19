@@ -677,7 +677,7 @@ if __name__ == '__main__':
 		with open(os.path.join(out_dir, 'eval_tracker.pkl'), 'wb') as f:
 			pickle.dump(eval_tracker, f)
 			
-		if eval_tracker['evals'] % 10 == 0 and eval_tracker['best_changed']:
+		if eval_tracker['evals'] % 1 == 0 and eval_tracker['best_changed']:
 			x_best = eval_tracker['best_x']
 			test_losses = simulate_all(keys, [x_best], False, eval_tracker)
 
