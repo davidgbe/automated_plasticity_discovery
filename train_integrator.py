@@ -40,7 +40,7 @@ parser.add_argument('--run_num', metavar='rn', type=int)
 args = parser.parse_args()
 print(args)
 
-RUN_NUM = args.run_num
+RUN_NUM = zero_pad(args.run_num, 6)
 SEED = args.seed
 BATCH_SIZE = args.batch
 N_INNER_LOOP = 20 # Number of times to simulate network and plasticity rules per loss function evaluation
@@ -650,8 +650,10 @@ if __name__ == '__main__':
 		out_dir = existing_dirs_with_run_num[-1]
 		train_data_path = os.path.join(out_dir, 'train_data.csv')
 		test_data_path = os.path.join(out_dir, 'test_data.csv')
-		eval_tracker = pickle.load(os.path.join(out_dir, 'eval_tracker.pkl'))
-		es = pickle.load(os.path.join(out_dir, 'es_checkpoint.pkl'))
+		with open(os.path.join(out_dir, 'eval_tracker.pkl', 'rb')) as f:
+			eval_tracker = pickle.loads(f)
+		with open(os.path.join(out_dir, 'es_checkpoint.pkl', 'rb')) as f:
+			es = pickle.loads(f)
 
 	# eval_all([x0], eval_tracker=eval_tracker)
 
@@ -669,11 +671,11 @@ if __name__ == '__main__':
 		es.disp()
 
 		# save optimizer state
-		with open('es_checkpoint', 'wb') as handle:
-			pickle.dump(es, handle)
+		with open('es_checkpoint', 'wb') as f:
+			pickle.dump(es, f)
 		# save eval_tracker state
-		with open('eval_tracker.pkl', 'wb') as handle:
-			pickle.dump(eval_tracker, handle)
+		with open('eval_tracker.pkl', 'wb') as f:
+			pickle.dump(eval_tracker, f)
 			
 		if eval_tracker['evals'] % 10 == 0 and eval_tracker['best_changed']:
 			x_best = eval_tracker['best_x']
