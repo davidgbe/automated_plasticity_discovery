@@ -43,9 +43,9 @@ print(args)
 RUN_NUM = args.run_num
 SEED = args.seed
 BATCH_SIZE = args.batch
-N_INNER_LOOP = 320 # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (280, 300)
-decoder_test_trial_nums = (300, 320)
+N_INNER_LOOP = 20 # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (10, 15)
+decoder_test_trial_nums = (15, 20)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 DW_LAG = 5
@@ -407,9 +407,6 @@ def simulate_all(all_keys, X, train, eval_tracker):
 			title=None,
 		)
 
-		(matrix, ax=None, xlabel='Time', ylabel='Neuron index', title='Activity heatmap',
-                 cmap='viridis', vmin=None, vmax=None, figsize=None, save_path=None)
-
 	args = (
         c,
         tau_rules,
@@ -654,7 +651,7 @@ if __name__ == '__main__':
 		train_data_path = os.path.join(out_dir, 'train_data.csv')
 		test_data_path = os.path.join(out_dir, 'test_data.csv')
 		eval_tracker = pickle.load(os.path.join(out_dir, 'eval_tracker.pkl'))
-		es = cma.CMAEvolutionStrategy.load(os.path.join(out_dir, 'es_checkpoint.pkl'))
+		es = pickle.load(os.path.join(out_dir, 'es_checkpoint.pkl'))
 
 	# eval_all([x0], eval_tracker=eval_tracker)
 
@@ -672,7 +669,8 @@ if __name__ == '__main__':
 		es.disp()
 
 		# save optimizer state
-		es.save('es_checkpoint.pkl')
+		with open('es_checkpoint', 'wb') as handle:
+			pickle.dump(es, handle)
 		# save eval_tracker state
 		with open('eval_tracker.pkl', 'wb') as handle:
 			pickle.dump(eval_tracker, handle)
