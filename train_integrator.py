@@ -3,7 +3,7 @@ import numpy as np
 import os
 import time
 from tqdm import tqdm
-from aux_funcs import jax_gaussian_if_under_val, start_timer, zero_pad, find_dirs_with_fragment, format_plot
+from aux_funcs import jax_gaussian_if_under_val, start_timer, zero_pad, find_dirs_with_fragment
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from datetime import datetime
@@ -18,7 +18,7 @@ from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
 from csv_writer import write_csv
 from rate_network import simulate, calc_r_from_s, inv_softplus, softplus
-from viz import plot_heatmap
+from viz import plot_heatmap, format_plot
 
 
 ### Parse arguments 
@@ -548,16 +548,23 @@ def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
 	save_path = os.path.join(out_dir, f'{padded_idx}.png')
 
 	scale = 2
-	fig, axs = plt.subplots(3 * losses.shape[0], 2, figsize=(4 * scale, 3 * losses.shape[0] * scale))
+	total_height = 3 * losses.shape[0] * scale
+	total_width = 3 * scale
+
+	fig = plt.figure(figsize=(total_width, total_height))
+	gs = gridspec.GridSpec(nrows=3 * losses.shape[0], ncols=2, width_ratios=[2, 1], height_ratios=[1]* 3 * losses.shape[0])
+	axs = []
 
 	for i in range(losses.shape[0]):
+		ax_w = fig.add_subplot(gs[3 * i, 1])
+
 		w = ws[i, ...]
 		rs_for_trials = all_rs_for_viz[i, ...]
 
 		m = np.abs(w).max()
 		plot_heatmap(
 			matrix=w,
-			ax=axs[3 * i, 1],
+			ax=ax_w,
 			cmap='bwr',
 			vmin=-m,
 			vmax=m,
@@ -566,11 +573,21 @@ def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
 			title=None,
 		)
 
+		print(all_rs_for_viz.shape)
+		print(all_rs_for_viz)
+
 		for j in range(3):
-			plot_heatmap(rs_for_trials[-j, ...].T, axs[3 * i + j, 0], cmap='hot', vmin=0)
+			ax_r_j = fig.add_subplot(gs[3 * i + j, 0])
+			plot_heatmap(rs_for_trials[-j, ...].T, ax_r_j, cmap='hot', vmin=0)
+
+			if j == 0:
+				axs.append([ax_r_j, ax_w])
+			else:
+				axs.append([ax_r_j])
+
 
 	format_plot(
-		axs,
+		[ax for row_ax in axs for ax in row_ax],
 		ticklabelsize=8,
 		axislabelsize=10,
 	)
