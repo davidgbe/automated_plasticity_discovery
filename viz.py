@@ -21,7 +21,7 @@ def plot_heatmap(matrix, ax=None, xlabel='Time', ylabel='Neuron index', title='A
         if figsize is not None:
             kwargs['figsize'] = figsize
 
-        fig, ax = fig, axs = plt.subplots(1, 1, **kwargs)
+        fig, ax = plt.subplots(1, 1, **kwargs)
     else:
         fig = None
 
@@ -33,7 +33,7 @@ def plot_heatmap(matrix, ax=None, xlabel='Time', ylabel='Neuron index', title='A
     if title is not None:
         ax.set_title(title)
 
-    if save_path is not None:
+    if save_path is not None and fig is not None:
         fig.tight_layout()
         fig.savefig(save_path, dpi=300)
         print(f"Figure saved to: {save_path}")

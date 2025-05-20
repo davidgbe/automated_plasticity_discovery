@@ -547,8 +547,8 @@ def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
 	padded_idx = zero_pad(eval_tracker['evals'], 4)
 	save_path = os.path.join(out_dir, f'{padded_idx}.png')
 
-	scale = 1.5
-	fig, axs = plt.subplots(3 * losses.shape[0], 2, figsize=(2 * scale, 3 * losses.shape[0] * scale))
+	scale = 2
+	fig, axs = plt.subplots(3 * losses.shape[0], 2, figsize=(4 * scale, 3 * losses.shape[0] * scale))
 
 	for i in range(losses.shape[0]):
 		w = ws[i, ...]
@@ -569,7 +569,11 @@ def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
 		for j in range(3):
 			plot_heatmap(rs_for_trials[-j, ...].T, axs[3 * i + j, 0], cmap='hot', vmin=0)
 
-	format_plot(axs)
+	format_plot(
+		axs,
+		ticklabelsize=8,
+		axislabelsize=10,
+	)
 	fig.tight_layout()
 	fig.savefig(save_path, dpi=300)
 	print(f"Figure saved to: {save_path}")
