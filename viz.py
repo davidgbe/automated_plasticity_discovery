@@ -27,7 +27,6 @@ def plot_heatmap(matrix, ax=None, xlabel='Time', ylabel='Neuron index', title='A
 
     im = ax.imshow(matrix, aspect='auto', origin='upper', cmap=cmap, vmin=vmin, vmax=vmax)
     cbar = plt.colorbar(im, ax=ax)
-    cbar.set_label('Activity')
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     if title is not None:
@@ -39,7 +38,7 @@ def plot_heatmap(matrix, ax=None, xlabel='Time', ylabel='Neuron index', title='A
         print(f"Figure saved to: {save_path}")
         plt.close()
 
-    return ax, fig
+    return ax, fig, cbar
 
 
 def format_plot(

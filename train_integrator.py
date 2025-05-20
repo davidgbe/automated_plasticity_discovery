@@ -435,7 +435,7 @@ def simulate_all(all_keys, X, train, eval_tracker):
 	train_idx = 0
 	test_idx = 0
 
-	all_rs_for_viz = np.empty((c.shape[0], train_size + test_size, 1000, n_e + n_i)) # (batch_index, activation_index, T, neurons)
+	all_rs_for_viz = np.empty((c.shape[0], int((train_size + test_size) / READOUTS_PER_TRIAL), 1000, n_e + n_i)) # (batch_index, activation_index, T, neurons)
 
 	for i in tqdm(range(N_INNER_LOOP)):
 
@@ -552,7 +552,7 @@ def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
 	total_width = 3 * scale
 
 	fig = plt.figure(figsize=(total_width, total_height))
-	gs = gridspec.GridSpec(nrows=3 * losses.shape[0], ncols=2, width_ratios=[2, 1], height_ratios=[1]* 3 * losses.shape[0])
+	gs = gridspec.GridSpec(nrows=3 * losses.shape[0], ncols=2, width_ratios=[2, 1.25], height_ratios=[1]* 3 * losses.shape[0])
 	axs = []
 
 	for i in range(losses.shape[0]):
@@ -562,7 +562,7 @@ def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
 		rs_for_trials = all_rs_for_viz[i, ...]
 
 		m = np.abs(w).max()
-		plot_heatmap(
+		_, _, w_cbar  = plot_heatmap(
 			matrix=w,
 			ax=ax_w,
 			cmap='bwr',
@@ -572,13 +572,20 @@ def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
 			xlabel='Neuron index',
 			title=None,
 		)
-
-		print(all_rs_for_viz.shape)
-		print(all_rs_for_viz)
+		format_plot(
+			w_cbar.ax,
+			ticklabelsize=8,
+			axislabelsize=10,
+		)
 
 		for j in range(3):
 			ax_r_j = fig.add_subplot(gs[3 * i + j, 0])
-			plot_heatmap(rs_for_trials[-j, ...].T, ax_r_j, cmap='hot', vmin=0)
+			_, _, cbar_j = plot_heatmap(rs_for_trials[-j, ...].T, ax_r_j, cmap='hot', vmin=0)
+			format_plot(
+				cbar_j.ax,
+				ticklabelsize=8,
+				axislabelsize=10,
+			)
 
 			if j == 0:
 				axs.append([ax_r_j, ax_w])
