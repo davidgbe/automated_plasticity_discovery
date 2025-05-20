@@ -41,8 +41,9 @@ args = parser.parse_args()
 print(args)
 
 RUN_NUM = zero_pad(args.run_num, 6)
-SEED = args.seed
 BATCH_SIZE = args.batch
+SEED = args.seed
+TEST_SEED = SEED + 2 * BATCH_SIZE
 N_INNER_LOOP = 320 # Number of times to simulate network and plasticity rules per loss function evaluation
 decoder_train_trial_nums = (280, 300)
 decoder_test_trial_nums = (300, 320)
@@ -354,7 +355,10 @@ jax_calc_r = jax.vmap(
 
 
 def simulate_all(all_keys, X, train, eval_tracker):
-	np.random.seed(SEED)
+	if train:
+		np.random.seed(SEED)
+	else:
+		np.random.seed(TEST_SEED)
 
 	# c will have form like:
 	# [
