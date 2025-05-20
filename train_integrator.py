@@ -25,8 +25,9 @@ from viz import plot_heatmap, format_plot
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--std_expl', metavar='std', type=float, help='Initial standard deviation for parameter search via CMA-ES')
+parser.add_argument('--eta', metavar='et', type=float, help='Const coefficient that sets scale of learning rates relative to "std_expl"')
 parser.add_argument('--l1_pen', metavar='l1', type=float, nargs=1, help='Prefactor for L1 penalties on loss function')
-parser.add_argument('--asp', metavar='asp', type=float, help='', default=0.)
+parser.add_argument('--activity_penalty', metavar='ap', type=float, help='', default=0.)
 parser.add_argument('--batch', metavar='b', type=int, help='Number of simulations that should be batched per loss function evaluation')
 parser.add_argument('--load_initial', metavar='li', type=str, help='File from which to load the best params as an initial guess')
 parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
@@ -49,17 +50,17 @@ decoder_train_trial_nums = (280, 300)
 decoder_test_trial_nums = (300, 320)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
+ETA = args.eta
 DW_LAG = 5
 L1_PENALTIES = args.l1_pen
 CALC_TEST_SET_LOSS_FREQ = 11
-ACTIVITY_LOSS_COEF = args.asp
+ACTIVITY_PENALTY = args.activity_penalty
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 1000
 INPUT_BLOCK_DURATION = 5e-3
 N_RULES = 60 + 16
 N_TIMECONSTS = 36 + 32
-ETA = 1
 
 T = 0.1 # Total duration of one network simulation
 DT = 1e-4 # Timestep
@@ -638,7 +639,7 @@ if __name__ == '__main__':
 		# Make subdirectory for this particular experiment
 		time_stamp = str(datetime.now()).replace(' ', '_')
 		joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-		out_dir = f'sims_out/int_preexist_n40_speed_test_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}_run_{RUN_NUM}'
+		out_dir = f'sims_out/int_preexist_n40_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_ETA_{ETA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.activity_penalty}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}_run_{RUN_NUM}'
 		os.mkdir(out_dir)
 
 		# Make subdirectory for outputting CMAES info
