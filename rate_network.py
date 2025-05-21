@@ -268,6 +268,7 @@ def simulate(t, a0, w_polarity, w_nonzero, r_in, c, tau_rules, n, dt, readout_ti
         args=args + (t, r_in, w_polarity, w_nonzero),
         saveat=saveat,
         stepsize_controller=stepsize_controller,
+        max_steps=int(1e5),
     )
 
     finished_sol = jax.block_until_ready(sol)
