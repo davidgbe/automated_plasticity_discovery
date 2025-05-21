@@ -120,8 +120,8 @@ def learning_dynamics(t, y, args):
     W = w_polarity * softplus(a) * w_nonzero
     unstable_bool = unstable > 0
 
-    jax.debug.print(jnp.max(a))
-    jax.debug.print(a)
+    jax.debug.print(f'{jnp.max(a)}')
+    jax.debug.print(f'{a}')
 
     delta_unstable = jnp.any(a > 5) | jnp.any(s > 10) | unstable_bool
 
