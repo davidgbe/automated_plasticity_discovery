@@ -6,9 +6,9 @@ import diffrax
 import jax.random as jr
 from aux_funcs import merge_with_indices_jax
 
-R_RESCALING = 5
-R_EXP_RESCALING = 5
-W_RESCALING = 1000
+R_RESCALING = 10
+R_EXP_RESCALING = 10
+W_RESCALING = 10
 ALPHA = 1000
 BETA = 1/ALPHA
 SOFTPLUS_TRANSITION = 1e-3
