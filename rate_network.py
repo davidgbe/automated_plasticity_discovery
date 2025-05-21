@@ -8,6 +8,7 @@ from aux_funcs import merge_with_indices_jax
 
 R_RESCALING = 5
 R_EXP_RESCALING = 5
+W_RESCALING = 2.5
 ALPHA = 1000
 BETA = 1/ALPHA
 SOFTPLUS_TRANSITION = 1e-3
@@ -129,7 +130,7 @@ def learning_dynamics(t, y, args):
     # Weight change from (1) -> (1)
 
     delta_W_11_two_factor_raw = delta_W_ij_two_factor(
-        W[:n_1, :n_1],
+        W[:n_1, :n_1] * W_RESCALING,
         r[:n_1] * R_RESCALING,
         r[:n_1] * R_RESCALING,
         r_exp[:n_1, :12] * R_EXP_RESCALING,
@@ -142,7 +143,7 @@ def learning_dynamics(t, y, args):
     del delta_W_11_two_factor_raw
 
     delta_W_11_three_factor_raw = delta_W_ij_three_factor(
-        W[:n_1, :n_1],
+        W[:n_1, :n_1] * W_RESCALING,
         r[:n_1] * R_RESCALING,
         r[:n_1] * R_RESCALING,
         r_exp[:n_1, 36:44] * R_EXP_RESCALING,
@@ -166,7 +167,7 @@ def learning_dynamics(t, y, args):
     # Weight change from (2) -> (1)
 
     delta_W_21_two_factor_raw = delta_W_ij_two_factor(
-        W[n_1:n_plastic, :n_1],
+        W[n_1:n_plastic, :n_1] * W_RESCALING,
         r[n_1:n_plastic] * R_RESCALING,
         r[:n_1] * R_RESCALING,
         r_exp[n_1:n_plastic, 12:24] * R_EXP_RESCALING,
@@ -181,7 +182,7 @@ def learning_dynamics(t, y, args):
     # Weight change from (1) -> (2)
 
     delta_W_12_two_factor_raw = delta_W_ij_two_factor(
-        W[:n_1, n_1:n_plastic],
+        W[:n_1, n_1:n_plastic] * W_RESCALING,
         r[:n_1] * R_RESCALING,
         r[n_1:n_plastic] * R_RESCALING,
         r_exp[:n_1, 24:36] * R_EXP_RESCALING,
@@ -194,7 +195,7 @@ def learning_dynamics(t, y, args):
     del delta_W_12_two_factor_raw
 
     delta_W_12_three_factor_raw = delta_W_ij_three_factor(
-        W[:n_1, n_1:n_plastic],
+        W[:n_1, n_1:n_plastic] * W_RESCALING,
         r[:n_1] * R_RESCALING,
         r[n_1:n_plastic] * R_RESCALING,
         r_exp[:n_1, 52:60] * R_EXP_RESCALING,
