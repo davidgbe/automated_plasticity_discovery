@@ -646,10 +646,8 @@ if __name__ == '__main__':
 		os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
 		# Made CSVs for outputting train & test data
-		header = ['evals', 'loss'] + [f'true_loss_{i}' for i in np.arange(BATCH_SIZE)]
+		header = ['evals', 'loss']
 		header += list(rule_names)
-		header += ['effect_means']
-		header += ['effect_stds']
 
 		train_data_path = os.path.join(out_dir, 'train_data.csv')
 		write_csv(train_data_path, header)
