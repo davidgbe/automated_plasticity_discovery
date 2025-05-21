@@ -8,7 +8,7 @@ from aux_funcs import merge_with_indices_jax
 
 R_RESCALING = 5
 R_EXP_RESCALING = 5
-W_RESCALING = 10
+W_RESCALING = 1000
 ALPHA = 1000
 BETA = 1/ALPHA
 SOFTPLUS_TRANSITION = 1e-3
@@ -60,7 +60,7 @@ def _delta_W_ij_three_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j, f_i):
         r_exp_j[2] * f_i[2],
         r_exp_j[3] * r_i * f_i[3],
         w_ij * r_exp_i[4] * f_i[4],
-        w_ij * r_exp_i[5] * w_ij * r_j * f_i[5],
+        w_ij * r_exp_i[5] * r_j * f_i[5],
         w_ij * r_exp_j[6] * f_i[6],
         w_ij * r_exp_j[7] * r_i * f_i[7],
     ])

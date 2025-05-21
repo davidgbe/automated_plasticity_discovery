@@ -9,3 +9,5 @@ cmaes_test/**/*
 figures/**/*
 **/*.zip
 data/**/*
+**/eval_tracker.pkl
+**/es_checkpoint.pkl
