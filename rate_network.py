@@ -120,10 +120,10 @@ def learning_dynamics(t, y, args):
     W = w_polarity * softplus(a) * w_nonzero
     unstable_bool = unstable > 0
 
-    jax.debug.print("max(a) = {}", jnp.max(a))
-    jax.debug.print("a = {}", a)
+    # jax.debug.print("max(a) = {}", jnp.max(a))
+    # jax.debug.print("a = {}", a)
 
-    delta_unstable = jnp.any(a > 5) | jnp.any(s > 10) | unstable_bool
+    delta_unstable = jnp.any(a > 20) | jnp.any(s > 10) | unstable_bool
 
     r = calc_r_from_s(s, s_offsets, g, n_e) * ~(delta_unstable | unstable_bool)
     v = W @ r + w_u * u(t)
@@ -235,7 +235,7 @@ def learning_dynamics(t, y, args):
         delta_syn_12_three_factor,
     ])
 
-    return delta_s, delta_r_exp, delta_a, delta_syn, delta_unstable & (~unstable_bool)
+    return delta_s, delta_r_exp, delta_a * ~(delta_unstable | unstable_bool), delta_syn * ~(delta_unstable | unstable_bool), delta_unstable & (~unstable_bool)
 
 
 def simulate(t, a0, w_polarity, w_nonzero, r_in, c, tau_rules, n, dt, readout_times, args, save_for_viewing=False):
