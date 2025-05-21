@@ -8,7 +8,7 @@ from aux_funcs import merge_with_indices_jax
 
 R_RESCALING = 5
 R_EXP_RESCALING = 5
-W_RESCALING = 2.5
+W_RESCALING = 10
 ALPHA = 1000
 BETA = 1/ALPHA
 SOFTPLUS_TRANSITION = 1e-3
