@@ -1,3 +1,5 @@
+JAX_DISABLE_JIT = 1
+
 from copy import deepcopy as copy
 import numpy as np
 import os

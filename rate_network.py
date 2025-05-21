@@ -120,6 +120,8 @@ def learning_dynamics(t, y, args):
     W = w_polarity * softplus(a) * w_nonzero
     unstable_bool = unstable > 0
 
+    print(jnp.max(a))
+
     delta_unstable = jnp.any(a > 5) | jnp.any(s > 10) | unstable_bool
 
     r = calc_r_from_s(s, s_offsets, g, n_e) * ~(delta_unstable | unstable_bool)
@@ -248,7 +250,7 @@ def simulate(t, a0, w_polarity, w_nonzero, r_in, c, tau_rules, n, dt, readout_ti
         )
     )
     solver = diffrax.Tsit5()
-    stepsize_controller = diffrax.PIDController(rtol=1e-4, atol=1e-1)
+    stepsize_controller = diffrax.PIDController(rtol=1e-4, atol=1e-4)
 
     if save_for_viewing:
         viewing_points = jnp.linspace(t.min(), t.max(), 1000)
