@@ -714,5 +714,5 @@ if __name__ == '__main__':
 			test_losses = simulate_all(keys, [x_best], False, eval_tracker)
 
 			# save eval_tracker state after test if finished
-			with open('eval_tracker.pkl', 'wb') as handle:
-				pickle.dump(eval_tracker, handle)
+			with open(os.path.join(out_dir, 'eval_tracker.pkl'), 'wb') as f:
+				pickle.dump(eval_tracker, f)
