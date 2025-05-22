@@ -245,7 +245,7 @@ def simulate(t, a0, w_polarity, w_nonzero, r_in, c, tau_rules, n, dt, readout_ti
     unstable = jnp.zeros((a0.shape[0],), dtype=int)
 
     term = diffrax.ODETerm(
-        jax.vmap(
+        jax.pmap(
             learning_dynamics,
             (None, (0,) * 5, (0,) * 2 + (None,) * 10 + (0,) * 3),
         )
