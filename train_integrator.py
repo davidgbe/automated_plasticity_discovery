@@ -172,19 +172,20 @@ def create_shuffled_one_to_one(size):
 
 
 def transform_zero_mean(X):
-	X_zero_mean = X - jnp.mean(X, axis=0)
-	return X_zero_mean
+	X_mean = jnp.mean(X, axis=0)
+	X_zero_mean = X - X_mean
+	return X_zero_mean, X_mean
 
 
 def calc_loss(r_train, r_test, targets_train, targets_test):
 
 	invalid = jnp.any(jnp.isnan(r_train)) | jnp.any(jnp.isnan(r_test))
 	
-	r_train_normed = transform_zero_mean(r_train)
-	r_test_normed = transform_zero_mean(r_test)
+	r_train_normed, r_train_mean = transform_zero_mean(r_train)
+	r_test_normed = r_test - r_train_mean
 
-	targets_train_normed = transform_zero_mean(targets_train)
-	targets_test_normed = transform_zero_mean(targets_test)
+	targets_train_normed, targets_train_mean = transform_zero_mean(targets_train)
+	targets_test_normed = targets_test - targets_train_mean
 
 	RtR = jnp.matmul(jnp.transpose(r_train_normed), r_train_normed)
 	Rty = jnp.matmul(jnp.transpose(r_train_normed), targets_train_normed[:, None])
