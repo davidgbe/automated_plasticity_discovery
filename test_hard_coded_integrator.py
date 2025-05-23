@@ -181,14 +181,14 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 
     invalid = jnp.any(jnp.isnan(r_train)) | jnp.any(jnp.isnan(r_test))
     
-    r_train_normed, r_train_mean = transform_zero_mean(r_train)
-    r_test_normed = r_test - r_train_mean
+    # r_train_normed, r_train_mean = transform_zero_mean(r_train)
+    # r_test_normed = r_test - r_train_mean
 
     targets_train_normed, targets_train_mean = transform_zero_mean(targets_train)
     targets_test_normed = targets_test - targets_train_mean
 
-    RtR = jnp.matmul(jnp.transpose(r_train_normed), r_train_normed)
-    Rty = jnp.matmul(jnp.transpose(r_train_normed), targets_train_normed[:, None])
+    RtR = jnp.matmul(jnp.transpose(r_train), r_train)
+    Rty = jnp.matmul(jnp.transpose(r_train), targets_train_normed[:, None])
 
     w = jnp.linalg.solve(RtR, Rty)
 
@@ -196,7 +196,7 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 
     w_screened = jnp.where(singular_matrices_detected, 0, w)
 
-    residual = jnp.square((targets_test_normed - (r_test_normed @ w_screened).squeeze(1))).sum()
+    residual = jnp.square((targets_test_normed - (r_test @ w_screened).squeeze(1))).sum()
     total = jnp.square(targets_test_normed).sum()
 
     return jnp.where(invalid, 10, residual / total)
