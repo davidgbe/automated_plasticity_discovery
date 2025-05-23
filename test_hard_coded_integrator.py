@@ -551,7 +551,7 @@ def plot_corrs(r_train, r_test, targets_train, targets_test, eval_tracker):
     for i in range(r_train.shape[0]):
         # (actions, neurons)
         cms = r_train[i, ..., :n_e_pool] @ jnp.arange(n_e_pool)
-        axs.scatter(cms.flatten(), targets_train.flatter(), s=3)
+        axs.scatter(cms.flatten(), targets_train.flatten(), s=3)
 
     fig.tight_layout()
     fig.savefig(save_path, dpi=300)
