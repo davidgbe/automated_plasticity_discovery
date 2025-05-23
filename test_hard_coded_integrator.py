@@ -45,9 +45,9 @@ RUN_NUM = zero_pad(args.run_num, 6)
 BATCH_SIZE = args.batch
 SEED = args.seed
 TEST_SEED = SEED + 2 * BATCH_SIZE
-N_INNER_LOOP = 40 # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (0, 20)
-decoder_test_trial_nums = (20, 40)
+N_INNER_LOOP = 4 # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (0, 2)
+decoder_test_trial_nums = (2, 4)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 ETA = args.eta
@@ -536,9 +536,29 @@ def simulate_all(all_keys, X, train, eval_tracker):
         plot_run(losses, ws, all_rs_for_viz, eval_tracker)
         eval_tracker['best_changed'] = False
 
+        # plot the center of mass of r vs targets
+
+        plot_corrs(r_train, r_test, targets_train, targets_test, eval_tracker)
+
     return losses_for_coefs
 
 
+def plot_corrs(r_train, r_test, targets_train, targets_test, eval_tracker):
+    padded_idx = zero_pad(eval_tracker['evals'], 4)
+    save_path = os.path.join(out_dir, f'corrs_{padded_idx}.png')
+
+    fig, axs = plt.subplots(1, 1)
+    for i in range(r_train.shape[0]):
+        # (actions, neurons)
+        cms = r_train[i, ..., :n_e_pool] @ jnp.arange(n_e_pool)
+        axs.scatter(jnp.flatten(cms), jnp.flatten(targets_train), s=3)
+
+    fig.tight_layout()
+    fig.savefig(save_path, dpi=300)
+    print(f"Figure saved to: {save_path}")
+    plt.close()
+
+    
 def log_results(write_path, eval_tracker, losses, plasticity_coefs, syn_effects):
     # eval_num, loss, true_losses, plastic_coefs, syn_effects
     evals = np.full((losses.shape[0], 1), eval_tracker['evals']) 
