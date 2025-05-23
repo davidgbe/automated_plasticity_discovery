@@ -45,9 +45,9 @@ RUN_NUM = zero_pad(args.run_num, 6)
 BATCH_SIZE = args.batch
 SEED = args.seed
 TEST_SEED = SEED + 2 * BATCH_SIZE
-N_INNER_LOOP = 20 # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (0, 10)
-decoder_test_trial_nums = (10, 20)
+N_INNER_LOOP = 4 # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (0, 2)
+decoder_test_trial_nums = (2, 4)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 ETA = args.eta
@@ -559,6 +559,25 @@ def plot_corrs(r_train, r_test, targets_train, targets_test, eval_tracker):
     fig.savefig(save_path, dpi=300)
     print(f"Figure saved to: {save_path}")
     plt.close()
+
+
+    for i in range(r_train.shape[0]):
+        padded_idx = zero_pad(eval_tracker['evals'], 4)
+        save_path = os.path.join(out_dir, f'cross_sections_{padded_idx}_{i}.png')
+        fig, axs = plt.subplots(1, 1)
+
+        # (actions, neurons)
+        r_train_i = r_train[i, ..., :n_e_pool]
+        train_targets_i = targets_train[i, ...]
+
+        r_train_sorted = r_train_i[jnp.argsort(train_targets_i), :]
+
+        axs.matshow(r_train_sorted)
+
+        fig.tight_layout()
+        fig.savefig(save_path, dpi=300)
+        print(f"Figure saved to: {save_path}")
+        plt.close()
 
     
 def log_results(write_path, eval_tracker, losses, plasticity_coefs, syn_effects):
