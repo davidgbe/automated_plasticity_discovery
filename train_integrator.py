@@ -190,7 +190,7 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 	RtR = jnp.matmul(jnp.transpose(r_train_normed), r_train_normed)
 	Rty = jnp.matmul(jnp.transpose(r_train_normed), targets_train_normed[:, None])
 
-	w = jnp.linalg.solve(RtR, Rty)
+	w = jnp.linalg.lstsq(RtR, Rty)
 
 	singular_matrices_detected = jnp.any(jnp.isnan(w)) | jnp.any(jnp.isinf(w))
 
