@@ -223,7 +223,7 @@ def make_network(key):
     ee_mask = jr.uniform(keys[0], (n_e_pool, n_e_pool)) <= args.hd_hd_sparsity
 
     ### For initializing a ring-like shape in the pool neurons
-    connectivity_scale = 2
+    connectivity_scale = 3
 
     shift_mats = []
 
