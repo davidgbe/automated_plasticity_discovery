@@ -179,42 +179,42 @@ def transform_zero_mean(X):
 
 def calc_loss(r_train, r_test, targets_train, targets_test):
 
-    invalid = jnp.any(jnp.isnan(r_train)) | jnp.any(jnp.isnan(r_test))
-    
-    r_train_aug = jnp.concatenate([r_train, jnp.ones((r_train.shape[0], 1))], axis=1)
-    r_test_aug = jnp.concatenate([r_test, jnp.ones((r_test.shape[0], 1))], axis=1)
+	invalid = jnp.any(jnp.isnan(r_train)) | jnp.any(jnp.isnan(r_test))
+	
+	r_train_aug = jnp.concatenate([r_train, jnp.ones((r_train.shape[0], 1))], axis=1)
+	r_test_aug = jnp.concatenate([r_test, jnp.ones((r_test.shape[0], 1))], axis=1)
 
-    RtR = jnp.matmul(jnp.transpose(r_train_aug), r_train_aug)
-    Rty = jnp.matmul(jnp.transpose(r_train_aug), targets_train[:, None])
+	RtR = jnp.matmul(jnp.transpose(r_train_aug), r_train_aug)
+	Rty = jnp.matmul(jnp.transpose(r_train_aug), targets_train[:, None])
 
-    w, _, _, _ = jnp.linalg.lstsq(RtR, Rty)
+	w, _, _, _ = jnp.linalg.lstsq(RtR, Rty)
 
-    singular_matrices_detected = jnp.any(jnp.isnan(w)) | jnp.any(jnp.isinf(w))
+	singular_matrices_detected = jnp.any(jnp.isnan(w)) | jnp.any(jnp.isinf(w))
 
-    w_screened = jnp.where(singular_matrices_detected, 0, w)
+	w_screened = jnp.where(singular_matrices_detected, 0, w)
 
-    residual = jnp.square((targets_test - (r_test_aug @ w_screened).squeeze(1))).sum()
-    total = jnp.square(targets_test).sum()
+	residual = jnp.square((targets_test - (r_test_aug @ w_screened).squeeze(1))).sum()
+	total = jnp.square(targets_test).sum()
 
-    return jnp.where(invalid, 10, residual / total)
+	return jnp.where(invalid, 10, residual / total)
 
 
 def make_network(key):
-    '''
-    Generates an excitatory chain with recurrent inhibition and weak recurrent excitation.
-    Weights that form sequence are distorted randomly.
-    '''
-    total_size = n_e_pool + 2 * n_e_side + n_i
-    w_initial = jnp.zeros((total_size, total_size))
+	'''
+	Generates an excitatory chain with recurrent inhibition and weak recurrent excitation.
+	Weights that form sequence are distorted randomly.
+	'''
+	total_size = n_e_pool + 2 * n_e_side + n_i
+	w_initial = jnp.zeros((total_size, total_size))
 
-    # Pre-split all keys
-    num_keys = 15  # You may need to increase if more randomness is added
-    key, *keys = jr.split(key, num_keys)
+	# Pre-split all keys
+	num_keys = 15  # You may need to increase if more randomness is added
+	key, *keys = jr.split(key, num_keys)
 
-    # --- E to E (sparse random) ---
-    ee_mask = jr.uniform(keys[0], (n_e_pool, n_e_pool)) < args.hd_hd_sparsity
-    ee_weights = w_e_e * jr.uniform(keys[1], (n_e_pool, n_e_pool))
-    w_initial = w_initial.at[:n_e_pool, :n_e_pool].set(jnp.where(ee_mask, ee_weights, 0))
+	# --- E to E (sparse random) ---
+	ee_mask = jr.uniform(keys[0], (n_e_pool, n_e_pool)) < args.hd_hd_sparsity
+	ee_weights = w_e_e * jr.uniform(keys[1], (n_e_pool, n_e_pool))
+	w_initial = w_initial.at[:n_e_pool, :n_e_pool].set(jnp.where(ee_mask, ee_weights, 0))
 
 	### For initializing a ring-like shape in the pool neurons
 
@@ -228,63 +228,63 @@ def make_network(key):
 
 	# w_initial[:n_e_pool, :n_e_pool] = w_initial[:n_e_pool, :n_e_pool] * (.jr.normal(key, size=(n_e_pool, n_e_pool)) * 0.1 + 1)
 
-    # --- HR to HD connections ---
-    if args.struct_prior == 'shift':
-        shift_left = create_shift_matrix(n_e_side, k=3)
-        shift_right = create_shift_matrix(n_e_side, k=-3)
+	# --- HR to HD connections ---
+	if args.struct_prior == 'shift':
+		shift_left = create_shift_matrix(n_e_side, k=3)
+		shift_right = create_shift_matrix(n_e_side, k=-3)
 
-        left_mask = jr.uniform(keys[2], (n_e_pool, n_e_side)) < args.hd_hr_sparsity
-        right_mask = jr.uniform(keys[3], (n_e_pool, n_e_side)) < args.hd_hr_sparsity
+		left_mask = jr.uniform(keys[2], (n_e_pool, n_e_side)) < args.hd_hr_sparsity
+		right_mask = jr.uniform(keys[3], (n_e_pool, n_e_side)) < args.hd_hr_sparsity
 
-        w_initial = w_initial.at[:n_e_pool, n_e_pool:n_e_pool + n_e_side].set(
-            w_side_pool * jnp.where(left_mask, shift_left, 0)
-        )
-        w_initial = w_initial.at[:n_e_pool, n_e_pool + n_e_side:n_e_pool + 2 * n_e_side].set(
-            w_side_pool * jnp.where(right_mask, shift_right, 0)
-        )
+		w_initial = w_initial.at[:n_e_pool, n_e_pool:n_e_pool + n_e_side].set(
+			w_side_pool * jnp.where(left_mask, shift_left, 0)
+		)
+		w_initial = w_initial.at[:n_e_pool, n_e_pool + n_e_side:n_e_pool + 2 * n_e_side].set(
+			w_side_pool * jnp.where(right_mask, shift_right, 0)
+		)
 
-        # Inhibitory backward connections from HD to HR
-        input_template = w_pool_side * (1 - (shift_left + shift_right))
-        input_template = input_template.at[jnp.diag_indices(n_e_side)].set(0)
+		# Inhibitory backward connections from HD to HR
+		input_template = w_pool_side * (1 - (shift_left + shift_right))
+		input_template = input_template.at[jnp.diag_indices(n_e_side)].set(0)
 
-        back_mask_L = jr.uniform(keys[4], (n_e_side, n_e_pool)) < args.hd_hr_sparsity
-        back_mask_R = jr.uniform(keys[5], (n_e_side, n_e_pool)) < args.hd_hr_sparsity
+		back_mask_L = jr.uniform(keys[4], (n_e_side, n_e_pool)) < args.hd_hr_sparsity
+		back_mask_R = jr.uniform(keys[5], (n_e_side, n_e_pool)) < args.hd_hr_sparsity
 
-        w_initial = w_initial.at[n_e_pool:n_e_pool + n_e_side, :n_e_pool].set(
-            jnp.where(back_mask_L, input_template, 0)
-        )
-        w_initial = w_initial.at[n_e_pool + n_e_side:n_e_pool + 2 * n_e_side, :n_e_pool].set(
-            jnp.where(back_mask_R, input_template, 0)
-        )
+		w_initial = w_initial.at[n_e_pool:n_e_pool + n_e_side, :n_e_pool].set(
+			jnp.where(back_mask_L, input_template, 0)
+		)
+		w_initial = w_initial.at[n_e_pool + n_e_side:n_e_pool + 2 * n_e_side, :n_e_pool].set(
+			jnp.where(back_mask_R, input_template, 0)
+		)
 
-    else:
-        # Random sparse connections instead of structured shift
-        for i in range(2):  # left and right
-            mask = jr.uniform(keys[2 + i], (n_e_pool, n_e_side)) < args.hd_hr_sparsity
-            weights = jr.uniform(keys[4 + i], (n_e_pool, n_e_side))
-            w_initial = w_initial.at[
-                :n_e_pool, n_e_pool + i * n_e_side:n_e_pool + (i + 1) * n_e_side
-            ].set(w_side_pool * jnp.where(mask, weights, 0))
+	else:
+		# Random sparse connections instead of structured shift
+		for i in range(2):  # left and right
+			mask = jr.uniform(keys[2 + i], (n_e_pool, n_e_side)) < args.hd_hr_sparsity
+			weights = jr.uniform(keys[4 + i], (n_e_pool, n_e_side))
+			w_initial = w_initial.at[
+				:n_e_pool, n_e_pool + i * n_e_side:n_e_pool + (i + 1) * n_e_side
+			].set(w_side_pool * jnp.where(mask, weights, 0))
 
-        for i in range(2):  # back to pool
-            mask = jr.uniform(keys[6 + i], (n_e_side, n_e_pool)) < args.hd_hr_sparsity
-            weights = jr.uniform(keys[8 + i], (n_e_side, n_e_pool))
-            w_initial = w_initial.at[
-                n_e_pool + i * n_e_side:n_e_pool + (i + 1) * n_e_side, :n_e_pool
-            ].set(w_pool_side * jnp.where(mask, weights, 0))
+		for i in range(2):  # back to pool
+			mask = jr.uniform(keys[6 + i], (n_e_side, n_e_pool)) < args.hd_hr_sparsity
+			weights = jr.uniform(keys[8 + i], (n_e_side, n_e_pool))
+			w_initial = w_initial.at[
+				n_e_pool + i * n_e_side:n_e_pool + (i + 1) * n_e_side, :n_e_pool
+			].set(w_pool_side * jnp.where(mask, weights, 0))
 
-    # --- E to I ---
-    ei_weights = jax_gaussian_if_under_val(keys[10], 1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
-    w_initial = w_initial.at[-n_i:, :n_e_pool].set(ei_weights)
+	# --- E to I ---
+	ei_weights = jax_gaussian_if_under_val(keys[10], 1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
+	w_initial = w_initial.at[-n_i:, :n_e_pool].set(ei_weights)
 
-    # --- I to E ---
-    ie_weights = jax_gaussian_if_under_val(keys[11], 1, (n_e_pool, n_i), w_i_e, 0 * jnp.abs(w_i_e))
-    w_initial = w_initial.at[:n_e_pool, -n_i:].set(ie_weights)
+	# --- I to E ---
+	ie_weights = jax_gaussian_if_under_val(keys[11], 1, (n_e_pool, n_i), w_i_e, 0 * jnp.abs(w_i_e))
+	w_initial = w_initial.at[:n_e_pool, -n_i:].set(ie_weights)
 
-    # --- Zero out diagonal ---
-    w_initial = w_initial.at[jnp.diag_indices(total_size)].set(0)
+	# --- Zero out diagonal ---
+	w_initial = w_initial.at[jnp.diag_indices(total_size)].set(0)
 
-    return w_initial
+	return w_initial
 
 
 def calc_alpha_func(tau_alpha):
@@ -312,14 +312,14 @@ def construct_inputs(input_size=6):
 			input_state = np.random.choice([-1, 0, 1])
 			inputs[k] = input_state
 			if input_state != 0:
-				input_block = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * DT, size=(input_block_timesteps, n_e_side))
+				input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * DT, size=(input_block_timesteps, 1)), n_e_side, axis=1)
 				if input_state == -1:
 					input_spks[k : k + input_block_timesteps, :n_e_side] = input_block
 				elif input_state == 1:
 					input_spks[k : k + input_block_timesteps, n_e_side : 2 * n_e_side] = input_block
 		else:
 			inputs[k] = inputs[k-1]
-		
+
 	filtered_input_to_sum_per_neuron = poisson_arrivals_to_inputs(input_spks, TAU_ALPHA_INPUT)
 	filtered_input_to_sum = filtered_input_to_sum_per_neuron[:, n_e_side:2 * n_e_side].sum(axis=1) - filtered_input_to_sum_per_neuron[:, :n_e_side].sum(axis=1)
 	running_input_sums = np.cumsum(filtered_input_to_sum) / INPUT_LEN
@@ -343,8 +343,8 @@ def construct_inputs(input_size=6):
 
 
 def batchify(x, n_batch):
-    x = jnp.array(x)
-    return jnp.tile(x, (n_batch, *jnp.ones(x.ndim).astype(int)))
+	x = jnp.array(x)
+	return jnp.tile(x, (n_batch, *jnp.ones(x.ndim).astype(int)))
 
 
 jax_calc_r = jax.vmap(
@@ -411,18 +411,18 @@ def simulate_all(all_keys, X, train, eval_tracker):
 		)
 
 	args = (
-        c,
-        tau_rules,
-        g,
-        s_offsets,
-        w_u,
-        tau_s,
-        ETA,
-        n_e,
-        n_i,
-        n_e_pool,
-        n_e_side,
-    )
+		c,
+		tau_rules,
+		g,
+		s_offsets,
+		w_u,
+		tau_s,
+		ETA,
+		n_e,
+		n_i,
+		n_e_pool,
+		n_e_side,
+	)
 
 	total_abs_synaptic_change = np.zeros((c.shape[0], N_RULES))
 
