@@ -510,6 +510,8 @@ def simulate_all(all_keys, X, train, eval_tracker):
     final_instability = unstable[-1, :]
     losses = jnp.where(final_instability > 0, 1e7, losses)
 
+    print(losses)
+
     losses_for_coefs = 1000 * jnp.reshape(losses, (len(X), keys.shape[0])).mean(axis=1)
     syn_effects_for_coefs = jnp.reshape(total_abs_synaptic_change, (len(X), keys.shape[0], total_abs_synaptic_change.shape[1])).mean(axis=1)
 
