@@ -324,7 +324,7 @@ def construct_inputs(input_size=6):
             input_state = np.random.choice([-1, 0, 1])
             inputs[k] = input_state
             if input_state != 0:
-                input_block = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * DT, size=(input_block_timesteps, n_e_side))
+                input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * DT, size=(input_block_timesteps, 1)), n_e_side, axis=1)
                 if input_state == -1:
                     input_spks[k : k + input_block_timesteps, :n_e_side] = input_block
                 elif input_state == 1:
