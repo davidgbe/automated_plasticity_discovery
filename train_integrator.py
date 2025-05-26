@@ -179,27 +179,24 @@ def transform_zero_mean(X):
 
 def calc_loss(r_train, r_test, targets_train, targets_test):
 
-	invalid = jnp.any(jnp.isnan(r_train)) | jnp.any(jnp.isnan(r_test))
-	
-	r_train_normed, r_train_mean = transform_zero_mean(r_train)
-	r_test_normed = r_test - r_train_mean
+    invalid = jnp.any(jnp.isnan(r_train)) | jnp.any(jnp.isnan(r_test))
+    
+    r_train_aug = jnp.concatenate([r_train, jnp.ones((r_train.shape[0], 1))], axis=1)
+    r_test_aug = jnp.concatenate([r_test, jnp.ones((r_test.shape[0], 1))], axis=1)
 
-	targets_train_normed, targets_train_mean = transform_zero_mean(targets_train)
-	targets_test_normed = targets_test - targets_train_mean
+    RtR = jnp.matmul(jnp.transpose(r_train_aug), r_train_aug)
+    Rty = jnp.matmul(jnp.transpose(r_train_aug), targets_train[:, None])
 
-	RtR = jnp.matmul(jnp.transpose(r_train_normed), r_train_normed)
-	Rty = jnp.matmul(jnp.transpose(r_train_normed), targets_train_normed[:, None])
+    w, _, _, _ = jnp.linalg.lstsq(RtR, Rty)
 
-	w = jnp.linalg.lstsq(RtR, Rty)
+    singular_matrices_detected = jnp.any(jnp.isnan(w)) | jnp.any(jnp.isinf(w))
 
-	singular_matrices_detected = jnp.any(jnp.isnan(w)) | jnp.any(jnp.isinf(w))
+    w_screened = jnp.where(singular_matrices_detected, 0, w)
 
-	w_screened = jnp.where(singular_matrices_detected, 0, w)
+    residual = jnp.square((targets_test - (r_test_aug @ w_screened).squeeze(1))).sum()
+    total = jnp.square(targets_test).sum()
 
-	residual = jnp.square((targets_test_normed - (r_test_normed @ w_screened).squeeze(1))).sum()
-	total = jnp.square(targets_test_normed).sum()
-
-	return jnp.where(invalid, 10, residual / total)
+    return jnp.where(invalid, 10, residual / total)
 
 
 def make_network(key):

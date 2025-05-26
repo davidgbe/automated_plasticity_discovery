@@ -45,9 +45,9 @@ RUN_NUM = zero_pad(args.run_num, 6)
 BATCH_SIZE = args.batch
 SEED = args.seed
 TEST_SEED = SEED + 2 * BATCH_SIZE
-N_INNER_LOOP = 50 # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (0, 25)
-decoder_test_trial_nums = (25, 50)
+N_INNER_LOOP = 40 # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (0, 20)
+decoder_test_trial_nums = (20, 40)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 ETA = args.eta
@@ -181,23 +181,20 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 
     invalid = jnp.any(jnp.isnan(r_train)) | jnp.any(jnp.isnan(r_test))
     
-    # r_train_normed, r_train_mean = transform_zero_mean(r_train)
-    # r_test_normed = r_test - r_train_mean
+    r_train_aug = jnp.concatenate([r_train, jnp.ones((r_train.shape[0], 1))], axis=1)
+    r_test_aug = jnp.concatenate([r_test, jnp.ones((r_test.shape[0], 1))], axis=1)
 
-    targets_train_normed, targets_train_mean = transform_zero_mean(targets_train)
-    targets_test_normed = targets_test - targets_train_mean
+    RtR = jnp.matmul(jnp.transpose(r_train_aug), r_train_aug)
+    Rty = jnp.matmul(jnp.transpose(r_train_aug), targets_train[:, None])
 
-    RtR = jnp.matmul(jnp.transpose(r_train), r_train)
-    Rty = jnp.matmul(jnp.transpose(r_train), targets_train_normed[:, None])
-
-    w = jnp.linalg.solve(RtR, Rty)
+    w, _, _, _ = jnp.linalg.lstsq(RtR, Rty)
 
     singular_matrices_detected = jnp.any(jnp.isnan(w)) | jnp.any(jnp.isinf(w))
 
     w_screened = jnp.where(singular_matrices_detected, 0, w)
 
-    residual = jnp.square((targets_test_normed - (r_test @ w_screened).squeeze(1))).sum()
-    total = jnp.square(targets_test_normed).sum()
+    residual = jnp.square((targets_test - (r_test_aug @ w_screened).squeeze(1))).sum()
+    total = jnp.square(targets_test).sum()
 
     return jnp.where(invalid, 10, residual / total)
 
