@@ -424,7 +424,7 @@ def simulate_all(all_keys, X, train, eval_tracker):
 		n_e_side,
 	)
 
-	total_abs_synaptic_change = np.zeros((c.shape[0], N_RULES))
+	total_abs_synaptic_change = np.zeros((c.shape[0],))
 
 	train_size = (decoder_train_trial_nums[1] - decoder_train_trial_nums[0]) * READOUTS_PER_TRIAL
 	test_size = (decoder_test_trial_nums[1] - decoder_test_trial_nums[0]) * READOUTS_PER_TRIAL
@@ -512,7 +512,7 @@ def simulate_all(all_keys, X, train, eval_tracker):
 	losses = jnp.where(final_instability > 0, 1e7, losses)
 
 	losses_for_coefs = 1000 * jnp.reshape(losses, (len(X), keys.shape[0])).mean(axis=1)
-	syn_effects_for_coefs = jnp.reshape(total_abs_synaptic_change, (len(X), keys.shape[0], total_abs_synaptic_change.shape[1])).mean(axis=1)
+	syn_effects_for_coefs = jnp.reshape(total_abs_synaptic_change, (len(X), keys.shape[0])).mean(axis=1)
 
 	print('losses')
 	print(losses_for_coefs)

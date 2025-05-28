@@ -43,7 +43,8 @@ def _delta_W_ij_two_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j):
 
 @jax.jit
 def _delta_W_ij_two_factor(w_ij, r_i, r_j, r_exp_i, r_exp_j, c):
-    return c * _delta_W_ij_two_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j)
+    delta_w =  c * _delta_W_ij_two_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j)
+    return delta_w.sum(), jnp.abs(delta_w).sum()
 
 
 delta_W_ij_two_factor = jax.vmap(
@@ -68,7 +69,8 @@ def _delta_W_ij_three_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j, f_i):
 
 @jax.jit
 def _delta_W_ij_three_factor(w_ij, r_i, r_j, r_exp_i, r_exp_j, f_i, c):
-    return c * _delta_W_ij_three_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j, f_i)
+    delta_w = c * _delta_W_ij_three_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j, f_i)
+    return delta_w.sum(), jnp.abs(delta_w).sum()
 
 
 delta_W_ij_three_factor = jax.vmap(
@@ -120,9 +122,6 @@ def learning_dynamics(t, y, args):
     W = w_polarity * softplus(a) * w_nonzero
     unstable_bool = unstable > 0
 
-    # jax.debug.print("max(a) = {}", jnp.max(a))
-    # jax.debug.print("a = {}", a)
-
     delta_unstable = jnp.any(a > 20) | jnp.any(s > 10) | unstable_bool
 
     r = calc_r_from_s(s, s_offsets, g, n_e) * ~(delta_unstable | unstable_bool)
@@ -132,7 +131,7 @@ def learning_dynamics(t, y, args):
 
     # Weight change from (1) -> (1)
 
-    delta_W_11_two_factor_raw = delta_W_ij_two_factor(
+    delta_W_11_two_factor, delta_syn_11_two_factor_raw = delta_W_ij_two_factor(
         W[:n_1, :n_1] * W_RESCALING,
         r[:n_1] * R_RESCALING,
         r[:n_1] * R_RESCALING,
@@ -141,11 +140,9 @@ def learning_dynamics(t, y, args):
         c[:20],
     )
 
-    delta_W_11_two_factor = delta_W_11_two_factor_raw.sum(axis=2)
-    delta_syn_11_two_factor = jnp.abs(delta_W_11_two_factor_raw).sum(axis=(0, 1))
-    del delta_W_11_two_factor_raw
+    delta_syn_11_two_factor = delta_syn_11_two_factor_raw.sum()
 
-    delta_W_11_three_factor_raw = delta_W_ij_three_factor(
+    delta_W_11_three_factor, delta_syn_11_three_factor_raw = delta_W_ij_three_factor(
         W[:n_1, :n_1] * W_RESCALING,
         r[:n_1] * R_RESCALING,
         r[:n_1] * R_RESCALING,
@@ -156,9 +153,7 @@ def learning_dynamics(t, y, args):
         c[60:68],
     )
 
-    delta_W_11_three_factor = delta_W_11_three_factor_raw.sum(axis=2)
-    delta_syn_11_three_factor = jnp.abs(delta_W_11_three_factor_raw).sum(axis=(0, 1))
-    del delta_W_11_three_factor_raw
+    delta_syn_11_three_factor = delta_syn_11_three_factor_raw.sum()
 
     delta_W_11 = (
         # (1) -> (1)
@@ -169,7 +164,7 @@ def learning_dynamics(t, y, args):
 
     # Weight change from (2) -> (1)
 
-    delta_W_21_two_factor_raw = delta_W_ij_two_factor(
+    delta_W_21_two_factor, delta_syn_21_two_factor_raw = delta_W_ij_two_factor(
         W[n_1:n_plastic, :n_1] * W_RESCALING,
         r[n_1:n_plastic] * R_RESCALING,
         r[:n_1] * R_RESCALING,
@@ -178,13 +173,11 @@ def learning_dynamics(t, y, args):
         c[20:40],
     )
 
-    delta_W_21_two_factor = delta_W_21_two_factor_raw.sum(axis=2)
-    delta_syn_21_two_factor = jnp.abs(delta_W_21_two_factor_raw).sum(axis=(0, 1))
-    del delta_W_21_two_factor_raw
+    delta_syn_21_two_factor = delta_syn_21_two_factor_raw.sum()
 
     # Weight change from (1) -> (2)
 
-    delta_W_12_two_factor_raw = delta_W_ij_two_factor(
+    delta_W_12_two_factor, delta_syn_12_two_factor_raw  = delta_W_ij_two_factor(
         W[:n_1, n_1:n_plastic] * W_RESCALING,
         r[:n_1] * R_RESCALING,
         r[n_1:n_plastic] * R_RESCALING,
@@ -193,11 +186,9 @@ def learning_dynamics(t, y, args):
         c[40:60],
     )
 
-    delta_W_12_two_factor = delta_W_12_two_factor_raw.sum(axis=2)
-    delta_syn_12_two_factor = jnp.abs(delta_W_12_two_factor_raw).sum(axis=(0, 1))
-    del delta_W_12_two_factor_raw
+    delta_syn_12_two_factor =  delta_syn_12_two_factor_raw.sum()
 
-    delta_W_12_three_factor_raw = delta_W_ij_three_factor(
+    delta_W_12_three_factor, delta_syn_12_three_factor_raw = delta_W_ij_three_factor(
         W[:n_1, n_1:n_plastic] * W_RESCALING,
         r[:n_1] * R_RESCALING,
         r[n_1:n_plastic] * R_RESCALING,
@@ -208,9 +199,7 @@ def learning_dynamics(t, y, args):
         c[68:76],
     )
 
-    delta_W_12_three_factor = delta_W_12_three_factor_raw.sum(axis=2)
-    delta_syn_12_three_factor = jnp.abs(delta_W_12_three_factor_raw).sum(axis=(0, 1))
-    del delta_W_12_three_factor_raw
+    delta_syn_12_three_factor = delta_syn_12_three_factor_raw.sum()
 
     delta_W_12 = (
         # (2) -> (1)
@@ -227,13 +216,13 @@ def learning_dynamics(t, y, args):
         ]
     )
     
-    delta_syn = eta * jnp.concatenate([
-        delta_syn_11_two_factor,
-        delta_syn_21_two_factor,
-        delta_syn_12_two_factor,
-        delta_syn_11_three_factor,
-        delta_syn_12_three_factor,
-    ])
+    delta_syn = eta * (
+        delta_syn_11_two_factor + 
+        delta_syn_21_two_factor +
+        delta_syn_12_two_factor +
+        delta_syn_11_three_factor +
+        delta_syn_12_three_factor
+    )
 
     return delta_s, delta_r_exp, delta_a * ~(delta_unstable | unstable_bool), delta_syn * ~(delta_unstable | unstable_bool), delta_unstable & (~unstable_bool)
 
@@ -241,7 +230,7 @@ def learning_dynamics(t, y, args):
 def simulate(t, a0, w_polarity, w_nonzero, r_in, c, tau_rules, n, dt, readout_times, args, save_for_viewing=False):
     s0 = jnp.zeros((a0.shape[0], n))
     r_exp0 = jnp.zeros((a0.shape[0], n, tau_rules.shape[1]))
-    syn0 = jnp.zeros((a0.shape[0], c.shape[1]))
+    syn0 = jnp.zeros((a0.shape[0],))
     unstable = jnp.zeros((a0.shape[0],), dtype=int)
 
     term = diffrax.ODETerm(
