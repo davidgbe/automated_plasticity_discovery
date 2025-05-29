@@ -1,10 +1,11 @@
 import numpy as np
-from copy import deepcopy as copy
+from functools import partial
 import jax
 import jax.numpy as jnp
 import diffrax
 import jax.random as jr
 from aux_funcs import merge_with_indices_jax
+from jax import lax
 
 R_RESCALING = 10
 R_EXP_RESCALING = 10
@@ -102,15 +103,21 @@ def inv_softplus(w):
     )
 
 
-def calc_r_from_s(s, s_offsets, g, n_e):
+# @partial(jax.jit, static_argnames=['s_offsets', 'g', 'n_e', 'n_i'])
+def calc_r_from_s(s, s_offsets, g, n_e, n_i):
     s_thresh = jnp.maximum(s - s_offsets, 0)
-    r = g * jnp.concatenate((jnp.tanh(s_thresh[:n_e]), s_thresh[n_e:])) # excitatory cells get a tanh threshold, inhibition is left as threshold linear
+
+    e_act = lax.dynamic_slice(s_thresh, (0,), (n_e,))
+    i_act = lax.dynamic_slice(s_thresh, (n_e,), (n_i,))
+
+    r = g * jnp.concatenate((jnp.tanh(e_act), i_act)) # excitatory cells get a tanh threshold, inhibition is left as threshold linear
     return r
 
 
-def learning_dynamics(t, y, args):
-    c, tau_rules, g, s_offsets, w_u, tau_s, eta, n_e, n_i, n_e_pool, n_e_side, time, r_in, w_polarity, w_nonzero = args
+# @partial(jax.jit, static_argnames=['g', 's_offsets', 'w_u', ' tau_s', 'eta', 'n_e', 'n_i', 'n_e_pool', 'n_e_side'])
+def _learning_dynamics(t, y, r_in, w_polarity, w_nonzero, c, tau_rules, time, g, s_offsets, w_u, tau_s, eta, n_e, n_i, n_e_pool, n_e_side):
 
+    print('here')
     def u(t_prime):
         return jax.vmap(jnp.interp, (None, None, 1),)(t_prime, time, r_in)
 
@@ -119,126 +126,159 @@ def learning_dynamics(t, y, args):
     n_plastic = n_1 + n_2
 
     s, r_exp, a, syn, unstable = y
+
     W = w_polarity * softplus(a) * w_nonzero
-    unstable_bool = unstable > 0
+    unstable_bool = jnp.any(unstable > 0)
 
     delta_unstable = jnp.any(a > 20) | jnp.any(s > 10) | unstable_bool
+    mask = ~(delta_unstable | unstable_bool)
 
-    r = calc_r_from_s(s, s_offsets, g, n_e) * ~(delta_unstable | unstable_bool)
+    print('mask')
+    jax.debug.print('{}', mask)
+    jax.debug.print('{}', mask.shape)
+
+    # jax.debug.breakpoint()
+
+    r = lax.cond(
+        mask,
+        lambda : calc_r_from_s(s, s_offsets, g, n_e, n_i),
+        lambda : jnp.zeros(s.shape),
+    )
+
+    print('here again')
     v = W @ r + w_u * u(t)
     delta_s = (v - s) / tau_s
     delta_r_exp = (r[:, None] - r_exp) / tau_rules
 
-    # Weight change from (1) -> (1)
+    # Convenience functions
+    def ds1(x, start, size):
+        return lax.dynamic_slice(x, (start,), (size,))
 
-    delta_W_11_two_factor, delta_syn_11_two_factor_raw = delta_W_ij_two_factor(
-        W[:n_1, :n_1] * W_RESCALING,
-        r[:n_1] * R_RESCALING,
-        r[:n_1] * R_RESCALING,
-        r_exp[:n_1, :12] * R_EXP_RESCALING,
-        r_exp[:n_1, :12] * R_EXP_RESCALING,
-        c[:20],
+    def ds2(x, start0, start1, size0, size1):
+        return lax.dynamic_slice(x, (start0, start1), (size0, size1))
+
+    # (1)->(1)
+    delta_W_11_2f, delta_syn_11_2f_raw = delta_W_ij_two_factor(
+        ds2(W, 0, 0, n_1, n_1) * W_RESCALING,
+        ds1(r, 0, n_1) * R_RESCALING,
+        ds1(r, 0, n_1) * R_RESCALING,
+        ds2(r_exp, 0, 0, n_1, 12) * R_EXP_RESCALING,
+        ds2(r_exp, 0, 0, n_1, 12) * R_EXP_RESCALING,
+        ds1(c, 0, 20),
     )
+    delta_syn_11_2f = delta_syn_11_2f_raw.sum()
 
-    delta_syn_11_two_factor = delta_syn_11_two_factor_raw.sum()
-
-    delta_W_11_three_factor, delta_syn_11_three_factor_raw = delta_W_ij_three_factor(
-        W[:n_1, :n_1] * W_RESCALING,
-        r[:n_1] * R_RESCALING,
-        r[:n_1] * R_RESCALING,
-        r_exp[:n_1, 36:44] * R_EXP_RESCALING,
-        r_exp[:n_1, 36:44] * R_EXP_RESCALING,
-        # (2) -> (1)
-        W[:n_1, n_1:n_plastic] @ r_exp[n_1:n_plastic, 44:52] * R_EXP_RESCALING,
-        c[60:68],
+    delta_W_11_3f, delta_syn_11_3f_raw = delta_W_ij_three_factor(
+        ds2(W, 0, 0, n_1, n_1) * W_RESCALING,
+        ds1(r, 0, n_1) * R_RESCALING,
+        ds1(r, 0, n_1) * R_RESCALING,
+        ds2(r_exp, 0, 36, n_1, 8) * R_EXP_RESCALING,
+        ds2(r_exp, 0, 36, n_1, 8) * R_EXP_RESCALING,
+        ds2(W, 0, n_1, n_1, n_2) @ ds2(r_exp, n_1, 44, n_2, 8) * R_EXP_RESCALING,
+        ds1(c, 60, 8),
     )
+    delta_syn_11_3f = delta_syn_11_3f_raw.sum()
+    delta_W_11 = delta_W_11_2f + delta_W_11_3f
 
-    delta_syn_11_three_factor = delta_syn_11_three_factor_raw.sum()
-
-    delta_W_11 = (
-        # (1) -> (1)
-        delta_W_11_two_factor
-        # (1) -> (1) modulated by (2)
-        + delta_W_11_three_factor 
+    # (2)->(1)
+    delta_W_21_2f, delta_syn_21_2f_raw = delta_W_ij_two_factor(
+        ds2(W, n_1, 0, n_2, n_1) * W_RESCALING,
+        ds1(r, n_1, n_2) * R_RESCALING,
+        ds1(r, 0, n_1) * R_RESCALING,
+        ds2(r_exp, n_1, 12, n_2, 12) * R_EXP_RESCALING,
+        ds2(r_exp, 0, 12, n_1, 12) * R_EXP_RESCALING,
+        ds1(c, 20, 20),
     )
+    delta_syn_21_2f = delta_syn_21_2f_raw.sum()
 
-    # Weight change from (2) -> (1)
-
-    delta_W_21_two_factor, delta_syn_21_two_factor_raw = delta_W_ij_two_factor(
-        W[n_1:n_plastic, :n_1] * W_RESCALING,
-        r[n_1:n_plastic] * R_RESCALING,
-        r[:n_1] * R_RESCALING,
-        r_exp[n_1:n_plastic, 12:24] * R_EXP_RESCALING,
-        r_exp[:n_1, 12:24] * R_EXP_RESCALING,
-        c[20:40],
+    # (1)->(2)
+    delta_W_12_2f, delta_syn_12_2f_raw = delta_W_ij_two_factor(
+        ds2(W, 0, n_1, n_1, n_2) * W_RESCALING,
+        ds1(r, 0, n_1) * R_RESCALING,
+        ds1(r, n_1, n_2) * R_RESCALING,
+        ds2(r_exp, 0, 24, n_1, 12) * R_EXP_RESCALING,
+        ds2(r_exp, n_1, 24, n_2, 12) * R_EXP_RESCALING,
+        ds1(c, 40, 20),
     )
+    delta_syn_12_2f = delta_syn_12_2f_raw.sum()
 
-    delta_syn_21_two_factor = delta_syn_21_two_factor_raw.sum()
-
-    # Weight change from (1) -> (2)
-
-    delta_W_12_two_factor, delta_syn_12_two_factor_raw  = delta_W_ij_two_factor(
-        W[:n_1, n_1:n_plastic] * W_RESCALING,
-        r[:n_1] * R_RESCALING,
-        r[n_1:n_plastic] * R_RESCALING,
-        r_exp[:n_1, 24:36] * R_EXP_RESCALING,
-        r_exp[n_1:n_plastic, 24:36] * R_EXP_RESCALING,
-        c[40:60],
+    delta_W_12_3f, delta_syn_12_3f_raw = delta_W_ij_three_factor(
+        ds2(W, 0, n_1, n_1, n_2) * W_RESCALING,
+        ds1(r, 0, n_1) * R_RESCALING,
+        ds1(r, n_1, n_2) * R_RESCALING,
+        ds2(r_exp, 0, 52, n_1, 8) * R_EXP_RESCALING,
+        ds2(r_exp, n_1, 52, n_2, 8) * R_EXP_RESCALING,
+        ds2(W, 0, 0, n_1, n_1) @ ds2(r_exp, 0, 60, n_1, 8) * R_EXP_RESCALING,
+        ds1(c, 68, 8),
     )
+    delta_syn_12_3f = delta_syn_12_3f_raw.sum()
+    delta_W_12 = delta_W_12_2f + delta_W_12_3f
 
-    delta_syn_12_two_factor =  delta_syn_12_two_factor_raw.sum()
-
-    delta_W_12_three_factor, delta_syn_12_three_factor_raw = delta_W_ij_three_factor(
-        W[:n_1, n_1:n_plastic] * W_RESCALING,
-        r[:n_1] * R_RESCALING,
-        r[n_1:n_plastic] * R_RESCALING,
-        r_exp[:n_1, 52:60] * R_EXP_RESCALING,
-        r_exp[n_1:n_plastic, 52:60] * R_EXP_RESCALING,
-        # (1) -> (1)
-        W[:n_1, :n_1] @ r_exp[:n_1, 60:68] * R_EXP_RESCALING,
-        c[68:76],
-    )
-
-    delta_syn_12_three_factor = delta_syn_12_three_factor_raw.sum()
-
-    delta_W_12 = (
-        # (2) -> (1)
-        delta_W_12_two_factor
-        # (2) -> (1) modulated by (1)
-        + delta_W_12_three_factor
-    )
-
-    delta_a = eta * w_nonzero * jnp.block(
-        [
-            [delta_W_11, delta_W_12, jnp.zeros((n_1, n_i),)],
-            [delta_W_21_two_factor, jnp.zeros((n_2, n_2 + n_i))],
-            [jnp.zeros((n_i, n_e + n_i))]
-        ]
-    )
-    
+    delta_a = eta * w_nonzero * jnp.block([
+        [delta_W_11, delta_W_12, jnp.zeros((n_1, n_i))],
+        [delta_W_21_2f, jnp.zeros((n_2, n_2 + n_i))],
+        [jnp.zeros((n_i, n_e + n_i))]
+    ])
     delta_syn = eta * (
-        delta_syn_11_two_factor + 
-        delta_syn_21_two_factor +
-        delta_syn_12_two_factor +
-        delta_syn_11_three_factor +
-        delta_syn_12_three_factor
+        delta_syn_11_2f +
+        delta_syn_21_2f +
+        delta_syn_12_2f +
+        delta_syn_11_3f +
+        delta_syn_12_3f
     )
 
-    return delta_s, delta_r_exp, delta_a * ~(delta_unstable | unstable_bool), delta_syn * ~(delta_unstable | unstable_bool), delta_unstable & (~unstable_bool)
+    return delta_s, delta_r_exp, delta_a * mask, delta_syn * mask, delta_unstable & (~unstable_bool)
 
 
 def simulate(t, a0, w_polarity, w_nonzero, r_in, c, tau_rules, n, dt, readout_times, args, save_for_viewing=False):
-    s0 = jnp.zeros((a0.shape[0], n))
-    r_exp0 = jnp.zeros((a0.shape[0], n, tau_rules.shape[1]))
-    syn0 = jnp.zeros((a0.shape[0],))
-    unstable = jnp.zeros((a0.shape[0],), dtype=int)
+    num_devices = len(jax.devices())
 
-    term = diffrax.ODETerm(
+    print('num devices', num_devices)
+
+    batch_shape = jnp.copy(a0.shape[0])
+
+    a0 = a0.reshape((num_devices, batch_shape // num_devices, *a0.shape[1:]))
+    s0 = jnp.zeros((num_devices, batch_shape // num_devices, n))
+    r_exp0 = jnp.zeros((num_devices, batch_shape // num_devices, n, tau_rules.shape[1]))
+    syn0 = jnp.zeros((num_devices, batch_shape // num_devices))
+    unstable = jnp.zeros((num_devices, batch_shape // num_devices), dtype=int)
+
+    # batch these
+    # r_in, w_polarity, w_nonzero, c, tau_rules
+    r_in = r_in.reshape((num_devices, batch_shape // num_devices, *r_in.shape[1:]))
+    w_polarity = w_polarity.reshape((num_devices, batch_shape // num_devices, *w_polarity.shape[1:]))
+    w_nonzero = w_nonzero.reshape((num_devices, batch_shape // num_devices, *w_nonzero.shape[1:]))
+    c = c.reshape((num_devices, batch_shape // num_devices, *c.shape[1:]))
+    tau_rules = tau_rules.reshape((num_devices, batch_shape // num_devices, *tau_rules.shape[1:]))
+
+    time, g, s_offsets, w_u, tau_s, eta, n_e, n_i, n_e_pool, n_e_side = args
+    
+    bound_learning_dynamics = jax.pmap(
         jax.vmap(
-            learning_dynamics,
-            (None, (0,) * 5, (0,) * 2 + (None,) * 10 + (0,) * 3),
-        )
+            partial(
+                _learning_dynamics,
+                time=time,
+                g=g,
+                s_offsets=s_offsets,
+                w_u=w_u,
+                tau_s=tau_s,
+                eta=eta,
+                n_e=n_e,
+                n_i=n_i,
+                n_e_pool=n_e_pool,
+                n_e_side=n_e_side,
+            ),
+            (None, (0,) * 5) + (0,) * 5,
+        ),
+        in_axes=(None, (0,) * 5) + (0,) * 5,
     )
+
+    def learning_dynamics(t, y, args):
+        r_in, w_polarity, w_nonzero, c, tau_rules = args
+        return bound_learning_dynamics(t, y, r_in, w_polarity, w_nonzero, c, tau_rules)
+
+
+    term = diffrax.ODETerm(learning_dynamics)
     solver = diffrax.Tsit5()
     stepsize_controller = diffrax.PIDController(rtol=1e-4, atol=1e-4)
 
@@ -250,6 +290,7 @@ def simulate(t, a0, w_polarity, w_nonzero, r_in, c, tau_rules, n, dt, readout_ti
     else:
         saveat = diffrax.SaveAt(ts=readout_times)
 
+
     sol = diffrax.diffeqsolve(
         term,
         solver,
@@ -257,7 +298,7 @@ def simulate(t, a0, w_polarity, w_nonzero, r_in, c, tau_rules, n, dt, readout_ti
         t1=t[-1],
         dt0=dt,
         y0=(s0, r_exp0, a0, syn0, unstable),
-        args=args + (t, r_in, w_polarity, w_nonzero),
+        args=(r_in, w_polarity, w_nonzero, c, tau_rules),
         saveat=saveat,
         stepsize_controller=stepsize_controller,
         max_steps=int(1e4),
@@ -265,7 +306,12 @@ def simulate(t, a0, w_polarity, w_nonzero, r_in, c, tau_rules, n, dt, readout_ti
 
     finished_sol = jax.block_until_ready(sol)
 
-    if save_for_viewing:
-        return [y[sorted_indices, ...] for y in finished_sol.ys]
-    else:
-        return finished_sol.ys
+    ys = []
+    for y in finished_sol.ys:
+        y_reshaped = y.reshape((y.shape[0], batch_shape) + y.shape[3:])
+        if save_for_viewing:
+            ys.append(y_reshaped[sorted_indices, ...])
+        else:
+            ys.append(y_reshaped)
+    
+    return ys

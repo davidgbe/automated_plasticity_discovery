@@ -62,10 +62,10 @@ INPUT_BLOCK_DURATION = 5e-3
 N_RULES = 60 + 16
 N_TIMECONSTS = 36 + 32
 
-T = 0.1 # Total duration of one network simulation
+T = 0.03 # Total duration of one network simulation
 DT = 1e-4 # Timestep
 INPUT_START = int(20e-3/DT)
-INPUT_END = int(100e-3/DT)
+INPUT_END = int(30e-3/DT)
 INPUT_LEN = INPUT_END - INPUT_START
 input_block_timesteps = int(INPUT_BLOCK_DURATION / DT)
 
@@ -411,8 +411,7 @@ def simulate_all(all_keys, X, train, eval_tracker):
 		)
 
 	args = (
-		c,
-		tau_rules,
+		t,
 		g,
 		s_offsets,
 		w_u,
