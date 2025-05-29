@@ -117,7 +117,6 @@ def calc_r_from_s(s, s_offsets, g, n_e, n_i):
 # @partial(jax.jit, static_argnames=['g', 's_offsets', 'w_u', ' tau_s', 'eta', 'n_e', 'n_i', 'n_e_pool', 'n_e_side'])
 def _learning_dynamics(t, y, r_in, w_polarity, w_nonzero, c, tau_rules, time, g, s_offsets, w_u, tau_s, eta, n_e, n_i, n_e_pool, n_e_side):
 
-    print('here')
     def u(t_prime):
         return jax.vmap(jnp.interp, (None, None, 1),)(t_prime, time, r_in)
 
@@ -133,11 +132,9 @@ def _learning_dynamics(t, y, r_in, w_polarity, w_nonzero, c, tau_rules, time, g,
     delta_unstable = jnp.any(a > 20) | jnp.any(s > 10) | unstable_bool
     mask = ~(delta_unstable | unstable_bool)
 
-    print('mask')
-    jax.debug.print('{}', mask)
-    jax.debug.print('{}', mask.shape)
-
-    # jax.debug.breakpoint()
+    # print('mask')
+    # jax.debug.print('{}', mask)
+    # jax.debug.print('{}', mask.shape)
 
     r = lax.cond(
         mask,
@@ -145,7 +142,6 @@ def _learning_dynamics(t, y, r_in, w_polarity, w_nonzero, c, tau_rules, time, g,
         lambda : jnp.zeros(s.shape),
     )
 
-    print('here again')
     v = W @ r + w_u * u(t)
     delta_s = (v - s) / tau_s
     delta_r_exp = (r[:, None] - r_exp) / tau_rules
