@@ -45,9 +45,9 @@ RUN_NUM = zero_pad(args.run_num, 6)
 BATCH_SIZE = args.batch
 SEED = args.seed
 TEST_SEED = SEED + 2 * BATCH_SIZE
-N_INNER_LOOP = 320 # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (280, 300)
-decoder_test_trial_nums = (300, 320)
+N_INNER_LOOP = 10 # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (0, 5)
+decoder_test_trial_nums = (5, 10)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 ETA = args.eta
@@ -540,7 +540,7 @@ def simulate_all(all_keys, X, train, eval_tracker):
 def log_results(write_path, eval_tracker, losses, plasticity_coefs, syn_effects):
 	# eval_num, loss, true_losses, plastic_coefs, syn_effects
 	evals = np.full((losses.shape[0], 1), eval_tracker['evals']) 
-	all_save_data = np.concatenate([evals, losses.reshape((losses.shape[0], 1)), plasticity_coefs, syn_effects], axis=1)
+	all_save_data = np.concatenate([evals, losses.reshape((losses.shape[0], 1)), plasticity_coefs, syn_effects.reshape((syn_effects.shape[0], 1))], axis=1)
 	for i in range(all_save_data.shape[0]):
 		save_data = all_save_data[i, :]
 		write_csv(write_path, list(save_data))
