@@ -122,7 +122,13 @@ def learning_dynamics(t, y, args):
     W = w_polarity * softplus(a) * w_nonzero
     unstable_bool = unstable > 0
 
-    delta_unstable = jnp.any(a > 20) | jnp.any(s > 10) | unstable_bool
+    pool_weights_zero = jnp.all(a[:n_e_pool, :n_e_pool] < 1e-6)
+    pool_side_weights_zero = jnp.all(a[:n_e_pool, n_e_pool:n_e_pool + 2 * n_e_side] < 1e-6)
+    side_pool_weights_zero = jnp.all(a[n_e_pool:n_e_pool + 2 * n_e_side, :n_e_pool] < 1e-6)
+    weights_blew_up = jnp.any(a > 20)
+    activity_blew_up = jnp.any(s > 10)
+
+    delta_unstable = pool_weights_zero | pool_side_weights_zero | side_pool_weights_zero | weights_blew_up | activity_blew_up | unstable_bool
 
     r = calc_r_from_s(s, s_offsets, g, n_e) * ~(delta_unstable | unstable_bool)
     v = W @ r + w_u * u(t)
