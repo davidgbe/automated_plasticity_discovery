@@ -61,7 +61,7 @@ INPUT_RATE_PER_CELL = 1000
 INPUT_BLOCK_DURATION = 5e-3
 N_RULES = 60 + 16
 N_TIMECONSTS = 36 + 32
-REPEATS = 5
+REPEATS = 10
 ROOT_FILE_NAME = args.root_file_name
 
 T = 0.100 # Total duration of one network simulation
