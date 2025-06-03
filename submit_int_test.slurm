@@ -39,7 +39,6 @@ RFN="int_no_struct_prior_rand10_STD_EXPL_0.001_FIXED_True_L1_PENALTY_5e-07_ACT_P
 # python test_integrator_2.py --std_expl 0 --pool_size 10 --batch 1 --fixed_data 1 --l1_pen 5e-7 --asp 50 --frac_inputs_fixed 0 --syn_change_prob 0 --seed 2000 --root_file_name $RFN --hd_hd_sparsity 1.0 -
 python test_integrator_2.py --std_expl 0 --pool_size 10 --batch 1 --fixed_data 1 --l1_pen 5e-7 --asp 50 --frac_inputs_fixed 0 --syn_change_prob 0 --seed 2000 --root_file_name $RFN --hd_hd_sparsity 0.8 --hd_hr_sparsity 0.8 --struct_prior random
 
-
 deactivate
 
 ## Exit
