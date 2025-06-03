@@ -406,7 +406,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	t_disrupt = int(np.random.rand() * decode_end + decode_start)
 	t_disrupt_len = int(5e-3 / dt)
 	n_targeted = n_e // 2
-	disrupt_targets = np.conatenate([np.ones((n_targeted,)), np.zeros((n_e - n_targeted,))]).astype(bool)
+	disrupt_targets = np.concatenate([np.ones((n_targeted,)), np.zeros((n_e - n_targeted,))]).astype(bool)
 	np.random.shuffle(disrupt_targets)
 
 	# surviving_synapse_mask = np.ones((n_e, n_i)).astype(bool)
