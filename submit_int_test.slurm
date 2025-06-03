@@ -30,7 +30,15 @@ RFN="int_preexist_inputs_asym_rand10_STD_EXPL_0.001_FIXED_True_L1_PENALTY_5e-07_
 RFN="int_preexist_inputs_asym_rand10_STD_EXPL_0.001_FIXED_True_L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_1.0_FRACI_0.0_SEED_8053_2025-04-03_22:10:24.675697"
 RFN="int_preexist_inputs_asym_rand10_STD_EXPL_0.001_FIXED_True_L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_1.0_FRACI_0.0_SEED_8054_2025-04-04_06:18:06.402567"
 
-python test_integrator_2.py --std_expl 0 --pool_size 10 --batch 1 --fixed_data 1 --l1_pen 5e-7 --asp 50 --frac_inputs_fixed 0 --syn_change_prob 0 --seed 2000 --root_file_name $RFN --hd_hd_sparsity 0.8
+RFN="int_no_struct_prior_rand10_STD_EXPL_0.001_FIXED_True_L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_FRACI_0.0_SEED_8051_2025-04-10_12:48:24.330812"
+RFN="int_no_struct_prior_rand10_STD_EXPL_0.001_FIXED_True_L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_FRACI_0.0_SEED_8052_2025-04-10_18:22:43.744329"
+RFN="int_no_struct_prior_rand10_STD_EXPL_0.001_FIXED_True_L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_FRACI_0.0_SEED_8053_2025-04-10_23:02:20.234429"
+RFN="int_no_struct_prior_rand10_STD_EXPL_0.001_FIXED_True_L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_FRACI_0.0_SEED_8054_2025-04-10_23:27:25.076307"
+RFN="int_no_struct_prior_rand10_STD_EXPL_0.001_FIXED_True_L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_FRACI_0.0_SEED_8055_2025-04-10_23:27:25.077391"
+
+# python test_integrator_2.py --std_expl 0 --pool_size 10 --batch 1 --fixed_data 1 --l1_pen 5e-7 --asp 50 --frac_inputs_fixed 0 --syn_change_prob 0 --seed 2000 --root_file_name $RFN --hd_hd_sparsity 1.0 -
+python test_integrator_2.py --std_expl 0 --pool_size 10 --batch 1 --fixed_data 1 --l1_pen 5e-7 --asp 50 --frac_inputs_fixed 0 --syn_change_prob 0 --seed 2000 --root_file_name $RFN --hd_hd_sparsity 0.8 --hd_hr_sparsity 0.8 --struct_prior random
+
 
 deactivate
 
