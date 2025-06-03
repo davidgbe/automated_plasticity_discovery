@@ -42,6 +42,10 @@ parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
 parser.add_argument('--root_file_name', metavar='rfn', type=str)
 
+# perturbation specific args
+parser.add_argument('--pert_mag', metavar='pm', type=float, default=10)
+parser.add_argument('--pert_prob', metavar='pp', type=float, default=1.)
+
 args = parser.parse_args()
 print(args)
 
@@ -426,7 +430,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		disrupt_inputs_poisson = np.zeros((len(t), n_e + n_i))
 		disrupt_inputs_poisson[t_disrupt : t_disrupt + t_disrupt_len, :n_e][:, disrupt_targets] = np.random.poisson(lam=INPUT_RATE_PER_CELL * 10 * dt, size=(t_disrupt_len, n_targeted))
 
-		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
+		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson + disrupt_inputs_poisson, 3e-3)
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
 		r_in[:, -n_i:] = 0.02 * r_in[:, -n_i:]
 
