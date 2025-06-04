@@ -56,7 +56,7 @@ POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
 N_INNER_LOOP_RANGE = (600, 601) # Number of times to simulate network and plasticity rules per loss function evaluation
 DECODER_TRAIN_ITERS = [399, 394, 389, 384, 379, 374]
-DECODER_TEST_ITERS = [601, 551, 501, 451, 426, 401]
+DECODER_TEST_ITERS = np.flip(np.arange(400, 600, 10))
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -214,10 +214,10 @@ def calc_loss(r : np.ndarray, train_times : np.ndarray, test_times : np.ndarray)
 			stacked_activities_test.append(r_exc[i, test_times, :])
 
 	X_train = np.concatenate(stacked_activities_train, axis=0)
-	y_train = np.stack([train_times for j in range(6)]).flatten()
+	y_train = np.stack([train_times for j in range(len(DECODER_TRAIN_ITERS))]).flatten()
 
 	X_test = np.concatenate(stacked_activities_test, axis=0)
-	y_test = np.stack([test_times for j in range(r.shape[0] - 6)]).flatten()
+	y_test = np.stack([test_times for j in range(r.shape[0] - len(DECODER_TRAIN_ITERS))]).flatten()
 
 	reg = LinearRegression().fit(X_train, y_train)
 
