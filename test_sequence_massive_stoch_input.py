@@ -155,6 +155,8 @@ out_dir_weights = os.path.join(out_dir, 'weights')
 os.mkdir(out_dir_weights)
 out_dir_dynamics = os.path.join(out_dir, 'dynamics')
 os.mkdir(out_dir_dynamics)
+out_dir_targeted_cells = os.path.join(out_dir, 'targeted_cells')
+os.mkdir(out_dir_targeted_cells)
 
 # Make subdirectory for outputting CMAES info
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
@@ -415,6 +417,10 @@ def simulate_single_network(index, x, train, track_params=True):
 	disrupt_targets = np.concatenate([np.ones((n_targeted,)), np.zeros((n_e - n_targeted,))]).astype(bool)
 	np.random.shuffle(disrupt_targets)
 
+	id_str = f'batch_{zero_pad(index, 2)}'
+	# save weights
+	write_csv(os.path.join(out_dir_targeted_cells, f'targeted_{id_str}.csv'), disrupt_targets, delimiter=',')
+
 	# surviving_synapse_mask = np.ones((n_e, n_i)).astype(bool)
 
 	fixed_inputs_spks = np.zeros((len(t), n_e + n_i))
@@ -465,6 +471,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		if (i in DECODER_TRAIN_ITERS) or (i in DECODER_TEST_ITERS):
 			rs_for_loss.append(r)
 			id_str = f'batch_{zero_pad(index, 2)}_activ_{zero_pad(i, 3)}'
+
 			# save weights
 			write_csv(os.path.join(out_dir_weights, f'weight_mat_{id_str}.csv'), w_out, delimiter=',')
 			# save dynamics
