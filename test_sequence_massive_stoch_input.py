@@ -148,7 +148,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/stress_test_massive_pert_pert_prob_{args.pert_prob}_mag_{args.pert_mag}_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/stress_test_massive_pert_single_pert_prob_{args.pert_prob}_mag_{args.pert_mag}_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 out_dir_weights = os.path.join(out_dir, 'weights')
@@ -430,7 +430,8 @@ def simulate_single_network(index, x, train, track_params=True):
 		random_inputs_poisson[:, 0] = 0
 		
 		disrupt_inputs_poisson = np.zeros((len(t), n_e + n_i))
-		disrupt_inputs_poisson[t_disrupt : t_disrupt + t_disrupt_len, :n_e][:, disrupt_targets] = np.random.poisson(lam=DISRUPT_RATE * dt, size=(t_disrupt_len, n_targeted))
+		disrupt_inputs_poisson[t_disrupt, :n_e] = 1
+		# disrupt_inputs_poisson[t_disrupt : t_disrupt + t_disrupt_len, :n_e][:, disrupt_targets] = np.random.poisson(lam=DISRUPT_RATE * dt, size=(t_disrupt_len, n_targeted))
 
 		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
 		if i >= 400 and np.random.rand() < args.pert_prob:
