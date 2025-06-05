@@ -397,7 +397,7 @@ def simulate_all(all_keys, X, train, eval_tracker):
     ])
 
     ws_base = jax.vmap(make_network, (0,))(keys) # generate a weight matrix for each key
-    inv_soft_w_base = inv_softplus(ws_base)
+    inv_soft_w_base = ws_base # inv_softplus(ws_base)
     ws_polarity_base = jnp.where(ws_base >= 0, 1, -1)
     ws_nonzero_base = jnp.where(ws_base != 0, 1, 0).astype(int)
 
