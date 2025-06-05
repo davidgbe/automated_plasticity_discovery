@@ -119,7 +119,8 @@ def learning_dynamics(t, y, args):
     n_plastic = n_1 + n_2
 
     s, r_exp, a, syn, unstable = y
-    W = w_polarity * softplus(a) * w_nonzero
+    W = a
+    # W = w_polarity * softplus(a) * w_nonzero
     unstable_bool = unstable > 0
 
     pool_weights_zero = jnp.all(a[:n_e_pool, :n_e_pool] < 1e-6)
