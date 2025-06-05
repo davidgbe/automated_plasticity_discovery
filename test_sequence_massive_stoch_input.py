@@ -54,9 +54,9 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (700, 701) # Number of times to simulate network and plasticity rules per loss function evaluation
-DECODER_TRAIN_ITERS = [399, 394, 389, 384, 379, 374]
-DECODER_TEST_ITERS = np.flip(np.arange(400, 700, 5))
+N_INNER_LOOP_RANGE = (1100, 1101) # Number of times to simulate network and plasticity rules per loss function evaluation
+DECODER_TRAIN_ITERS = [799, 794, 789, 784, 779, 774]
+DECODER_TEST_ITERS = np.flip(np.arange(800, 1100, 5))
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -148,7 +148,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/stress_test_massive_pert_block_pert_prob_{args.pert_prob}_mag_{args.pert_mag}_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/stress_test_massive_pert_block_long_pert_prob_{args.pert_prob}_mag_{args.pert_mag}_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 out_dir_weights = os.path.join(out_dir, 'weights')
