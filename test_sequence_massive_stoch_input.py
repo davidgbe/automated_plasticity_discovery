@@ -439,7 +439,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		disrupt_inputs_poisson[t_disrupt, :n_e][disrupt_targets] = 1
 
 		if index  == 0:
-		print(disrupt_inputs_poisson[t_disrupt, :n_e])
+			print(disrupt_inputs_poisson[t_disrupt, :n_e])
 
 		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
 		if i >= 400 and np.random.rand() < args.pert_prob:
