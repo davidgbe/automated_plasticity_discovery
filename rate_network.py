@@ -1,6 +1,7 @@
 import numpy as np
 from copy import deepcopy as copy
 import jax
+from jax import lax
 import jax.numpy as jnp
 import diffrax
 import jax.random as jr
@@ -81,10 +82,17 @@ delta_W_ij_three_factor = jax.vmap(
 
 @jax.jit
 def _softplus(a):
-    return jnp.where(
+    def near_zero(a):
+        return (1 / ALPHA) * jnp.log1p(jnp.exp(a / BETA))  # numerically stable softplus
+
+    def far_from_zero(a):
+        return a  # linear regime
+
+    return lax.cond(
         a > SOFTPLUS_TRANSITION,
-        a,
-        1/ALPHA * jnp.log1p(jnp.exp(a/BETA)),
+        far_from_zero,
+        near_zero,
+        operand=a,
     )
 
 
@@ -147,6 +155,7 @@ def learning_dynamics(t, y, args):
     )
 
     delta_syn_11_two_factor = delta_syn_11_two_factor_raw.sum()
+    del delta_syn_11_two_factor_raw
 
     delta_W_11_three_factor, delta_syn_11_three_factor_raw = delta_W_ij_three_factor(
         W[:n_1, :n_1] * W_RESCALING,
@@ -160,6 +169,7 @@ def learning_dynamics(t, y, args):
     )
 
     delta_syn_11_three_factor = delta_syn_11_three_factor_raw.sum()
+    del delta_syn_11_three_factor_raw
 
     delta_W_11 = (
         # (1) -> (1)
@@ -180,6 +190,7 @@ def learning_dynamics(t, y, args):
     )
 
     delta_syn_21_two_factor = delta_syn_21_two_factor_raw.sum()
+    del delta_syn_21_two_factor_raw
 
     # Weight change from (1) -> (2)
 
@@ -193,6 +204,7 @@ def learning_dynamics(t, y, args):
     )
 
     delta_syn_12_two_factor =  delta_syn_12_two_factor_raw.sum()
+    del delta_syn_12_two_factor_raw
 
     delta_W_12_three_factor, delta_syn_12_three_factor_raw = delta_W_ij_three_factor(
         W[:n_1, n_1:n_plastic] * W_RESCALING,
@@ -206,6 +218,7 @@ def learning_dynamics(t, y, args):
     )
 
     delta_syn_12_three_factor = delta_syn_12_three_factor_raw.sum()
+    del delta_syn_12_three_factor_raw
 
     delta_W_12 = (
         # (2) -> (1)
