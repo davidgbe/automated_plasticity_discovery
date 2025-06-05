@@ -68,7 +68,7 @@ CHANGE_PROB_PER_ITER = args.syn_change_prob # (1 - single_trial_removal_prob)^nu
 											# single_trial_removal_prob = 1 - total_survival_prob^(1 / num_trials)
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 80
-DISRUPT_RATE = 200
+PERT_START = 800
 N_RULES = 60
 N_TIMECONSTS = 36
 REPEATS = 20
@@ -440,7 +440,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		disrupt_inputs_poisson[t_disrupt, :n_e][disrupt_targets] = 1
 
 		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
-		if i >= 400 and i % 20 == 0:
+		if i >= PERT_START and i % 20 == 0:
 			pert_on = (np.random.rand() < args.pert_prob)
 				
 		if pert_on:
