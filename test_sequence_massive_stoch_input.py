@@ -148,7 +148,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/stress_test_massive_pert_single_pert_prob_{args.pert_prob}_mag_{args.pert_mag}_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/stress_test_massive_pert_block_pert_prob_{args.pert_prob}_mag_{args.pert_mag}_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 out_dir_weights = os.path.join(out_dir, 'weights')
@@ -416,6 +416,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	n_targeted = n_e // 2
 	disrupt_targets = np.concatenate([np.ones((n_targeted,)), np.zeros((n_e - n_targeted,))]).astype(bool)
 	np.random.shuffle(disrupt_targets)
+	pert_on = False
 
 	id_str = f'batch_{zero_pad(index, 2)}'
 	# save weights
@@ -438,11 +439,11 @@ def simulate_single_network(index, x, train, track_params=True):
 		disrupt_inputs_poisson = np.zeros((len(t), n_e + n_i))
 		disrupt_inputs_poisson[t_disrupt, :n_e][disrupt_targets] = 1
 
-		if index  == 0:
-			print(disrupt_inputs_poisson[t_disrupt, :n_e])
-
 		r_in = poisson_arrivals_to_inputs(fixed_inputs_spks + random_inputs_poisson, 3e-3)
-		if i >= 400 and np.random.rand() < args.pert_prob:
+		if i >= 400 and i % 20 == 0:
+			pert_on = (np.random.rand() < args.pert_prob)
+				
+		if pert_on:
 			r_in += args.pert_mag * poisson_arrivals_to_inputs(disrupt_inputs_poisson, 3e-3)
 
 		r_in[:, :n_e] = 0.09 * r_in[:, :n_e]
