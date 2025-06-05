@@ -386,12 +386,12 @@ def simulate_all(all_keys, X, train, eval_tracker):
 
 	ws_base = jax.vmap(make_network, (0,))(keys) # generate a weight matrix for each key
 	inv_soft_w_base = inv_softplus(ws_base)
-	ws_polarity_base = jnp.where(ws_base >= 0, 1, -1)
-	ws_nonzero_base = jnp.where(ws_base != 0, 1, 0).astype(int)
+	ws_polarity_base = jnp.where(ws_base >= 0, 1, -1).astype(jnp.int4)
+	ws_nonzero_base = jnp.where(ws_base != 0, 1, 0).astype(jnp.int4)
 
 	inv_soft_w = jnp.tile(inv_soft_w_base, (len(X), *jnp.ones(inv_soft_w_base.ndim - 1).astype(int))) # duplicate the block of all weight matrices for the number of rules 
 	ws_polarity = jnp.tile(ws_polarity_base, (len(X), *jnp.ones(ws_polarity_base.ndim - 1).astype(int)))
-	ws_nonzero = jnp.tile(ws_nonzero_base, (len(X), *jnp.ones(ws_nonzero_base.ndim - 1).astype(int))) 
+	ws_nonzero = jnp.tile(ws_nonzero_base, (len(X), *jnp.ones(ws_nonzero_base.ndim - 1).astype(int)))
 
 	ws = softplus(inv_soft_w) * ws_polarity * ws_nonzero
 

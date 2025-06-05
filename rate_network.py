@@ -1,7 +1,6 @@
 import numpy as np
 from copy import deepcopy as copy
 import jax
-from jax import lax
 import jax.numpy as jnp
 import diffrax
 import jax.random as jr
@@ -82,17 +81,10 @@ delta_W_ij_three_factor = jax.vmap(
 
 @jax.jit
 def _softplus(a):
-    def near_zero(a):
-        return (1 / ALPHA) * jnp.log1p(jnp.exp(a / BETA))  # numerically stable softplus
-
-    def far_from_zero(a):
-        return a  # linear regime
-
-    return lax.cond(
+    return jnp.where(
         a > SOFTPLUS_TRANSITION,
-        far_from_zero,
-        near_zero,
-        operand=a,
+        a,
+        1/ALPHA * jnp.log1p(jnp.exp(a/BETA)),
     )
 
 
