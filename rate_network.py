@@ -84,7 +84,7 @@ def _softplus(a):
     return jnp.where(
         a > SOFTPLUS_TRANSITION,
         a,
-        1/ALPHA * jnp.log(1 + jnp.exp(a/BETA))
+        1/ALPHA * jnp.log1p(jnp.exp(a/BETA)),
     )
 
 
@@ -97,7 +97,7 @@ softplus = jax.vmap(
 def inv_softplus(w):
     return jnp.where(
         jnp.abs(w) < SOFTPLUS_TRANSITION,
-        BETA * jnp.log(jnp.exp(ALPHA * jnp.abs(w)) - 1), 
+        BETA * jnp.log(jnp.expm1(ALPHA * jnp.abs(w))),
         jnp.abs(w),
     )
 
@@ -214,13 +214,26 @@ def learning_dynamics(t, y, args):
         + delta_W_12_three_factor
     )
 
-    delta_a = eta * w_nonzero * jnp.block(
-        [
-            [delta_W_11, delta_W_12, jnp.zeros((n_1, n_i),)],
-            [delta_W_21_two_factor, jnp.zeros((n_2, n_2 + n_i))],
-            [jnp.zeros((n_i, n_e + n_i))]
-        ]
-    )
+    row1 = jnp.concatenate([
+        delta_W_11,                          # (n_1, n_1)
+        delta_W_12,                          # (n_1, n_2)
+        jnp.zeros((n_1, n_i))               # (n_1, n_i)
+    ], axis=1)
+
+    row2 = jnp.concatenate([
+        delta_W_21_two_factor,              # (n_2, n_1)
+        jnp.zeros((n_2, n_2 + n_i))         # (n_2, n_2 + n_i)
+    ], axis=1)
+
+    row3 = jnp.zeros((n_i, n_e + n_i))      # (n_i, n_e + n_i)
+
+    delta_a_matrix = jnp.concatenate([
+        row1,
+        row2,
+        row3,
+    ], axis=0)  # Final shape: (n_e + n_i, n_e + n_i)
+
+    delta_a = eta * w_nonzero * delta_a_matrix
     
     delta_syn = eta * (
         delta_syn_11_two_factor + 
