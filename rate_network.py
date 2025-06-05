@@ -109,7 +109,7 @@ def calc_r_from_s(s, s_offsets, g, n_e):
 
 
 def learning_dynamics(t, y, args):
-    c, tau_rules, g, s_offsets, w_u, tau_s, eta, n_e, n_i, n_e_pool, n_e_side, time, r_in, w_polarity, w_nonzero = args
+    c, tau_rules, g, s_offsets, w_u, tau_s, eta, n_e, n_i, n_e_pool, n_e_side, time, r_in, w_polarity = args
 
     def u(t_prime):
         return jax.vmap(jnp.interp, (None, None, 1),)(t_prime, time, r_in)
@@ -119,7 +119,7 @@ def learning_dynamics(t, y, args):
     n_plastic = n_1 + n_2
 
     s, r_exp, a, syn, unstable = y
-    W = w_polarity * softplus(a) * w_nonzero
+    W = w_polarity * softplus(a)
     unstable_bool = unstable > 0
 
     pool_weights_zero = jnp.all(a[:n_e_pool, :n_e_pool] < 1e-6)
@@ -238,7 +238,7 @@ def learning_dynamics(t, y, args):
         row3,
     ], axis=0)  # Final shape: (n_e + n_i, n_e + n_i)
 
-    delta_a = eta * w_nonzero * delta_a_matrix
+    delta_a = eta * jnp.abs(w_polarity) * delta_a_matrix
     
     delta_syn = eta * (
         delta_syn_11_two_factor + 
@@ -260,7 +260,7 @@ def simulate(t, a0, w_polarity, w_nonzero, r_in, c, tau_rules, n, dt, readout_ti
     term = diffrax.ODETerm(
         jax.vmap(
             learning_dynamics,
-            (None, (0,) * 5, (0,) * 2 + (None,) * 10 + (0,) * 3),
+            (None, (0,) * 5, (0,) * 2 + (None,) * 10 + (0,) * 2),
         )
     )
     solver = diffrax.Tsit5()
@@ -281,7 +281,7 @@ def simulate(t, a0, w_polarity, w_nonzero, r_in, c, tau_rules, n, dt, readout_ti
         t1=t[-1],
         dt0=dt,
         y0=(s0, r_exp0, a0, syn0, unstable),
-        args=args + (t, r_in, w_polarity, w_nonzero),
+        args=args + (t, r_in, w_polarity),
         saveat=saveat,
         stepsize_controller=stepsize_controller,
         max_steps=int(1e4),
