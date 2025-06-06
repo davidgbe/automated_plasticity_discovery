@@ -46,8 +46,8 @@ BATCH_SIZE = args.batch
 SEED = args.seed
 TEST_SEED = SEED + 2 * BATCH_SIZE
 N_INNER_LOOP = 10 # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (0, 5)
-decoder_test_trial_nums = (5, 10)
+decoder_train_trial_nums = (0, 30)
+decoder_test_trial_nums = (30, 50)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 ETA = args.eta
@@ -574,12 +574,8 @@ def plot_corrs(r_train, r_test, targets_train, targets_test, decoder_weights, ev
 	save_path = os.path.join(out_dir, f'decoder_weights_{padded_idx}.png')
 
 	fig, axs = plt.subplots(1, 1)
-	axs.imshow(decoder_weights.squeeze(axis=2))
-
-	fig.tight_layout()
-	fig.savefig(save_path, dpi=300)
-	print(f"Figure saved to: {save_path}")
-	plt.close()
+	m = np.abs(decoder_weights.squeeze(axis=2))
+	plot_heatmap(decoder_weights.squeeze(axis=2), ax=axs, cmap='bwr', vmin=-m, vmax=m, save_path=save_path, title='decoder weights', xlabel='', ylabel='')
 
 	for i in range(r_train.shape[0]):
 		padded_idx = zero_pad(eval_tracker['evals'], 4)
