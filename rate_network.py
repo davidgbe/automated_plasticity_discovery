@@ -273,7 +273,7 @@ def simulate(t, a0, w_polarity, r_in, c, tau_rules, n, dt, readout_times, args, 
         saveat = diffrax.SaveAt(ts=merged_save_times)
     else:
         saveat = diffrax.SaveAt(ts=readout_times)
-q
+
     sol = diffrax.diffeqsolve(
         term,
         solver,
