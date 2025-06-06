@@ -45,9 +45,9 @@ RUN_NUM = zero_pad(args.run_num, 6)
 BATCH_SIZE = args.batch
 SEED = args.seed
 TEST_SEED = SEED + 2 * BATCH_SIZE
-N_INNER_LOOP = 50 # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (0, 30)
-decoder_test_trial_nums = (30, 50)
+N_INNER_LOOP = 10 # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (0, 5)
+decoder_test_trial_nums = (5, 10)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 ETA = args.eta
@@ -206,7 +206,7 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 	residual = jnp.square((targets_test - (r_test_aug @ w_screened).squeeze(1))).sum()
 	total = jnp.square(targets_test).sum()
 
-	return jnp.where(invalid, 10, residual / total)
+	return jnp.where(invalid, 10, residual / total). w
 
 
 def make_network(key):
@@ -518,7 +518,7 @@ def simulate_all(all_keys, X, train, eval_tracker):
 				test_idx += 1
 
 	jax_calc_loss = jax.vmap(calc_loss, (0, 0, 0, 0))
-	losses = jax_calc_loss(r_train, r_test, targets_train, targets_test)
+	losses, decoder_weights = jax_calc_loss(r_train, r_test, targets_train, targets_test)
 	final_instability = unstable[-1, :]
 	losses = jnp.where(final_instability > 0, 1e7, losses)
 
@@ -544,7 +544,7 @@ def simulate_all(all_keys, X, train, eval_tracker):
 		W = softplus(inv_soft_w_all) * ws_polarity
 		ws = W[-1, ...]
 
-		plot_run(losses, ws, all_rs_for_viz, eval_tracker)
+		plot_run(losses, ws, all_rs_for_viz, eval_tracker, decoder_weights)
 		eval_tracker['best_changed'] = False
 
 		# plot the center of mass of r vs targets
@@ -599,7 +599,9 @@ def log_results(write_path, eval_tracker, losses, plasticity_coefs, syn_effects)
 		write_csv(write_path, list(save_data))
 
 
-def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
+def plot_run(losses, ws, all_rs_for_viz, eval_tracker, decoder_weights):
+	print('decoder weights', decoder_weights.shape)
+
 	padded_idx = zero_pad(eval_tracker['evals'], 4)
 	save_path = os.path.join(out_dir, f'{padded_idx}.png')
 
