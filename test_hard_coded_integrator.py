@@ -45,9 +45,9 @@ RUN_NUM = zero_pad(args.run_num, 6)
 BATCH_SIZE = args.batch
 SEED = args.seed
 TEST_SEED = SEED + 2 * BATCH_SIZE
-N_INNER_LOOP = 50 # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (0, 30)
-decoder_test_trial_nums = (30, 50)
+N_INNER_LOOP = 60 # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (0, 40)
+decoder_test_trial_nums = (40, 60)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 ETA = args.eta
@@ -544,8 +544,6 @@ def simulate_all(all_keys, X, train, eval_tracker):
 		W = softplus(inv_soft_w_all) * ws_polarity
 		ws = W[-1, ...]
 
-
-
 		plot_run(losses, ws, all_rs_for_viz, eval_tracker)
 		eval_tracker['best_changed'] = False
 
@@ -574,7 +572,7 @@ def plot_corrs(r_train, r_test, targets_train, targets_test, decoder_weights, ev
 	save_path = os.path.join(out_dir, f'decoder_weights_{padded_idx}.png')
 
 	m = np.max(np.abs(decoder_weights))
-	plot_heatmap(decoder_weights.squeeze(axis=2), cmap='bwr', vmin=-m, vmax=m, save_path=save_path, title='decoder weights', xlabel='', ylabel='')
+	plot_heatmap(decoder_weights.squeeze(axis=2), cmap='bwr', vmin=-m, vmax=m, save_path=save_path, title='decoder weights', xlabel='', ylabel='', scale=0.6)
 
 	for i in range(r_train.shape[0]):
 		padded_idx = zero_pad(eval_tracker['evals'], 4)

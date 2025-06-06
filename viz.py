@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def plot_heatmap(matrix, ax=None, xlabel='Time', ylabel='Neuron index', title='Activity heatmap',
-                 cmap='viridis', vmin=None, vmax=None, figsize=None, save_path=None):
+                 cmap='viridis', vmin=None, vmax=None, figsize=None, save_path=None, scale=1):
     """
     Plots an N x T matrix as a heatmap into the provided axis.
 
@@ -21,7 +21,7 @@ def plot_heatmap(matrix, ax=None, xlabel='Time', ylabel='Neuron index', title='A
         if figsize is not None:
             kwargs['figsize'] = figsize
 
-        fig, ax = plt.subplots(1, 1, **kwargs)
+        fig, ax = plt.subplots(scale, scale, **kwargs)
     else:
         fig = None
 
