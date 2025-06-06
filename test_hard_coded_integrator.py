@@ -551,7 +551,7 @@ def simulate_all(all_keys, X, train, eval_tracker):
 
 		# plot the center of mass of r vs targets
 
-		plot_corrs(r_train, r_test, targets_train, targets_test, eval_tracker)
+		plot_corrs(r_train, r_test, targets_train, targets_test, decoder_weights, eval_tracker)
 
 	return losses_for_coefs
 
