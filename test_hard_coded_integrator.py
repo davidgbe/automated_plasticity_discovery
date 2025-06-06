@@ -206,7 +206,7 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 	residual = jnp.square((targets_test - (r_test_aug @ w_screened).squeeze(1))).sum()
 	total = jnp.square(targets_test).sum()
 
-	return jnp.where(invalid, 10, residual / total). w
+	return jnp.where(invalid, 10, residual / total), w_screened
 
 
 def make_network(key):
