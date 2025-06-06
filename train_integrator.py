@@ -525,7 +525,7 @@ def simulate_all(all_keys, X, train, eval_tracker):
 			eval_tracker['best_loss'] = losses_for_coefs[min_loss_index]
 			eval_tracker['best_changed'] = True
 	else:
-		W = softplus(inv_soft_w_all) * ws_polarity * ws_nonzero
+		W = softplus(inv_soft_w_all) * ws_polarity
 		ws = W[-1, ...]
 
 		plot_run(losses, ws, all_rs_for_viz, eval_tracker)
