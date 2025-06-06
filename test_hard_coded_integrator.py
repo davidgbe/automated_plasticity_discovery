@@ -197,6 +197,8 @@ def calc_loss(r_train, r_test, targets_train, targets_test):
 
 	w, _, _, _ = jnp.linalg.lstsq(RtR, Rty)
 
+	print(w)
+
 	singular_matrices_detected = jnp.any(jnp.isnan(w)) | jnp.any(jnp.isinf(w))
 
 	w_screened = jnp.where(singular_matrices_detected, 0, w)
