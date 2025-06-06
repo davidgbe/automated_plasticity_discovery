@@ -264,7 +264,7 @@ def simulate(t, a0, w_polarity, r_in, c, tau_rules, n, dt, readout_times, args, 
         )
     )
     solver = diffrax.Tsit5()
-    stepsize_controller = diffrax.PIDController(rtol=1e-3, atol=1e-6)
+    stepsize_controller = diffrax.PIDController(rtol=1e-4, atol=1e-6)
 
     if save_for_viewing:
         viewing_points = jnp.linspace(t.min(), t.max(), 1000)
@@ -273,7 +273,7 @@ def simulate(t, a0, w_polarity, r_in, c, tau_rules, n, dt, readout_times, args, 
         saveat = diffrax.SaveAt(ts=merged_save_times)
     else:
         saveat = diffrax.SaveAt(ts=readout_times)
-
+q
     sol = diffrax.diffeqsolve(
         term,
         solver,
