@@ -544,7 +544,9 @@ def simulate_all(all_keys, X, train, eval_tracker):
 		W = softplus(inv_soft_w_all) * ws_polarity
 		ws = W[-1, ...]
 
-		plot_run(losses, ws, all_rs_for_viz, eval_tracker, decoder_weights)
+
+
+		plot_run(losses, ws, all_rs_for_viz, eval_tracker)
 		eval_tracker['best_changed'] = False
 
 		# plot the center of mass of r vs targets
@@ -554,7 +556,7 @@ def simulate_all(all_keys, X, train, eval_tracker):
 	return losses_for_coefs
 
 
-def plot_corrs(r_train, r_test, targets_train, targets_test, eval_tracker):
+def plot_corrs(r_train, r_test, targets_train, targets_test, decoder_weights eval_tracker):
 	padded_idx = zero_pad(eval_tracker['evals'], 4)
 	save_path = os.path.join(out_dir, f'corrs_{padded_idx}.png')
 
@@ -569,6 +571,15 @@ def plot_corrs(r_train, r_test, targets_train, targets_test, eval_tracker):
 	print(f"Figure saved to: {save_path}")
 	plt.close()
 
+	save_path = os.path.join(out_dir, f'decoder_weights_{padded_idx}.png')
+
+	fig, axs = plt.subplots(1, 1)
+	axs.imshow(decoder_weights.squeeze(axis=2))
+
+	fig.tight_layout()
+	fig.savefig(save_path, dpi=300)
+	print(f"Figure saved to: {save_path}")
+	plt.close()
 
 	for i in range(r_train.shape[0]):
 		padded_idx = zero_pad(eval_tracker['evals'], 4)
@@ -599,8 +610,7 @@ def log_results(write_path, eval_tracker, losses, plasticity_coefs, syn_effects)
 		write_csv(write_path, list(save_data))
 
 
-def plot_run(losses, ws, all_rs_for_viz, eval_tracker, decoder_weights):
-	print('decoder weights', decoder_weights.shape)
+def plot_run(losses, ws, all_rs_for_viz, eval_tracker):
 
 	padded_idx = zero_pad(eval_tracker['evals'], 4)
 	save_path = os.path.join(out_dir, f'{padded_idx}.png')
