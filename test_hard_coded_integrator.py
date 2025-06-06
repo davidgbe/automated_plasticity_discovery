@@ -556,7 +556,7 @@ def simulate_all(all_keys, X, train, eval_tracker):
 	return losses_for_coefs
 
 
-def plot_corrs(r_train, r_test, targets_train, targets_test, decoder_weights eval_tracker):
+def plot_corrs(r_train, r_test, targets_train, targets_test, decoder_weights, eval_tracker):
 	padded_idx = zero_pad(eval_tracker['evals'], 4)
 	save_path = os.path.join(out_dir, f'corrs_{padded_idx}.png')
 
