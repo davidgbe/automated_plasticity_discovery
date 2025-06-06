@@ -46,7 +46,7 @@ BATCH_SIZE = args.batch
 SEED = args.seed
 TEST_SEED = SEED + 2 * BATCH_SIZE
 N_INNER_LOOP = 320 # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (280, 300)
+decoder_train_trial_nums = (260, 300)
 decoder_test_trial_nums = (300, 320)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
@@ -144,17 +144,25 @@ rule_names = [r for rs in rule_names for r in rs]
 rule_names = np.array(rule_names, dtype=object)
 
 
-def create_shift_matrix(size, k=1, ring=False):
+def create_shift_matrix(size, k=1, k_start=None, ring=False):
 	w = np.zeros((size, size))
 	if k >= 1:
-		for k_p in np.arange(1, k+1):
+		if k_start is None:
+			k_start = 1
+		if not k_start > 0:
+			raise ValueError('Signs of k_start and k must match')
+		for k_p in np.arange(k_start, k+1):
 			w += np.diag(np.ones((size - k_p,)), k=k_p)
 			### Add to make into a ring structure
 			if ring:
 				w[(size - k_p):, k - k_p] = 1
 
 	elif k <= -1:
-		for k_p in np.arange(1, -k+1):
+		if k_start is None:
+			k_start = -1
+		if not k_start < 0:
+			raise ValueError('Signs of k_start and k must match')
+		for k_p in np.arange(-k_start, -k+1):
 			w += np.diag(np.ones((size - k_p,)), k=-k_p)
 			### Add to make into a ring structure
 			if ring:
@@ -230,8 +238,8 @@ def make_network(key):
 
 	# --- HR to HD connections ---
 	if args.struct_prior == 'shift':
-		shift_left = create_shift_matrix(n_e_side, k=3)
-		shift_right = create_shift_matrix(n_e_side, k=-3)
+		shift_left = create_shift_matrix(n_e_side, k_start=2, k=6)
+		shift_right = create_shift_matrix(n_e_side, k_start=-2, k=-6)
 
 		left_mask = jr.uniform(keys[2], (n_e_pool, n_e_side)) < args.hd_hr_sparsity
 		right_mask = jr.uniform(keys[3], (n_e_pool, n_e_side)) < args.hd_hr_sparsity
@@ -244,7 +252,9 @@ def make_network(key):
 		)
 
 		# Inhibitory backward connections from HD to HR
-		input_template = w_pool_side * (1 - (shift_left + shift_right))
+		input_template = w_pool_side * (
+			1 - (create_shift_matrix(n_e_side, k_start=-1, k=-3) + create_shift_matrix(n_e_side, k_start=1, k=3))
+		)
 		input_template = input_template.at[jnp.diag_indices(n_e_side)].set(0)
 
 		back_mask_L = jr.uniform(keys[4], (n_e_side, n_e_pool)) < args.hd_hr_sparsity

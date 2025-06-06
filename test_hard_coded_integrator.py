@@ -252,9 +252,6 @@ def make_network(key):
 			w_side_pool * jnp.where(right_mask, shift_right, 0)
 		)
 
-		shift_left = create_shift_matrix(n_e_side, k_start=2, k=4)
-		shift_right = create_shift_matrix(n_e_side, k_start=-2, k=-4)
-
 		# Inhibitory backward connections from HD to HR
 		input_template = w_pool_side * (
 			1 - (create_shift_matrix(n_e_side, k_start=-1, k=-3) + create_shift_matrix(n_e_side, k_start=1, k=3))
