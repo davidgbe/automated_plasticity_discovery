@@ -572,7 +572,7 @@ def plot_corrs(r_train, r_test, targets_train, targets_test, decoder_weights, ev
 	save_path = os.path.join(out_dir, f'decoder_weights_{padded_idx}.png')
 
 	m = np.max(np.abs(decoder_weights))
-	plot_heatmap(decoder_weights.squeeze(axis=2), cmap='bwr', vmin=-m, vmax=m, save_path=save_path, title='decoder weights', xlabel='', ylabel='', scale=0.6)
+	plot_heatmap(decoder_weights.squeeze(axis=2), cmap='bwr', vmin=-m, vmax=m, save_path=save_path, title='decoder weights', xlabel='', ylabel='', figsize=(2, 2))
 
 	for i in range(r_train.shape[0]):
 		padded_idx = zero_pad(eval_tracker['evals'], 4)
