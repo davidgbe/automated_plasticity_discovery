@@ -237,8 +237,8 @@ def make_network(key):
 
 	# --- HR to HD connections ---
 	if args.struct_prior == 'shift':
-		shift_left = create_shift_matrix(n_e_side, k_start=2, k=4)
-		shift_right = create_shift_matrix(n_e_side, k_start=-2, k=-4)
+		shift_left = create_shift_matrix(n_e_side, k_start=2, k=6)
+		shift_right = create_shift_matrix(n_e_side, k_start=-2, k=-6)
 
 		left_mask = jr.uniform(keys[2], (n_e_pool, n_e_side)) < args.hd_hr_sparsity
 		right_mask = jr.uniform(keys[3], (n_e_pool, n_e_side)) < args.hd_hr_sparsity
