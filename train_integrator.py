@@ -1,6 +1,8 @@
+import os
+os.environ["XLA_FLAGS"] = '--xla_force_host_platform_device_count=30'
+
 from copy import deepcopy as copy
 import numpy as np
-import os
 import time
 from tqdm import tqdm
 from aux_funcs import jax_gaussian_if_under_val, start_timer, zero_pad, find_dirs_with_fragment
