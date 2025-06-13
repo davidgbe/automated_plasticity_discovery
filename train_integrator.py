@@ -1,5 +1,5 @@
 import os
-os.environ["XLA_FLAGS"] = '--xla_force_host_platform_device_count=100'
+os.environ["XLA_FLAGS"] = '--xla_force_host_platform_device_count=6'
 
 from copy import deepcopy as copy
 import numpy as np
@@ -360,6 +360,9 @@ def simulate_all(all_keys, X, train, eval_tracker):
 		np.random.seed(SEED)
 	else:
 		np.random.seed(TEST_SEED)
+	
+	num_devices = len(jax.devices())
+	print(f'num_devices={num_devices}')
 
 	# c will have form like:
 	# [

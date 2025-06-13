@@ -226,88 +226,101 @@ def _learning_dynamics(t, y, r_in, w_polarity, w_nonzero, c, tau_rules, time, g,
     return delta_s, delta_r_exp, delta_a * mask, delta_syn * mask, delta_unstable & (~unstable_bool)
 
 
-def simulate(t, a0, w_polarity, w_nonzero, r_in, c, tau_rules, n, dt, readout_times, args, save_for_viewing=False):
-    num_devices = len(jax.devices())
-
-    print('num devices', num_devices)
-
-    batch_shape = jnp.copy(a0.shape[0])
-
-    a0 = a0.reshape((num_devices, batch_shape // num_devices, *a0.shape[1:]))
-    s0 = jnp.zeros((num_devices, batch_shape // num_devices, n))
-    r_exp0 = jnp.zeros((num_devices, batch_shape // num_devices, n, tau_rules.shape[1]))
-    syn0 = jnp.zeros((num_devices, batch_shape // num_devices))
-    unstable = jnp.zeros((num_devices, batch_shape // num_devices), dtype=int)
-
-    # batch these
-    # r_in, w_polarity, w_nonzero, c, tau_rules
-    r_in = r_in.reshape((num_devices, batch_shape // num_devices, *r_in.shape[1:]))
-    w_polarity = w_polarity.reshape((num_devices, batch_shape // num_devices, *w_polarity.shape[1:]))
-    w_nonzero = w_nonzero.reshape((num_devices, batch_shape // num_devices, *w_nonzero.shape[1:]))
-    c = c.reshape((num_devices, batch_shape // num_devices, *c.shape[1:]))
-    tau_rules = tau_rules.reshape((num_devices, batch_shape // num_devices, *tau_rules.shape[1:]))
-
+def simulate(
+    t,
+    a0,
+    w_polarity,
+    w_nonzero,
+    r_in,
+    c,
+    tau_rules,
+    n,
+    dt,
+    readout_times,
+    args,
+    save_for_viewing=False
+):
+    # Unpack static args
     time, g, s_offsets, w_u, tau_s, eta, n_e, n_i, n_e_pool, n_e_side = args
-    
-    bound_learning_dynamics = jax.pmap(
-        jax.vmap(
-            partial(
-                _learning_dynamics,
-                time=time,
-                g=g,
-                s_offsets=s_offsets,
-                w_u=w_u,
-                tau_s=tau_s,
-                eta=eta,
-                n_e=n_e,
-                n_i=n_i,
-                n_e_pool=n_e_pool,
-                n_e_side=n_e_side,
-            ),
-            (None, (0,) * 5) + (0,) * 5,
-        ),
-        in_axes=(None, (0,) * 5) + (0,) * 5,
-    )
+    num_devices = len(jax.devices())
+    batch_shape = a0.shape[0]
+    assert batch_shape % num_devices == 0
+    batch_per_device = batch_shape // num_devices
 
-    def learning_dynamics(t, y, args):
-        r_in, w_polarity, w_nonzero, c, tau_rules = args
-        return bound_learning_dynamics(t, y, r_in, w_polarity, w_nonzero, c, tau_rules)
+    # Reshape inputs to (num_devices, batch_per_device, ...)
+    def reshape(x):
+        return x.reshape((num_devices, batch_per_device) + x.shape[1:])
 
+    a0 = reshape(a0)
+    r_in = reshape(r_in)
+    w_polarity = reshape(w_polarity)
+    w_nonzero = reshape(w_nonzero)
+    c = reshape(c)
+    tau_rules = reshape(tau_rules)
 
-    term = diffrax.ODETerm(learning_dynamics)
-    solver = diffrax.Tsit5()
-    stepsize_controller = diffrax.PIDController(rtol=1e-4, atol=1e-4)
-
+    # Prepare readout/save times
     if save_for_viewing:
         viewing_points = jnp.linspace(t.min(), t.max(), 1000)
         merged_save_times, indices_viewing, indices_readout = merge_with_indices_jax(viewing_points, readout_times)
+        save_times = merged_save_times
         sorted_indices = jnp.concatenate((indices_readout, indices_viewing))
-        saveat = diffrax.SaveAt(ts=merged_save_times)
     else:
-        saveat = diffrax.SaveAt(ts=readout_times)
+        save_times = readout_times
 
+    saveat = diffrax.SaveAt(ts=save_times)
+    stepsize_controller = diffrax.PIDController(rtol=1e-4, atol=1e-4)
 
-    sol = diffrax.diffeqsolve(
-        term,
-        solver,
-        t0=t[0],
-        t1=t[-1],
-        dt0=dt,
-        y0=(s0, r_exp0, a0, syn0, unstable),
-        args=(r_in, w_polarity, w_nonzero, c, tau_rules),
-        saveat=saveat,
-        stepsize_controller=stepsize_controller,
-        max_steps=int(1e4),
-    )
+    # Define per-instance solver
+    def solve_single_instance(a0, r_in, w_polarity, w_nonzero, c, tau_rules):
+        s0 = jnp.zeros((n,))
+        r_exp0 = jnp.zeros((n, tau_rules.shape[0]))
+        syn0 = jnp.zeros(())
+        unstable = jnp.zeros((), dtype=int)
 
-    finished_sol = jax.block_until_ready(sol)
+        def learning_dynamics(t_, y, _):
+            return _learning_dynamics(
+                t_,
+                y,
+                r_in,
+                w_polarity,
+                w_nonzero,
+                c,
+                tau_rules,
+                time,
+                g,
+                s_offsets,
+                w_u,
+                tau_s,
+                eta,
+                n_e,
+                n_i,
+                n_e_pool,
+                n_e_side
+            )
 
-    ys = []
-    for y in finished_sol.ys:
-        y_reshaped = y.reshape((y.shape[0], batch_shape) + y.shape[3:])
-        if save_for_viewing:
-            ys.append(y_reshaped[sorted_indices, ...])
-        else:
-            ys.append(y_reshaped)
-    
-    return ys
+        term = diffrax.ODETerm(learning_dynamics)
+        solver = diffrax.Tsit5()
+
+        sol = diffrax.diffeqsolve(
+            term,
+            solver,
+            t0=t[0],
+            t1=t[-1],
+            dt0=dt,
+            y0=(s0, r_exp0, a0, syn0, unstable),
+            args=None,
+            saveat=saveat,
+            stepsize_controller=stepsize_controller,
+            max_steps=int(1e4),
+        )
+        return sol.ys  # tuple of arrays (time, n, ...)
+
+    # Vectorize across batch_per_device (inner batch)
+    vmapped_solver = jax.vmap(solve_single_instance, in_axes=0)
+
+    # Parallelize across devices
+    pmapped_solver = jax.pmap(vmapped_solver, axis_name="devices")
+
+    # Run simulation
+    results = pmapped_solver(a0, r_in, w_polarity, w_nonzero, c, tau_rules)
+    return results
