@@ -132,10 +132,6 @@ def _learning_dynamics(t, y, r_in, w_polarity, w_nonzero, c, tau_rules, time, g,
     delta_unstable = jnp.any(a > 20) | jnp.any(s > 10) | unstable_bool
     mask = ~(delta_unstable | unstable_bool)
 
-    # print('mask')
-    # jax.debug.print('{}', mask)
-    # jax.debug.print('{}', mask.shape)
-
     r = lax.cond(
         mask,
         lambda : calc_r_from_s(s, s_offsets, g, n_e, n_i),
@@ -244,7 +240,6 @@ def simulate(
     time, g, s_offsets, w_u, tau_s, eta, n_e, n_i, n_e_pool, n_e_side = args
     num_devices = len(jax.devices())
     batch_shape = a0.shape[0]
-    print(batch_shape, num_devices)
     assert batch_shape % num_devices == 0
     batch_per_device = batch_shape // num_devices
 
@@ -324,8 +319,5 @@ def simulate(
 
     # Run simulation
     results = pmapped_solver(a0, r_in, w_polarity, w_nonzero, c, tau_rules)
-    print('a0 shape')
-    s, r_exp, inv_soft_w_all, syn, unstable = results
-    print(inv_soft_w_all.shape)
     
     return jax.tree_util.tree_map(lambda x: x.reshape((x.shape[0] * x.shape[1],) + x.shape[2:]), results)

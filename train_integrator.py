@@ -1,27 +1,4 @@
-import os
-os.environ["XLA_FLAGS"] = '--xla_force_host_platform_device_count=30'
-
-from copy import deepcopy as copy
-import numpy as np
-import time
-from tqdm import tqdm
-from aux_funcs import jax_gaussian_if_under_val, start_timer, zero_pad, find_dirs_with_fragment
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-from datetime import datetime
-import multiprocessing as mp
 import argparse
-import cma
-import pickle
-import jax
-import jax.numpy as jnp
-import jax.random as jr
-from sklearn.linear_model import LinearRegression
-from csv_reader import read_csv
-from csv_writer import write_csv
-from rate_network import simulate, calc_r_from_s, inv_softplus, softplus
-from viz import plot_heatmap, format_plot
-
 
 ### Parse arguments 
 
@@ -39,9 +16,33 @@ parser.add_argument('--hd_hd_sparsity', metavar='dds', type=float, default=1.)
 parser.add_argument('--hd_hr_sparsity', metavar='drs', type=float, default=1.)
 parser.add_argument('--struct_prior', metavar='sp', type=str, default='random')
 parser.add_argument('--run_num', metavar='rn', type=int)
+parser.add_argument('--force_xla_count', metavar='fxc', type=int, default=30)
 
 args = parser.parse_args()
 print(args)
+
+import os
+os.environ["XLA_FLAGS"] = f'--xla_force_host_platform_device_count={args.force_xla_count}'
+
+from copy import deepcopy as copy
+import numpy as np
+import time
+from tqdm import tqdm
+from aux_funcs import jax_gaussian_if_under_val, start_timer, zero_pad, find_dirs_with_fragment
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+from datetime import datetime
+import multiprocessing as mp
+import cma
+import pickle
+import jax
+import jax.numpy as jnp
+import jax.random as jr
+from sklearn.linear_model import LinearRegression
+from csv_reader import read_csv
+from csv_writer import write_csv
+from rate_network import simulate, calc_r_from_s, inv_softplus, softplus
+from viz import plot_heatmap, format_plot
 
 RUN_NUM = zero_pad(args.run_num, 6)
 BATCH_SIZE = args.batch
@@ -490,10 +491,6 @@ def simulate_all(all_keys, X, train, eval_tracker):
 
 		s, r_exp, inv_soft_w_all, syn, unstable = sol
 
-		print('a0 shape after')
-		print(inv_soft_w_all.shape)
-
-
 		inv_soft_w = inv_soft_w_all[:, -1, ...]
 		final_synaptic_change = syn[:, -1, ...]
 		total_abs_synaptic_change += final_synaptic_change
@@ -521,9 +518,6 @@ def simulate_all(all_keys, X, train, eval_tracker):
 
 	losses_for_coefs = 1000 * jnp.reshape(losses, (len(X), keys.shape[0])).mean(axis=1)
 	syn_effects_for_coefs = jnp.reshape(total_abs_synaptic_change, (len(X), keys.shape[0])).mean(axis=1)
-
-	print('losses')
-	print(losses_for_coefs)
 
 	write_path = train_data_path if train else test_data_path
 	log_results(write_path, eval_tracker, losses_for_coefs, jnp.array(X), syn_effects_for_coefs)
