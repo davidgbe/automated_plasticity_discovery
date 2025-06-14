@@ -494,12 +494,12 @@ def simulate_all(all_keys, X, train, eval_tracker):
 		print(inv_soft_w_all.shape)
 
 
-		inv_soft_w = inv_soft_w_all[-1, :]
-		final_synaptic_change = syn[-1, ...]
+		inv_soft_w = inv_soft_w_all[:, -1, ...]
+		final_synaptic_change = syn[:, -1, ...]
 		total_abs_synaptic_change += final_synaptic_change
 
 		if train_trial_flag or test_trial_flag:
-			r = jnp.transpose(jax_calc_r(s, s_offsets, g, n_e), (1, 0, 2))
+			r = jax_calc_r(s, s_offsets, g, n_e)
 
 			if not train:
 				saved_activation_num = i - decoder_train_trial_nums[0]
@@ -516,7 +516,7 @@ def simulate_all(all_keys, X, train, eval_tracker):
 
 	jax_calc_loss = jax.vmap(calc_loss, (0, 0, 0, 0))
 	losses = jax_calc_loss(r_train, r_test, targets_train, targets_test)
-	final_instability = unstable[-1, :]
+	final_instability = unstable[:, -1]
 	losses = jnp.where(final_instability > 0, 1e7, losses)
 
 	losses_for_coefs = 1000 * jnp.reshape(losses, (len(X), keys.shape[0])).mean(axis=1)
@@ -537,7 +537,7 @@ def simulate_all(all_keys, X, train, eval_tracker):
 			eval_tracker['best_changed'] = True
 	else:
 		W = softplus(inv_soft_w_all) * ws_polarity * ws_nonzero
-		ws = W[-1, ...]
+		ws = W[:, -1, ...]
 
 		plot_run(losses, ws, all_rs_for_viz, eval_tracker)
 		eval_tracker['best_changed'] = False
