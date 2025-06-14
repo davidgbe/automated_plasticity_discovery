@@ -490,6 +490,10 @@ def simulate_all(all_keys, X, train, eval_tracker):
 
 		s, r_exp, inv_soft_w_all, syn, unstable = sol
 
+		print('a0 shape after')
+		print(inv_soft_w_all.shape)
+
+
 		inv_soft_w = inv_soft_w_all[-1, :]
 		final_synaptic_change = syn[-1, ...]
 		total_abs_synaptic_change += final_synaptic_change

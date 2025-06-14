@@ -324,4 +324,8 @@ def simulate(
 
     # Run simulation
     results = pmapped_solver(a0, r_in, w_polarity, w_nonzero, c, tau_rules)
-    return jax.tree_util.tree_map(lambda x: x.reshape((-1,) + x.shape[2:]), results)
+    print('a0 shape')
+    s, r_exp, inv_soft_w_all, syn, unstable = results
+    print(inv_soft_w_all.shape)
+    
+    return jax.tree_util.tree_map(lambda x: x.reshape((x.shape[0] * x.shape[1],) + x.shape[2:]), results)
