@@ -73,8 +73,8 @@ INPUT_LEN = INPUT_END - INPUT_START
 input_block_timesteps = int(INPUT_BLOCK_DURATION / DT)
 
 t = np.linspace(0, T, int(T / DT))
-n_e_pool = 40 # Number excitatory cells in sequence (also length of sequence)
-n_e_side = 40
+n_e_pool = 20 # Number excitatory cells in sequence (also length of sequence)
+n_e_side = 20
 n_e = n_e_pool + 2 * n_e_side
 n_i = 1 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
