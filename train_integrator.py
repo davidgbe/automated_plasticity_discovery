@@ -1,5 +1,5 @@
 import os
-os.environ["XLA_FLAGS"] = '--xla_force_host_platform_device_count=6'
+os.environ["XLA_FLAGS"] = '--xla_force_host_platform_device_count=30'
 
 from copy import deepcopy as copy
 import numpy as np
