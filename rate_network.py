@@ -244,6 +244,7 @@ def simulate(
     time, g, s_offsets, w_u, tau_s, eta, n_e, n_i, n_e_pool, n_e_side = args
     num_devices = len(jax.devices())
     batch_shape = a0.shape[0]
+    print(batch_shape, num_devices)
     assert batch_shape % num_devices == 0
     batch_per_device = batch_shape // num_devices
 
