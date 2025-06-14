@@ -324,4 +324,4 @@ def simulate(
 
     # Run simulation
     results = pmapped_solver(a0, r_in, w_polarity, w_nonzero, c, tau_rules)
-    return results
+    return jax.tree_util.tree_map(lambda x: x.reshape((-1,) + x.shape[2:]), results)
