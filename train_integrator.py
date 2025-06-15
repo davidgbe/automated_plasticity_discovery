@@ -34,6 +34,7 @@ parser.add_argument('--seed', metavar='s', type=int)
 parser.add_argument('--hd_hd_sparsity', metavar='dds', type=float, default=1.)
 parser.add_argument('--hd_hr_sparsity', metavar='drs', type=float, default=1.)
 parser.add_argument('--struct_prior', metavar='sp', type=str, default='shift')
+parser.add_argument('--bump_init', metavar='bi', type=int, default=1)
 
 args = parser.parse_args()
 print(args)
@@ -43,9 +44,9 @@ np.random.seed(args.seed)
 SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-N_INNER_LOOP_RANGE = (10, 11) # Number of times to simulate network and plasticity rules per loss function evaluation
-decoder_train_trial_nums = (8, 9)
-decoder_test_trial_nums = (9, 10)
+N_INNER_LOOP_RANGE = (320, 321) # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (300, 320)
+decoder_test_trial_nums = (280, 300)
 READOUTS_PER_TRIAL = 20
 STD_EXPL = args.std_expl
 DW_LAG = 5
@@ -67,8 +68,8 @@ input_end = int(100e-3/dt)
 input_len = input_end - input_start
 input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
 t = np.linspace(0, T, int(T / dt))
-n_e_pool = 40 # Number excitatory cells in sequence (also length of sequence)
-n_e_side = 40
+n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
+n_e_side = 15
 n_i = 1 # Number inhibitory cells
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
@@ -161,19 +162,21 @@ w_i_e = -1e-4 / dt / n_i
 
 # w_e_e_added = 0.05 * w_e_e * 0.2
 
-def create_shift_matrix(size, k=1):
+def create_shift_matrix(size, k=1, ring=False):
 	w = np.zeros((size, size))
 	if k >= 1:
 		for k_p in np.arange(1, k+1):
 			w += np.diag(np.ones((size - k_p,)), k=k_p)
 			### Add to make into a ring structure
-			# w[(size - k_p):, k - k_p] = 1
+			if ring:
+				w[(size - k_p):, k - k_p] = 1
 
 	elif k <= -1:
 		for k_p in np.arange(1, -k+1):
 			w += np.diag(np.ones((size - k_p,)), k=-k_p)
 			### Add to make into a ring structure
-			# w[-k - k_p, (size - k_p):] = 1
+			if ring:
+				w[-k - k_p, (size - k_p):] = 1
 	return w
 
 def create_shuffled_one_to_one(size):
@@ -208,19 +211,28 @@ def make_network():
 
 	###
 	
-	if args.struct_prior == 'shift':
+	if args.struct_prior == 'shift' or args.struct_prior == 'ring':
+		init_ring = (args.struct_prior == 'ring')
 		# define connectivity from HR to HD neurons as "shift" matrix
-		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=3), 0)
-		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool *  np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=-3), 0)
+		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=3, ring=init_ring), 0)
+		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool *  np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=-3, ring=init_ring), 0)
 
 		# define connectivity from HD to HR as inhibiting all but the corresponding group along the diagonal
-		left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=3) + create_shift_matrix(n_e_side, k=-3)))
+		left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=3, ring=init_ring) + create_shift_matrix(n_e_side, k=-3, ring=init_ring)))
 		np.fill_diagonal(left_input_cells, 0)
 		right_input_cells = copy(left_input_cells)
 
 		w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = np.where(np.random.rand(n_e_side, n_e_pool) < args.hd_hr_sparsity, left_input_cells, 0)
 		w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = np.where(np.random.rand(n_e_side, n_e_pool) < args.hd_hr_sparsity, right_input_cells, 0)
-	else:
+	elif args.struct_prior == 'one_in_one_out':
+		# define connectivity from HR to HD neurons as random, semi-sparse matrix
+		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * (create_shuffled_one_to_one(n_e_side) + np.random.rand(n_e_pool, n_e_side) * 0.05)
+		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * (create_shuffled_one_to_one(n_e_side) + np.random.rand(n_e_pool, n_e_side) * 0.05)
+
+		# define connectivity from HD to HR neurons as random, semi-sparse matrix
+		w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = np.abs(w_pool_side) * (create_shuffled_one_to_one(n_e_side) + np.random.rand(n_e_side, n_e_pool) * 0.05)
+		w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = np.abs(w_pool_side) * (create_shuffled_one_to_one(n_e_side) + np.random.rand(n_e_side, n_e_pool) * 0.05)
+	elif args.struct_prior == 'random':
 		# define connectivity from HR to HD neurons as random, semi-sparse matrix
 		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, np.random.rand(n_e_pool, n_e_side), 0)
 		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, np.random.rand(n_e_pool, n_e_side), 0)
@@ -492,7 +504,8 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
 		input_size = 6
 		input_slice = slice(int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
-		r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), 6))
+		if bool(args.bump_init):
+			r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), 6))
 
 		r_in_spks[input_start:input_end, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
