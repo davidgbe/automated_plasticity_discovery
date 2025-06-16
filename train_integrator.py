@@ -709,7 +709,7 @@ if __name__ == '__main__':
 		'best_changed': False,
 	}
 
-	# eval_all([x0], eval_tracker=eval_tracker)
+	eval_all([x0], eval_tracker=eval_tracker)
 
 	options = {
 		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
