@@ -723,6 +723,7 @@ if __name__ == '__main__':
 
 	while not es.stop():
 		X = es.ask()
+		print(X)
 		es.tell(X, eval_all(X, eval_tracker=eval_tracker))
 		if eval_tracker['best_changed']:
 			eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
