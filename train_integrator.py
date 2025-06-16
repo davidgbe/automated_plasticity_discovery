@@ -439,6 +439,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	if FIXED_DATA:
 		if train:
 			print(train_seeds[index])
+			sys.stdout.flush()
 			np.random.seed(train_seeds[index])
 		else:
 			np.random.seed(test_seeds[index])
@@ -658,16 +659,19 @@ def eval_all(X, eval_tracker=None, train=True):
 	start = time.time()
 
 	print('start time:', start)
+	sys.stdout.flush()
 
 	indices = np.arange(BATCH_SIZE)
 	pool = mp.Pool(POOL_SIZE)
 	print('after pool is made')
+	sys.stdout.flush()
 
 	task_vars = []
 	for x in X:
 		for idx in indices:
 			task_vars.append((idx, x, train))
 	print(task_vars)
+	sys.stdout.flush()
 	results = pool.map(simulate_single_network_wrapper, task_vars)
 
 	pool.close()
