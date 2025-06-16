@@ -657,6 +657,8 @@ def simulate_single_network_wrapper(tup):
 def eval_all(X, eval_tracker=None, train=True):
 	start = time.time()
 
+	print('start time:', start)
+
 	indices = np.arange(BATCH_SIZE)
 	pool = mp.Pool(POOL_SIZE)
 
