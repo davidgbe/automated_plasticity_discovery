@@ -475,8 +475,6 @@ def simulate_single_network(index, x, train, track_params=True):
 		# print(f'Activation number: {i}')
 		# Define input for activation of the network
 
-		timer = start_timer()
-
 		input_spks = np.zeros((input_len, 2 * n_e_side))
 		inputs = np.zeros((input_len,)).astype(int)
 		inputs[0] = 1
@@ -528,16 +526,9 @@ def simulate_single_network(index, x, train, track_params=True):
 		# 	w[:n_e, :n_e] = np.where(drop_mask_for_i, 0, w[:n_e, :n_e])
 		# 	w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
-		print('Setup')
-		timer()
-
-		timer = start_timer()
-
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=5e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
-		print('Sim')
-		timer()
 
 		if (np.isnan(r).any()
 	  		or (np.abs(w_out) > 100).any()
