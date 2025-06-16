@@ -661,6 +661,7 @@ def eval_all(X, eval_tracker=None, train=True):
 
 	indices = np.arange(BATCH_SIZE)
 	pool = mp.Pool(POOL_SIZE)
+	print('after pool is made')
 
 	task_vars = []
 	for x in X:
