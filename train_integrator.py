@@ -664,6 +664,7 @@ def eval_all(X, eval_tracker=None, train=True):
 	for x in X:
 		for idx in indices:
 			task_vars.append((idx, x, train))
+	print(task_vars)
 	results = pool.map(simulate_single_network_wrapper, task_vars)
 
 	pool.close()
