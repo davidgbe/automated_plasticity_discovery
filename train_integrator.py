@@ -230,8 +230,8 @@ def make_network():
 		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * (create_shuffled_one_to_one(n_e_side) + np.random.rand(n_e_pool, n_e_side) * 0.05)
 
 		# define connectivity from HD to HR neurons as random, semi-sparse matrix
-		w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = np.abs(w_pool_side) * (create_shuffled_one_to_one(n_e_side) + np.random.rand(n_e_side, n_e_pool) * 0.05)
-		w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = np.abs(w_pool_side) * (create_shuffled_one_to_one(n_e_side) + np.random.rand(n_e_side, n_e_pool) * 0.05)
+		w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = w_pool_side * (1 - create_shuffled_one_to_one(n_e_side) + np.random.rand(n_e_side, n_e_pool) * 0.05)
+		w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = w_pool_side * (1 - create_shuffled_one_to_one(n_e_side) + np.random.rand(n_e_side, n_e_pool) * 0.05)
 	elif args.struct_prior == 'random':
 		# define connectivity from HR to HD neurons as random, semi-sparse matrix
 		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, np.random.rand(n_e_pool, n_e_side), 0)
@@ -658,20 +658,13 @@ def simulate_single_network_wrapper(tup):
 def eval_all(X, eval_tracker=None, train=True):
 	start = time.time()
 
-	print('start time:', start)
-	sys.stdout.flush()
-
 	indices = np.arange(BATCH_SIZE)
 	pool = mp.Pool(POOL_SIZE)
-	print('after pool is made')
-	sys.stdout.flush()
 
 	task_vars = []
 	for x in X:
 		for idx in indices:
 			task_vars.append((idx, x, train))
-	print(task_vars)
-	sys.stdout.flush()
 	results = pool.map(simulate_single_network_wrapper, task_vars)
 
 	pool.close()
@@ -688,6 +681,7 @@ def eval_all(X, eval_tracker=None, train=True):
 	
 	dur = time.time() - start
 	print('dur:', dur)
+	sys.stdout.flush()
 
 	return losses
 
