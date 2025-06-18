@@ -195,7 +195,10 @@ def make_network():
 	w_initial = np.zeros((n_e_pool + 2 * n_e_side + n_i, n_e_pool + 2 * n_e_side + n_i))
 
 	# sparsify e --> e connectivity to see in ring can be learned on top of heterogenous connectivity
-	w_initial[:n_e_pool, :n_e_pool] = np.where(np.random.rand(n_e_pool, n_e_pool) < args.hd_hd_sparsity, w_e_e * np.random.rand(n_e_pool, n_e_pool), 0)
+	if args.struct_prior != 'seq':
+		w_initial[:n_e_pool, :n_e_pool] = np.where(np.random.rand(n_e_pool, n_e_pool) < args.hd_hd_sparsity, w_e_e * np.random.rand(n_e_pool, n_e_pool), 0)
+	else:
+		w_initial[:n_e_pool, :n_e_pool] = w_e_e * np.random.rand(n_e_pool, n_e_pool) + np.diag(np.ones((n_e_pool - 1,)), k=-1)
 
 	### For initializing a ring-like shape in the pool neurons
 
@@ -232,7 +235,7 @@ def make_network():
 		# define connectivity from HD to HR neurons as random, semi-sparse matrix
 		w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = w_pool_side * (1 - create_shuffled_one_to_one(n_e_side) + np.random.rand(n_e_side, n_e_pool) * 0.05)
 		w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = w_pool_side * (1 - create_shuffled_one_to_one(n_e_side) + np.random.rand(n_e_side, n_e_pool) * 0.05)
-	elif args.struct_prior == 'random':
+	elif args.struct_prior == 'random' or args.struct_prior == 'seq':
 		# define connectivity from HR to HD neurons as random, semi-sparse matrix
 		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, np.random.rand(n_e_pool, n_e_side), 0)
 		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, np.random.rand(n_e_pool, n_e_side), 0)
@@ -240,6 +243,7 @@ def make_network():
 		# define connectivity from HD to HR neurons as random, semi-sparse matrix
 		w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = w_pool_side * np.where(np.random.rand(n_e_side, n_e_pool) < args.hd_hr_sparsity, np.random.rand(n_e_side, n_e_pool), 0)
 		w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = w_pool_side * np.where(np.random.rand(n_e_side, n_e_pool) < args.hd_hr_sparsity, np.random.rand(n_e_side, n_e_pool), 0)
+		
 
 	w_initial[-n_i:, :n_e_pool] = gaussian_if_under_val(1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
 	w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, 0 * np.abs(w_i_e))
