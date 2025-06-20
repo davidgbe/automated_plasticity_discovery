@@ -194,7 +194,8 @@ def make_network():
 
 	for r_idx in np.arange(n_e_pool):
 		w_initial[r_idx:n_e_pool, r_idx] = exp_ring_connectivity[:(n_e_pool - r_idx)]
-		w_initial[0:r_idx, r_idx] = exp_ring_connectivity[(n_e_pool - r_idx):]
+        ### add to make ring
+		# w_initial[0:r_idx, r_idx] = exp_ring_connectivity[(n_e_pool - r_idx):]
 	
 	# w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.random.rand(n_e_pool, n_e_side)
 	# w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * np.random.rand(n_e_pool, n_e_side)
