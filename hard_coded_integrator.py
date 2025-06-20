@@ -162,17 +162,21 @@ w_i_e = -1e-4 / dt / n_i
 
 # w_e_e_added = 0.05 * w_e_e * 0.2
 
-def create_shift_matrix(size, k=1):
+def create_shift_matrix(size, k=1, ring=False):
 	w = np.zeros((size, size))
 	if k >= 1:
 		for k_p in np.arange(1, k+1):
 			w += np.diag(np.ones((size - k_p,)), k=k_p)
-			w[(size - k_p):, k - k_p] = 1
+			### Add to make into a ring structure
+			if ring:
+				w[(size - k_p):, k - k_p] = 1
 
 	elif k <= -1:
 		for k_p in np.arange(1, -k+1):
 			w += np.diag(np.ones((size - k_p,)), k=-k_p)
-			w[-k - k_p, (size - k_p):] = 1
+			### Add to make into a ring structure
+			if ring:
+				w[-k - k_p, (size - k_p):] = 1
 	return w
 
 def make_network():
@@ -467,7 +471,10 @@ def simulate_single_network(index, x, train, track_params=True):
 			running_input_sums[j] += filtered_input_to_sum[j]
 
 		r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
-		r_in_spks[:int(10e-3/dt), :6] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), 6))
+		input_size = 6
+		input_slice = slice(int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
+		if bool(args.bump_init):
+			r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), 6))
 
 		r_in_spks[input_start:input_end, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
@@ -669,24 +676,3 @@ if __name__ == '__main__':
 	}
 
 	eval_all([x0], eval_tracker=eval_tracker)
-
-	options = {
-		'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-		# 'popsize': 15,
-		'bounds': [
-			[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
-			[10] * N_RULES + [40e-3] * N_TIMECONSTS,
-		],
-	}
-
-	es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
-	options['popsize'] = es.opts['popsize']
-
-	eval_all([x0], eval_tracker=eval_tracker, train=False)
-
-	while not es.stop():
-		X = es.ask()
-		es.tell(X, eval_all(X, eval_tracker=eval_tracker))
-		if eval_tracker['best_changed']:
-			eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
-		es.disp()
