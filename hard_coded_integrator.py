@@ -185,7 +185,7 @@ def make_network():
 
 	'''
 	w_initial = np.zeros((n_e_pool + 2 * n_e_side + n_i, n_e_pool + 2 * n_e_side + n_i))
-	connectivity_scale = 0.075
+	connectivity_scale = 0.075 * 15
 	shift_mats = []
 
 	for i in range(1, 10):
