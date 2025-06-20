@@ -185,17 +185,11 @@ def make_network():
 
 	'''
 	w_initial = np.zeros((n_e_pool + 2 * n_e_side + n_i, n_e_pool + 2 * n_e_side + n_i))
-
-	# w_initial[:n_e_pool, :n_e_pool] = w_e_e * np.random.rand(n_e_pool, n_e_pool)
-
-	x = np.arange(n_e_pool) / n_e_pool
 	connectivity_scale = 0.075
-	exp_ring_connectivity = 4 * w_e_e * (np.exp(-x/connectivity_scale) + np.exp((x-1)/connectivity_scale))
-
 	shift_mats = []
 
 	for i in range(1, 10):
-		w_shift = np.diag(np.ones(n_e_pool - np.abs(i)), k=i) * w_e_e * np.exp(-np.abs(i) / connectivity_scale)
+		w_shift = np.diag(np.ones(n_e_pool - np.abs(i)), k=i) * 4 * w_e_e * np.exp(-np.abs(i) / connectivity_scale)
 		shift_mats.append(w_shift)
 		shift_mats.append(np.transpose(w_shift))
 
