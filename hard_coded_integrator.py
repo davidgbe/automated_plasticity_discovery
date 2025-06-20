@@ -162,17 +162,17 @@ w_i_e = -1e-4 / dt / n_i
 
 # w_e_e_added = 0.05 * w_e_e * 0.2
 
-def create_shift_matrix(size, k=1, ring=False):
+def create_shift_matrix(size, k_start=1, k=1, ring=False):
 	w = np.zeros((size, size))
 	if k >= 1:
-		for k_p in np.arange(1, k+1):
+		for k_p in np.arange(k_start, k+1):
 			w += np.diag(np.ones((size - k_p,)), k=k_p)
 			### Add to make into a ring structure
 			if ring:
 				w[(size - k_p):, k - k_p] = 1
 
 	elif k <= -1:
-		for k_p in np.arange(1, -k+1):
+		for k_p in np.arange(np.abs(k_start), np.abs(k) + 1):
 			w += np.diag(np.ones((size - k_p,)), k=-k_p)
 			### Add to make into a ring structure
 			if ring:
@@ -192,10 +192,16 @@ def make_network():
 	connectivity_scale = 0.075
 	exp_ring_connectivity = 4 * w_e_e * (np.exp(-x/connectivity_scale) + np.exp((x-1)/connectivity_scale))
 
-	for r_idx in np.arange(n_e_pool):
-		w_initial[r_idx:n_e_pool, r_idx] = exp_ring_connectivity[:(n_e_pool - r_idx)]
-        ### add to make ring
-		# w_initial[0:r_idx, r_idx] = exp_ring_connectivity[(n_e_pool - r_idx):]
+	shift_mats = []
+
+	for i in range(1, 10):
+		w_shift = np.diag(np.ones(n_e_pool - np.abs(i)), k=i) * w_e_e * np.exp(-np.abs(i) / connectivity_scale)
+		shift_mats.append(w_shift)
+		shift_mats.append(np.transpose(w_shift))
+
+	w_initial[:n_e_pool, :n_e_pool] = np.sum(np.stack(shift_mats), axis=0)
+
+
 	
 	# w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.random.rand(n_e_pool, n_e_side)
 	# w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * np.random.rand(n_e_pool, n_e_side)
