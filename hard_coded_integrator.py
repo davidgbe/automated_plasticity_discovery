@@ -189,7 +189,7 @@ def make_network():
 	shift_mats = []
 
 	for i in range(1, 10):
-		w_shift = np.diag(np.ones(n_e_pool - np.abs(i)), k=i) * 2 * w_e_e * np.exp(-np.abs(i-1) / connectivity_scale)
+		w_shift = np.diag(np.ones(n_e_pool - np.abs(i)), k=i) * 1.5 * w_e_e * np.exp(-np.abs(i-1) / connectivity_scale)
 		shift_mats.append(w_shift)
 		shift_mats.append(np.transpose(w_shift))
 
