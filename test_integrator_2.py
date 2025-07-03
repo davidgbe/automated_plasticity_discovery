@@ -1,6 +1,7 @@
 from copy import deepcopy as copy
 import numpy as np
 import os
+import sys
 import time
 from functools import partial
 from disp import get_ordered_colors
@@ -11,7 +12,7 @@ from datetime import datetime
 import multiprocessing as mp
 import argparse
 import cma
-from numba import njit
+import numba
 from scipy.sparse import csc_matrix
 from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
@@ -36,6 +37,7 @@ parser.add_argument('--root_file_name', metavar='rfn', type=str)
 parser.add_argument('--hd_hd_sparsity', metavar='dds', type=float, default=1.)
 parser.add_argument('--hd_hr_sparsity', metavar='drs', type=float, default=1.)
 parser.add_argument('--struct_prior', metavar='sp', type=str, default='shift')
+parser.add_argument('--bump_init', metavar='bi', type=int, default=1)
 
 args = parser.parse_args()
 print(args)
@@ -169,26 +171,30 @@ write_csv(test_data_path, header)
 
 
 # scaling these 3 parameters by a factor 10 up will give appropriate values for ring attracting circuit
-w_e_e = 0.6e-4 / dt * 0.1
-w_pool_side = -0.2e-4 / dt * 0.1
-w_side_pool = 0.6e-4 / dt * 0.1
+w_e_e = 9e-4 / dt * 0.1 / n_e_pool
+w_pool_side = -3e-4 / dt * 0.1 / n_e_pool
+w_side_pool = 9e-4 / dt * 0.1 / n_e_side
 
 w_e_i = 2.5e-4 / dt / n_e_pool
 w_i_e = -1e-4 / dt / n_i
 
 # w_e_e_added = 0.05 * w_e_e * 0.2
 
-def create_shift_matrix(size, k=1):
+def create_shift_matrix(size, k=1, ring=False):
 	w = np.zeros((size, size))
 	if k >= 1:
 		for k_p in np.arange(1, k+1):
 			w += np.diag(np.ones((size - k_p,)), k=k_p)
-			w[(size - k_p):, k - k_p] = 1
+			### Add to make into a ring structure
+			if ring:
+				w[(size - k_p):, k - k_p] = 1
 
 	elif k <= -1:
 		for k_p in np.arange(1, -k+1):
 			w += np.diag(np.ones((size - k_p,)), k=-k_p)
-			w[-k - k_p, (size - k_p):] = 1
+			### Add to make into a ring structure
+			if ring:
+				w[-k - k_p, (size - k_p):] = 1
 	return w
 
 def create_shuffled_one_to_one(size):
@@ -223,19 +229,28 @@ def make_network():
 
 	###
 	
-	if args.struct_prior == 'shift':
+	if args.struct_prior == 'shift' or args.struct_prior == 'ring':
+		init_ring = (args.struct_prior == 'ring')
 		# define connectivity from HR to HD neurons as "shift" matrix
-		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=3), 0)
-		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool *  np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=-3), 0)
+		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=3, ring=init_ring), 0)
+		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool *  np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=-3, ring=init_ring), 0)
 
 		# define connectivity from HD to HR as inhibiting all but the corresponding group along the diagonal
-		left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=3) + create_shift_matrix(n_e_side, k=-3)))
+		left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=3, ring=init_ring) + create_shift_matrix(n_e_side, k=-3, ring=init_ring)))
 		np.fill_diagonal(left_input_cells, 0)
 		right_input_cells = copy(left_input_cells)
 
 		w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = np.where(np.random.rand(n_e_side, n_e_pool) < args.hd_hr_sparsity, left_input_cells, 0)
 		w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = np.where(np.random.rand(n_e_side, n_e_pool) < args.hd_hr_sparsity, right_input_cells, 0)
-	else:
+	elif args.struct_prior == 'one_in_one_out':
+		# define connectivity from HR to HD neurons as random, semi-sparse matrix
+		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * (create_shuffled_one_to_one(n_e_side) + np.random.rand(n_e_pool, n_e_side) * 0.05)
+		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * (create_shuffled_one_to_one(n_e_side) + np.random.rand(n_e_pool, n_e_side) * 0.05)
+
+		# define connectivity from HD to HR neurons as random, semi-sparse matrix
+		w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = w_pool_side * (1 - create_shuffled_one_to_one(n_e_side) + np.random.rand(n_e_side, n_e_pool) * 0.05)
+		w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = w_pool_side * (1 - create_shuffled_one_to_one(n_e_side) + np.random.rand(n_e_side, n_e_pool) * 0.05)
+	elif args.struct_prior == 'random' or args.struct_prior == 'seq':
 		# define connectivity from HR to HD neurons as random, semi-sparse matrix
 		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, np.random.rand(n_e_pool, n_e_side), 0)
 		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, np.random.rand(n_e_pool, n_e_side), 0)
@@ -243,6 +258,7 @@ def make_network():
 		# define connectivity from HD to HR neurons as random, semi-sparse matrix
 		w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = w_pool_side * np.where(np.random.rand(n_e_side, n_e_pool) < args.hd_hr_sparsity, np.random.rand(n_e_side, n_e_pool), 0)
 		w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = w_pool_side * np.where(np.random.rand(n_e_side, n_e_pool) < args.hd_hr_sparsity, np.random.rand(n_e_side, n_e_pool), 0)
+		
 
 	w_initial[-n_i:, :n_e_pool] = gaussian_if_under_val(1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
 	w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, 0 * np.abs(w_i_e))
@@ -442,6 +458,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	if FIXED_DATA:
 		if train:
 			print(train_seeds[index])
+			sys.stdout.flush()
 			np.random.seed(train_seeds[index])
 		else:
 			np.random.seed(test_seeds[index])
@@ -502,8 +519,10 @@ def simulate_single_network(index, x, train, track_params=True):
 			running_input_sums[j] += filtered_input_to_sum[j]
 
 		r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
-		input_slice = slice(5, 11)
-		r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), 6))
+		input_size = 6
+		input_slice = slice(int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
+		if bool(args.bump_init):
+			r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), 6))
 
 		r_in_spks[input_start:input_end, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
@@ -692,6 +711,7 @@ def eval_all(X, eval_tracker=None, train=True):
 	
 	dur = time.time() - start
 	print('dur:', dur)
+	sys.stdout.flush()
 
 	return losses
 
