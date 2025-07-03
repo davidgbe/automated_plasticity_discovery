@@ -550,7 +550,7 @@ def simulate_single_network(index, x, train, track_params=True):
 
 		# save weights
 		weight_file_name = os.path.join(weight_path, f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
-		np.save(weight_file_name, all_w)
+		np.save(weight_file_name, w)
 		# save activity
 		activity_file_name = os.path.join(activity_path, f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
 		np.save(activity_file_name, r)
