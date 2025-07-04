@@ -9,3 +9,4 @@ cmaes_test/**/*
 figures/**/*
 **/*.zip
 data/**/*
+*_0*.slurm
