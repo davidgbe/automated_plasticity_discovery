@@ -455,6 +455,8 @@ def simulate_single_network(index, x, train, track_params=True):
 	plasticity_coefs = x[:N_RULES]
 	rule_time_constants = x[N_RULES:]
 
+	t = np.linspace(0, T, int(T / dt))
+
 	if FIXED_DATA:
 		if train:
 			print(train_seeds[index])
