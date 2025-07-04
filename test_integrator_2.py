@@ -67,12 +67,12 @@ REPEATS = 10
 ROOT_FILE_NAME = args.root_file_name
 
 T = 0.100 # Total duration of one network simulation
+T_TEST = 0.500
 dt = 1e-4 # Timestep
 input_start = int(20e-3/dt)
 input_end = int(100e-3/dt)
 input_len = input_end - input_start
 input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
-t = np.linspace(0, T, int(T / dt))
 n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
 n_e_side = 15
 n_i = 1 # Number inhibitory cells
@@ -495,8 +495,7 @@ def simulate_single_network(index, x, train, track_params=True):
 
 	for i in range(n_inner_loop_iters):
 		if i == decoder_train_trial_nums[0]:
-			T = 0.5
-			t = np.linspace(0, T, int(T / dt))
+			t = np.linspace(0, T_TEST, int(T_TEST / dt))
 		# print(f'Activation number: {i}')
 		# Define input for activation of the network
 		input_spks = np.zeros((input_len, 2 * n_e_side))
