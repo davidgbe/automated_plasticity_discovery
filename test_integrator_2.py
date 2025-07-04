@@ -492,6 +492,9 @@ def simulate_single_network(index, x, train, track_params=True):
 	surviving_synapse_mask = np.ones((n_e_pool, n_e_pool)).astype(bool)
 
 	for i in range(n_inner_loop_iters):
+		if i == decoder_train_trial_nums[0]:
+			T = 0.5
+			t = np.linspace(0, T, int(T / dt))
 		# print(f'Activation number: {i}')
 		# Define input for activation of the network
 		input_spks = np.zeros((input_len, 2 * n_e_side))
