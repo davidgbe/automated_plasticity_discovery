@@ -352,7 +352,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 					# if l_idx % 1 == 0:
 					# 	axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
 				elif l_idx >= (r.shape[1] - n_i):
-					axs[4 * i + plotted_trial_count][1].plot(t, r[:, l_idx], c='black') # graph inh activity
+					axs[4 * i + plotted_trial_count][1].plot(np.arange(len(r[:, l_idx])), r[:, l_idx], c='black') # graph inh activity
 
 			axs[4 * i + plotted_trial_count][0].matshow(r[:, :n_e_pool + 2 * n_e_side].T, aspect=1/0.1)
 			plotted_trial_count += 1
