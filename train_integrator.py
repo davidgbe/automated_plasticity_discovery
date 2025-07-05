@@ -457,7 +457,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	num_readouts = (decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]) * READOUTS_PER_TRIAL
 	readout_times = (np.random.rand(num_readouts) * (T / dt - input_start) + input_start).astype(int)
 
-	input_signal_totals = np.zeros((n_inner_loop_iters, input_len))
+	input_signal_totals = np.zeros((n_inner_loop_iters, (T / dt - input_start).astype(int)))
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
@@ -513,7 +513,8 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in_spks[input_start:input_end, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
 		
-		input_signal_totals[i, :] = running_input_sums / input_len
+		input_signal_totals[i, :input_len] = running_input_sums / input_len
+		input_signal_totals[i, input_len:] = input_signal_totals[i, input_len - 1]
 
 		r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
 		r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = 0.1 * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
