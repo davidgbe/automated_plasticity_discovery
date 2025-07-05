@@ -357,21 +357,6 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 			axs[4 * i + plotted_trial_count][0].matshow(r[:, :n_e_pool + 2 * n_e_side].T, aspect=1/0.1)
 			plotted_trial_count += 1
 
-		r_exc = r[:, :n_e_pool]
-		r_summed = np.sum(r_exc, axis=0)
-		r_active_mask =  np.where(r_summed != 0, 1, 0).astype(bool)
-		r_summed_safe_divide = np.where(r_active_mask, r_summed, 1)
-		r_normed = r_exc / r_summed_safe_divide
-		t_means = np.sum(t.reshape(t.shape[0], 1) * r_normed, axis=0)
-		# t_ordering = np.argsort(t_means)
-		# t_ordering = np.concatenate([t_ordering, np.arange(n_e, n_e + n_i)])
-
-		# sorted_w_initial = w_initial[t_ordering, :][:, t_ordering]
-		# sorted_w = w[t_ordering, :][:, t_ordering]
-
-		vmin = np.min([w_initial.min(), w.min()])
-		vmax = np.max([w_initial.max(), w.max()])
-
 		vbound = np.max(w)
 
 		mappable = axs[4 * i + 3][0].matshow(w_initial, vmin=-vbound, vmax=vbound, cmap='bwr') # plot initial weight matrix
