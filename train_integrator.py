@@ -66,6 +66,7 @@ dt = 1e-4 # Timestep
 input_start = int(20e-3/dt)
 input_end = int(100e-3/dt)
 input_len = input_end - input_start
+decoding_len = int(T / dt - input_start)
 input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
 t = np.linspace(0, T, int(T / dt))
 n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
@@ -455,9 +456,9 @@ def simulate_single_network(index, x, train, track_params=True):
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
 	num_readouts = (decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]) * READOUTS_PER_TRIAL
-	readout_times = (np.random.rand(num_readouts) * (T / dt - input_start) + input_start).astype(int)
+	readout_times = (np.random.rand(num_readouts) * decoding_len + input_start).astype(int)
 
-	input_signal_totals = np.zeros((n_inner_loop_iters, (T / dt - input_start).astype(int)))
+	input_signal_totals = np.zeros((n_inner_loop_iters, decoding_len))
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
@@ -480,8 +481,8 @@ def simulate_single_network(index, x, train, track_params=True):
 		# print(f'Activation number: {i}')
 		# Define input for activation of the network
 
-		input_spks = np.zeros((input_len, 2 * n_e_side))
-		inputs = np.zeros((input_len,)).astype(int)
+		input_spks = np.zeros((decoding_len, 2 * n_e_side))
+		inputs = np.zeros((decoding_len,)).astype(int)
 		inputs[0] = 1
 
 		for k in range(input_len):
@@ -513,8 +514,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in_spks[input_start:input_end, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
 		
-		input_signal_totals[i, :input_len] = running_input_sums / input_len
-		input_signal_totals[i, input_len:] = input_signal_totals[i, input_len - 1]
+		input_signal_totals[i, :] = running_input_sums / input_len
 
 		r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
 		r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = 0.1 * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
