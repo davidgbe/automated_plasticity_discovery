@@ -35,6 +35,7 @@ parser.add_argument('--hd_hd_sparsity', metavar='dds', type=float, default=1.)
 parser.add_argument('--hd_hr_sparsity', metavar='drs', type=float, default=1.)
 parser.add_argument('--struct_prior', metavar='sp', type=str, default='shift')
 parser.add_argument('--bump_init', metavar='bi', type=int, default=1)
+parser.add_argument('--threshold_het', metavar='th', type=float, default=0)
 
 args = parser.parse_args()
 print(args)
@@ -72,6 +73,8 @@ t = np.linspace(0, T, int(T / dt))
 n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
 n_e_side = 15
 n_i = 1 # Number inhibitory cells
+v_thresh_e = 0.1
+v_thresh_i = 0
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 
@@ -452,6 +455,10 @@ def simulate_single_network(index, x, train, track_params=True):
 		np.random.seed()
 
 	w_initial = make_network() # make a new ring attractor
+	v_thresh = np.concatenate([
+		np.random.normal(loc=v_thresh_e, scale=args.threshold_het, size=(n_e_pool + 2 * n_e_side,)),
+		v_thresh_i * np.ones((n_i,)),
+    ])
 
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
@@ -533,7 +540,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		# 	w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=5e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, v_thresh, dt=dt, tau_e=5e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
 
 		if (np.isnan(r).any()

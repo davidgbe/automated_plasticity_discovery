@@ -13,12 +13,14 @@ def shift(x : np.ndarray):
     shifted = np.concatenate([[0], copy(x[:-1])])
     return shifted
 
-def threshold_linear(s : np.ndarray, v_th : float):
+@njit
+def threshold_linear(s : np.ndarray, v_th : np.ndarray):
     shifted_s = s - v_th
     shifted_s[shifted_s < 0] = 0
     return shifted_s
 
-def tanh(s : np.ndarray, v_th : float):
+@njit
+def tanh(s : np.ndarray, v_th : np.ndarray):
     return np.tanh(threshold_linear(s, v_th))
 
 def sigmoid(s : np.ndarray, v_th : float, spread : float):
@@ -28,7 +30,7 @@ def threshold_power(s : np.ndarray, v_th : float, p : float):
     return np.power(threshold_linear(s, v_th), p)
 
 ### Simulate dynamics
-def simulate(t : np.ndarray, n_e_pool : int, n_e_side : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, rule_time_constants : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, tau_e=5e-3, tau_i=5e-3, dt=1e-6, g=1, w_u=1, track_params=False):        
+def simulate(t : np.ndarray, n_e_pool : int, n_e_side : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, rule_time_constants : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, v_thresh : np.ndarray, tau_e=5e-3, tau_i=5e-3, dt=1e-6, g=1, w_u=1, track_params=False):        
     len_t = len(t)
 
     network_size = n_e_pool + 2 * n_e_side + n_i
@@ -44,7 +46,7 @@ def simulate(t : np.ndarray, n_e_pool : int, n_e_side : int, n_i : int, inp : np
 
     n_params = len(plasticity_coefs)
 
-    w_copy, effects = simulate_inner_loop(t, n_e_pool, n_e_side, n_i, inp, plasticity_coefs, rule_time_constants, w, w_plastic, dt, g, w_u, track_params, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
+    w_copy, effects = simulate_inner_loop(t, n_e_pool, n_e_side, n_i, inp, plasticity_coefs, rule_time_constants, w, w_plastic, dt, g, w_u, track_params, r, s, v, r_exp_filtered, sign_w, inf_w, v_thresh, tau, n_params)
 
     return r, s, v, w_copy, effects, r_exp_filtered
 
@@ -69,6 +71,7 @@ def simulate_inner_loop(
     r_exp_filtered : np.ndarray,
     sign_w : np.ndarray,
     inf_w : np.ndarray,
+    v_thresh : np.ndarray,
     tau : np.ndarray,
     n_params : int):
 
@@ -88,13 +91,8 @@ def simulate_inner_loop(
         s[i+1, :] = s[i, :] + (v[i+1, :] - s[i, :]) * dt / tau # update synaptic conductance as exponential filter of input
 
         # firing rates are calculated as normalized synaptic conductances
-        shifted_s_e = s[i, :n_e] - 0.1
-        shifted_s_e[shifted_s_e < 0] = 0
-        r[i+1, :n_e] = g * np.tanh(shifted_s_e)
-
-        shifted_s_i = s[i, n_e:]# - 0.1
-        shifted_s_i[shifted_s_i < 0] = 0
-        r[i+1, n_e:] = g * shifted_s_i
+        r[i+1, :n_e] = g * tanh(s[i, :n_e], v_thresh[:n_e])
+        r[i+1, n_e:] = g * threshold_linear(s[i, n_e:], v_thresh[n_e:])
         
         # calculate exponential filtered of firing rate to use for STDP-like plasticity rules
         r_exp_filtered[:, i+1, :] = r_exp_filtered[:, i, :] * (1 - dt / int_time_consts) + r[i, :] * (dt / int_time_consts)
