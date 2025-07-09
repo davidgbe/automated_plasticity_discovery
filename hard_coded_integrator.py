@@ -1,23 +1,22 @@
 from copy import deepcopy as copy
 import numpy as np
 import os
+import sys
 import time
 from functools import partial
-from disp import get_ordered_colors
-from aux import gaussian_if_under_val, exp_if_under_val, rev_argsort, set_smallest_n_zero
+from aux import gaussian_if_under_val, start_timer
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from datetime import datetime
 import multiprocessing as mp
 import argparse
 import cma
-from numba import njit
+import numba
 from scipy.sparse import csc_matrix
 from sklearn.linear_model import LinearRegression
 from csv_reader import read_csv
 from csv_writer import write_csv
-
-from rate_network import simulate, tanh, generate_gaussian_pulse
+from rate_network import simulate
 
 ### Parse arguments 
 
@@ -32,6 +31,11 @@ parser.add_argument('--load_initial', metavar='li', type=str, help='File from wh
 parser.add_argument('--frac_inputs_fixed', metavar='fi', type=float)
 parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
+parser.add_argument('--hd_hd_sparsity', metavar='dds', type=float, default=1.)
+parser.add_argument('--hd_hr_sparsity', metavar='drs', type=float, default=1.)
+parser.add_argument('--struct_prior', metavar='sp', type=str, default='shift')
+parser.add_argument('--bump_init', metavar='bi', type=int, default=1)
+parser.add_argument('--threshold_het', metavar='th', type=float, default=0)
 
 args = parser.parse_args()
 print(args)
@@ -58,21 +62,21 @@ INPUT_BLOCK_DURATION = 5e-3
 N_RULES = 60 + 16
 N_TIMECONSTS = 36 + 32
 
-T = 0.100 # Total duration of one network simulation
+T = 0.150 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 input_start = int(20e-3/dt)
 input_end = int(100e-3/dt)
 input_len = input_end - input_start
+decoding_len = int(T / dt - input_start)
 input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
 t = np.linspace(0, T, int(T / dt))
 n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
 n_e_side = 15
 n_i = 1 # Number inhibitory cells
+v_thresh_e = 0.1
+v_thresh_i = 0
 train_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
 test_seeds = np.random.randint(0, 1e7, size=BATCH_SIZE)
-
-layer_colors = get_ordered_colors('gist_rainbow', 15)
-np.random.shuffle(layer_colors)
 
 rule_names = [ # Define labels for all rules to be run during simulations
 	r'',
@@ -133,7 +137,7 @@ if not os.path.exists('sims_out'):
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
 joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/hard_coded_int{BATCH_SIZE}_STD_EXPL_{STD_EXPL}_FIXED_{FIXED_DATA}_L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_FRACI_{FRAC_INPUTS_FIXED}_SEED_{SEED}_{time_stamp}'
+out_dir = f'sims_out/hard_coded_int_{BATCH_SIZE}_STD_EXPL_{STD_EXPL}__L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}'
 os.mkdir(out_dir)
 
 # Make subdirectory for outputting CMAES info
@@ -195,8 +199,6 @@ def make_network():
 
 	w_initial[:n_e_pool, :n_e_pool] = np.sum(np.stack(shift_mats), axis=0)
 
-
-	
 	# w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.random.rand(n_e_pool, n_e_side)
 	# w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * np.random.rand(n_e_pool, n_e_side)
 
@@ -258,7 +260,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	n_res_to_show = BATCH_SIZE
 
 	gs = gridspec.GridSpec(4 * n_res_to_show + 3, 2)
-	fig = plt.figure(figsize=(4  * scale, (4 * n_res_to_show + 3) * scale))
+	fig = plt.figure(figsize=(4  * scale, (4 * n_res_to_show + 3) * scale), tight_layout=True)
 	axs = [[fig.add_subplot(gs[i, 0]), fig.add_subplot(gs[i, 1])] for i in range(4 * n_res_to_show)]
 	axs += [fig.add_subplot(gs[4 * n_res_to_show, :])]
 	axs += [fig.add_subplot(gs[4 * n_res_to_show + 1, :])]
@@ -378,8 +380,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 	zero_padding = '0' * pad
 	evals = eval_tracker['evals']
 
-	plt.subplots_adjust(hspace=0.1)
-
+	# fig.tight_layout()
 	if train:
 		fig.savefig(f'{out_dir}/{zero_padding}{evals}.png')
 	else:
@@ -412,6 +413,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	if FIXED_DATA:
 		if train:
 			print(train_seeds[index])
+			sys.stdout.flush()
 			np.random.seed(train_seeds[index])
 		else:
 			np.random.seed(test_seeds[index])
@@ -419,13 +421,17 @@ def simulate_single_network(index, x, train, track_params=True):
 		np.random.seed()
 
 	w_initial = make_network() # make a new ring attractor
+	v_thresh = np.concatenate([
+		np.random.normal(loc=v_thresh_e, scale=args.threshold_het, size=(n_e_pool + 2 * n_e_side,)),
+		v_thresh_i * np.ones((n_i,)),
+    ])
 
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
 	num_readouts = (decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]) * READOUTS_PER_TRIAL
-	readout_times = (np.random.rand(num_readouts) * (input_end - input_start) + input_start).astype(int)
+	readout_times = (np.random.rand(num_readouts) * decoding_len + input_start).astype(int)
 
-	input_signal_totals = np.zeros((n_inner_loop_iters, input_len))
+	input_signal_totals = np.zeros((n_inner_loop_iters, decoding_len))
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
@@ -447,8 +453,9 @@ def simulate_single_network(index, x, train, track_params=True):
 	for i in range(n_inner_loop_iters):
 		# print(f'Activation number: {i}')
 		# Define input for activation of the network
-		input_spks = np.zeros((input_len, 2 * n_e_side))
-		inputs = np.zeros((input_len,)).astype(int)
+
+		input_spks = np.zeros((decoding_len, 2 * n_e_side))
+		inputs = np.zeros((decoding_len,)).astype(int)
 		inputs[0] = 1
 
 		for k in range(input_len):
@@ -463,8 +470,8 @@ def simulate_single_network(index, x, train, track_params=True):
 			else:
 				inputs[k] = inputs[k-1]
 
-		filtered_input_to_sum = poisson_arrivals_to_inputs(input_spks, 3e-3)
-		filtered_input_to_sum = filtered_input_to_sum[:, n_e_pool:2 * n_e_pool].sum(axis=1) - filtered_input_to_sum[:, :n_e_pool].sum(axis=1)
+		filtered_input_to_sum_per_neuron = poisson_arrivals_to_inputs(input_spks, 3e-3)
+		filtered_input_to_sum = filtered_input_to_sum_per_neuron[:, n_e_side:2 * n_e_side].sum(axis=1) - filtered_input_to_sum_per_neuron[:, :n_e_side].sum(axis=1)
 		running_input_sums = np.zeros_like(filtered_input_to_sum)
 		for j in range(len(running_input_sums)):
 			if j > 0:
@@ -474,9 +481,10 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
 		input_size = 6
 		input_slice = slice(int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
-		r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), 6))
+		if bool(args.bump_init):
+			r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), 6))
 
-		r_in_spks[input_start:input_end, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
+		r_in_spks[input_start:, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
 		
 		input_signal_totals[i, :] = running_input_sums / input_len
@@ -498,7 +506,8 @@ def simulate_single_network(index, x, train, track_params=True):
 		# 	w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, dt=dt, tau_e=5e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, v_thresh, dt=dt, tau_e=5e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+
 
 		if (np.isnan(r).any()
 	  		or (np.abs(w_out) > 100).any()
@@ -650,6 +659,7 @@ def eval_all(X, eval_tracker=None, train=True):
 	
 	dur = time.time() - start
 	print('dur:', dur)
+	sys.stdout.flush()
 
 	return losses
 
