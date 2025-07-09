@@ -33,7 +33,6 @@ parser.add_argument('--syn_change_prob', metavar='cp', type=float, default=0.)
 parser.add_argument('--seed', metavar='s', type=int)
 parser.add_argument('--hd_hd_sparsity', metavar='dds', type=float, default=1.)
 parser.add_argument('--hd_hr_sparsity', metavar='drs', type=float, default=1.)
-parser.add_argument('--struct_prior', metavar='sp', type=str, default='shift')
 parser.add_argument('--bump_init', metavar='bi', type=int, default=1)
 parser.add_argument('--threshold_het', metavar='th', type=float, default=0)
 
@@ -421,8 +420,10 @@ def simulate_single_network(index, x, train, track_params=True):
 		np.random.seed()
 
 	w_initial = make_network() # make a new ring attractor
+	v_e = np.random.normal(loc=v_thresh_e, scale=args.threshold_het, size=(n_e_pool + 2 * n_e_side,))
+	v_e = np.where(v_e > 0, v_e, 0)
 	v_thresh = np.concatenate([
-		np.random.normal(loc=v_thresh_e, scale=args.threshold_het, size=(n_e_pool + 2 * n_e_side,)),
+		v_e,
 		v_thresh_i * np.ones((n_i,)),
     ])
 
