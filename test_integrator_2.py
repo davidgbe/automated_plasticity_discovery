@@ -66,12 +66,13 @@ N_TIMECONSTS = 36 + 32
 REPEATS = 10
 ROOT_FILE_NAME = args.root_file_name
 
-T = 0.100 # Total duration of one network simulation
+T = 0.150 # Total duration of one network simulation
 T_TEST = 0.500
 dt = 1e-4 # Timestep
 input_start = int(20e-3/dt)
 input_end = int(100e-3/dt)
 input_len = input_end - input_start
+decoding_len = int(T / dt - input_start)
 input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
 n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
 n_e_side = 15
@@ -457,9 +458,9 @@ def simulate_single_network(index, x, train, track_params=True):
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
 	num_readouts = (decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]) * READOUTS_PER_TRIAL
-	readout_times = (np.random.rand(num_readouts) * (input_end - input_start) + input_start).astype(int)
+	readout_times = (np.random.rand(num_readouts) * decoding_len + input_start).astype(int)
 
-	input_signal_totals = np.zeros((n_inner_loop_iters, input_len))
+	input_signal_totals = np.zeros((n_inner_loop_iters, decoding_len))
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
@@ -483,8 +484,8 @@ def simulate_single_network(index, x, train, track_params=True):
 			t = np.linspace(0, T_TEST, int(T_TEST / dt))
 		# print(f'Activation number: {i}')
 		# Define input for activation of the network
-		input_spks = np.zeros((input_len, 2 * n_e_side))
-		inputs = np.zeros((input_len,)).astype(int)
+		input_spks = np.zeros((decoding_len, 2 * n_e_side))
+		inputs = np.zeros((decoding_len,)).astype(int)
 		inputs[0] = 1
 
 		for k in range(input_len):
