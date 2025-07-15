@@ -514,7 +514,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		if bool(args.bump_init):
 			r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), 6))
 
-		r_in_spks[input_start:input_end, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
+		r_in_spks[input_start:decoding_len + input_start, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
 		
 		input_signal_totals[i, :] = running_input_sums / input_len
