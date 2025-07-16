@@ -225,8 +225,8 @@ def make_hardcoded_network():
 	connectivity_scale = 0.075 * 15
 	shift_mats = []
 
-	for i in range(1, 10):
-		w_shift = np.diag(np.ones(n_e_pool - np.abs(i)), k=i) * 1.5 * w_e_e * np.exp(-np.abs(i-1) / connectivity_scale)
+	for i in range(1, n_e_pool):
+		w_shift = np.diag(np.ones(n_e_pool - np.abs(i)), k=i) * 1.5 * w_e_e * np.cos(2 * np.pi / np.abs(i))
 		shift_mats.append(w_shift)
 		shift_mats.append(np.transpose(w_shift))
 
@@ -572,7 +572,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			running_input_sums[j] += filtered_input_to_sum[j]
 
 		r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
-		input_size = 6
+		input_size = 3
 		input_slice = slice(int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
 		if bool(args.bump_init):
 			r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), 6))
