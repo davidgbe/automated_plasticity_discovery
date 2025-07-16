@@ -51,9 +51,9 @@ SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch if args.train else 1
 self_org_iters = args.self_org_iters
-decoder_train_trial_nums = (self_org_iters, self_org_iters + 20)
-decoder_test_trial_nums = (self_org_iters + 20, self_org_iters + 120)
-N_INNER_LOOP_RANGE = (self_org_iters + 120, self_org_iters + 121) # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (self_org_iters, self_org_iters + 40)
+decoder_test_trial_nums = (self_org_iters + 40, self_org_iters + 140)
+N_INNER_LOOP_RANGE = (self_org_iters + 140, self_org_iters + 141) # Number of times to simulate network and plasticity rules per loss function evaluation
 READOUTS_PER_TRIAL = 40
 STD_EXPL = args.std_expl
 DW_LAG = 5
@@ -71,7 +71,7 @@ TEST_REPEATS = 10
 ROOT_FILE_NAME = args.root_file_name
 
 T = 0.150 # Total duration of one network simulation
-T_TEST = 0.150
+T_TEST = 0.250
 dt = 1e-4 # Timestep
 input_start = int(20e-3/dt)
 input_end = int(100e-3/dt)
@@ -181,9 +181,9 @@ write_csv(test_data_path, header)
 
 # define weight values
 if args.struct_prior == 'hard_coded':
-	w_e_e = 0.6e-4 / dt
+	w_e_e = 0.8e-4 / dt
 	w_pool_side = -0.2e-4 / dt
-	w_side_pool = 0.6e-4 / dt
+	w_side_pool = 1e-4 / dt
 else:
 	w_e_e = 9e-4 / dt * 0.1 / n_e_pool
 	w_pool_side = -3e-4 / dt * 0.1 / n_e_pool
