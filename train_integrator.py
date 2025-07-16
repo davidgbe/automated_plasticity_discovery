@@ -48,7 +48,7 @@ BATCH_SIZE = args.batch
 N_INNER_LOOP_RANGE = (320, 321) # Number of times to simulate network and plasticity rules per loss function evaluation
 decoder_train_trial_nums = (280, 300)
 decoder_test_trial_nums = (300, 320)
-READOUTS_PER_TRIAL = 20
+READOUTS_PER_TRIAL = 40
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -62,7 +62,7 @@ INPUT_BLOCK_DURATION = 5e-3
 N_RULES = 60 + 16
 N_TIMECONSTS = 36 + 32
 
-T = 0.150 # Total duration of one network simulation
+T = 0.250 # Total duration of one network simulation
 dt = 1e-4 # Timestep
 input_start = int(20e-3/dt)
 input_end = int(100e-3/dt)
