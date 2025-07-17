@@ -70,7 +70,7 @@ N_TIMECONSTS = 36 + 32
 TEST_REPEATS = 10
 ROOT_FILE_NAME = args.root_file_name
 
-T = 0.150 # Total duration of one network simulation
+T = 0.250 # Total duration of one network simulation
 T_TEST = 0.250
 dt = 1e-4 # Timestep
 input_start = int(20e-3/dt)
@@ -291,7 +291,7 @@ def make_network():
 		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool *  np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=-3, ring=init_ring), 0)
 
 		# define connectivity from HD to HR as inhibiting all but the corresponding group along the diagonal
-		left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=3, ring=init_ring) + create_shift_matrix(n_e_side, k=-3, ring=init_ring)))
+		left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=2, ring=init_ring) + create_shift_matrix(n_e_side, k=-2, ring=init_ring)))
 		np.fill_diagonal(left_input_cells, 0)
 		right_input_cells = copy(left_input_cells)
 
@@ -548,16 +548,16 @@ def simulate_single_network(index, x, train, track_params=True):
 
 		input_spks = np.zeros((decoding_len, 2 * n_e_side))
 		inputs = np.zeros((decoding_len,)).astype(int)
-		inputs[0] = 1
+		inputs[0] = np.random.choice([-1, 0, 1])
 
 		for k in range(input_len):
 			if k % input_block_timesteps == 0:
 				inputs[k] = np.random.choice([-1, 0, 1])
 				if inputs[k] == -1:
-					input_block = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, n_e_side))
+					input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)), n_e_side, axis=1)
 					input_spks[k : k + input_block_timesteps, :n_e_side] = input_block
 				elif inputs[k] == 1:
-					input_block = np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, n_e_side))
+					input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)),n_e_side, axis=1)
 					input_spks[k : k + input_block_timesteps, n_e_side : 2 * n_e_side] = input_block
 			else:
 				inputs[k] = inputs[k-1]
