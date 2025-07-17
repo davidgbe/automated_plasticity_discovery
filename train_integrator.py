@@ -841,12 +841,7 @@ if __name__ == '__main__':
 		eval_all([x_test] * TEST_REPEATS, eval_tracker=eval_tracker)
 
 	else:
-
-		if args.load_initial is not None:
-			x0 = load_best_params(args.load_initial)
-		else:
-			x0 = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
-
+		x0 = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
 
 		eval_all([x0], eval_tracker=eval_tracker)
 
