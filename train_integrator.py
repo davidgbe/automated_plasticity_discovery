@@ -183,14 +183,14 @@ write_csv(test_data_path, header)
 if args.struct_prior == 'hard_coded':
 	w_e_e = 0.8e-4 / dt
 	w_pool_side = -0.2e-4 / dt
-	w_side_pool = 1e-4 / dt
+	w_side_pool = 0.4e-4 / dt
 else:
 	w_e_e = 9e-4 / dt * 0.1 / n_e_pool
 	w_pool_side = -3e-4 / dt * 0.1 / n_e_pool
 	w_side_pool = 9e-4 / dt * 0.1 / n_e_side
 
 w_e_i = 2.5e-4 / dt / n_e_pool
-w_i_e = -1e-4 / dt / n_i
+w_i_e = -1.25e-4 / dt / n_i
 
 
 def create_shuffled_one_to_one(size):
@@ -222,11 +222,10 @@ def create_shift_matrix(size, k_start=1, k=1, ring=False):
 
 def make_hardcoded_network():
 	w_initial = np.zeros((n_e_pool + 2 * n_e_side + n_i, n_e_pool + 2 * n_e_side + n_i))
-	connectivity_scale = 0.075 * 15
 	shift_mats = []
 
 	for i in range(1, n_e_pool):
-		w_shift = np.diag(np.ones(n_e_pool - np.abs(i)), k=i) * 1.5 * w_e_e * np.cos(2 * np.pi / np.abs(i))
+		w_shift = np.diag(np.ones(n_e_pool - np.abs(i)), k=i) * 0.7 * w_e_e * 0.5 * (1 + np.cos(2 * np.pi *  np.abs(i) / n_e_pool))
 		shift_mats.append(w_shift)
 		shift_mats.append(np.transpose(w_shift))
 
@@ -241,7 +240,7 @@ def make_hardcoded_network():
 	# w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = w_pool_side * np.random.rand(n_e_side, n_e_pool)
 	# w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = w_pool_side * np.random.rand(n_e_side, n_e_pool)
 
-	left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=3) + create_shift_matrix(n_e_side, k=-3)))
+	left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=2) + create_shift_matrix(n_e_side, k=-2)))
 	np.fill_diagonal(left_input_cells, 0)
 	right_input_cells = copy(left_input_cells)
 
@@ -872,3 +871,4 @@ if __name__ == '__main__':
 			if eval_tracker['best_changed']:
 				eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
 			es.disp()
+
