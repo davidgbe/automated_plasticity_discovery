@@ -23,8 +23,9 @@ def threshold_linear(s : np.ndarray, v_th : np.ndarray):
 def tanh(s : np.ndarray, v_th : np.ndarray):
     return np.tanh(threshold_linear(s, v_th))
 
+@njit
 def sigmoid(s : np.ndarray, v_th : float, spread : float):
-    return 2 / (1 + np.exp(-1*(s - v_th) / spread))
+    return 1 / (1 + np.exp(-1*(s - v_th) / spread))
 
 def threshold_power(s : np.ndarray, v_th : float, p : float):
     return np.power(threshold_linear(s, v_th), p)
@@ -91,7 +92,7 @@ def simulate_inner_loop(
         s[i+1, :] = s[i, :] + (v[i+1, :] - s[i, :]) * dt / tau # update synaptic conductance as exponential filter of input
 
         # firing rates are calculated as normalized synaptic conductances
-        r[i+1, :n_e] = g * tanh(s[i, :n_e], v_thresh[:n_e])
+        r[i+1, :n_e] = g * sigmoid(s[i, :n_e], v_thresh[:n_e], 1)
         r[i+1, n_e:] = g * threshold_linear(s[i, n_e:], v_thresh[n_e:])
         
         # calculate exponential filtered of firing rate to use for STDP-like plasticity rules
