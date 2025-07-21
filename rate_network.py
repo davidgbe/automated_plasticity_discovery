@@ -92,7 +92,7 @@ def simulate_inner_loop(
         s[i+1, :] = s[i, :] + (v[i+1, :] - s[i, :]) * dt / tau # update synaptic conductance as exponential filter of input
 
         # firing rates are calculated as normalized synaptic conductances
-        r[i+1, :n_e] = g * sigmoid(s[i, :n_e], v_thresh[:n_e], 1)
+        r[i+1, :n_e] = g * tanh(s[i, :n_e], v_thresh[:n_e])
         r[i+1, n_e:] = g * threshold_linear(s[i, n_e:], v_thresh[n_e:])
         
         # calculate exponential filtered of firing rate to use for STDP-like plasticity rules
