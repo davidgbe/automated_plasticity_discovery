@@ -40,6 +40,7 @@ parser.add_argument('--root_file_name', metavar='rfn', type=str, default=None)
 parser.add_argument('--exp_title', metavar='et', type=str, default='')
 parser.add_argument('--train', metavar='t', type=int, default=1)
 parser.add_argument('--self_org_iters', metavar='sot', type=int, default=280)
+parser.add_argument('--dc_input', metavar='dc', type=float, default=0)
 
 
 args = parser.parse_args()
@@ -181,7 +182,7 @@ write_csv(test_data_path, header)
 
 # define weight values
 if args.struct_prior == 'hard_coded':
-	w_e_e = 0.8e-4 / dt
+	w_e_e = 0.9e-4 / dt
 	w_pool_side = -0.2e-4 / dt
 	w_side_pool = 0.4e-4 / dt
 else:
@@ -584,7 +585,8 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
 		r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = 0.1 * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
 
-		r_in[:, :n_e_pool] += 0.02 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(len(t), n_e_pool)), 3e-3)
+		r_in[:, :n_e_pool] += (0.005 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(len(t), n_e_pool)), 3e-3))
+		r_in[int(10e-3/dt):, :n_e_pool] += args.dc_input
 
 		# if i <= 400:
 		# 	synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
