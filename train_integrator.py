@@ -183,15 +183,15 @@ write_csv(test_data_path, header)
 # define weight values
 if args.struct_prior == 'hard_coded':
 	w_e_e = 0.9e-4 / dt
-	w_pool_side = -0.2e-4 / dt
-	w_side_pool = 0.4e-4 / dt
+	w_pool_side = -0.1e-4 / dt
+	w_side_pool = 0.5e-4 / dt
 else:
 	w_e_e = 9e-4 / dt * 0.1 / n_e_pool
 	w_pool_side = -3e-4 / dt * 0.1 / n_e_pool
 	w_side_pool = 9e-4 / dt * 0.1 / n_e_side
 
 w_e_i = 2.5e-4 / dt / n_e_pool
-w_i_e = -1.25e-4 / dt / n_i
+w_i_e = -1.4e-4 / dt / n_i
 
 
 def create_shuffled_one_to_one(size):
@@ -585,7 +585,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
 		r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = 0.1 * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
 
-		r_in[:, :n_e_pool] += (0.005 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(len(t), n_e_pool)), 3e-3))
+		r_in[:, :n_e_pool] += (0 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(len(t), n_e_pool)), 3e-3))
 		r_in[int(10e-3/dt):, :n_e_pool] += args.dc_input
 
 		# if i <= 400:
@@ -600,7 +600,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		# 	w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, v_thresh, dt=dt, tau_e=5e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, v_thresh, dt=dt, tau_e=10e-3, tau_i=1e-3, g=1, w_u=1, track_params=track_params)
 
 		if not args.train:
 			# save weights
