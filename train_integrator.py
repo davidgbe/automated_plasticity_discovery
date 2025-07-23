@@ -515,10 +515,11 @@ def simulate_single_network(index, x, train, track_params=True):
 		np.random.seed()
 
 	w_initial = make_network() # make a new ring attractor
-	v_e = np.random.normal(loc=v_thresh_e, scale=args.threshold_het, size=(n_e_pool + 2 * n_e_side,))
+	v_e = np.random.normal(loc=v_thresh_e, scale=args.threshold_het, size=(n_e_pool))
 	v_e = np.where(v_e > 0, v_e, 0)
 	v_thresh = np.concatenate([
 		v_e,
+		np.zeros((2 * n_e_pool,)),
 		v_thresh_i * np.ones((n_i,)),
 	])
 
