@@ -41,6 +41,7 @@ parser.add_argument('--exp_title', metavar='et', type=str, default='')
 parser.add_argument('--train', metavar='t', type=int, default=1)
 parser.add_argument('--self_org_iters', metavar='sot', type=int, default=280)
 parser.add_argument('--dc_input', metavar='dc', type=float, default=0)
+parser.add_argument('--instant_inhibition', metavar='ih', type=int, default=0)
 
 
 args = parser.parse_args()
@@ -254,8 +255,12 @@ def make_hardcoded_network():
 	w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = left_input_cells
 	w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = right_input_cells
 
-	w_initial[-n_i:, :n_e_pool] = gaussian_if_under_val(1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
-	w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, 0 * np.abs(w_i_e))
+	if args.instant_inhibition:
+		w_initial[:n_e_pool, :n_e_pool] = -1.4e-4 / dt / n_e_pool
+	else:
+		w_initial[-n_i:, :n_e_pool] = gaussian_if_under_val(1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
+		w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, 0 * np.abs(w_i_e))
+		
 
 	np.fill_diagonal(w_initial, 0)
 	return w_initial
