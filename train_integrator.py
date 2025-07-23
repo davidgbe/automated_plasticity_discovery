@@ -256,7 +256,7 @@ def make_hardcoded_network():
 	w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = right_input_cells
 
 	if args.instant_inhibition:
-		w_initial[:n_e_pool, :n_e_pool] = -1.4e-4 / dt / n_e_pool
+		w_initial[:n_e_pool, :n_e_pool] += -1.4e-4 / dt / n_e_pool
 	else:
 		w_initial[-n_i:, :n_e_pool] = gaussian_if_under_val(1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
 		w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, 0 * np.abs(w_i_e))
