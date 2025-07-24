@@ -3,7 +3,7 @@
 ## Presets
 #SBATCH --job-name=int_hard_coded
 
-#SBATCH -p cpu-g2-mem2x
+#SBATCH -p compute-hugemem
 #SBATCH -A stf
 
 #SBATCH --nodes=1
@@ -55,7 +55,7 @@ ALL_W_EE="
 
 
 for W_EE in $ALL_W_EE; do
-    python train_integrator.py --w_e_e $W_EE -std_expl 1e-3 --pool_size 30 --batch 10 --fixed_data 1 --l1_pen 5e-7  --asp 50 --frac_inputs_fixed 0 --syn_change_prob 0 --seed 8015 --hd_hd_sparsity 1.0 --hd_hr_sparsity 1.0 --struct_prior hard_coded --bump_init 1 --train 0 --exp_title hardcoded_instant_inh_${W_EE} --self_org_iters 0  --dc_input 0.2 --instant_inhibition 1
+    python train_integrator.py --w_e_e $W_EE --std_expl 1e-3 --pool_size 30 --batch 10 --fixed_data 1 --l1_pen 5e-7  --asp 50 --frac_inputs_fixed 0 --syn_change_prob 0 --seed 8015 --hd_hd_sparsity 1.0 --hd_hr_sparsity 1.0 --struct_prior hard_coded --bump_init 1 --train 0 --exp_title hardcoded_instant_inh_${W_EE} --self_org_iters 0  --dc_input 0.2 --instant_inhibition 1
 done
 
 deactivate
