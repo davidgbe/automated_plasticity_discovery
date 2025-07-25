@@ -13,7 +13,7 @@ import argparse
 import cma
 import numba
 from scipy.sparse import csc_matrix
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Lasso
 from csv_reader import read_csv
 from csv_writer import write_csv
 from rate_network import simulate
@@ -55,9 +55,9 @@ POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch if args.train else 1
 self_org_iters = args.self_org_iters
 decoder_train_trial_nums = (self_org_iters, self_org_iters + 40)
-decoder_test_trial_nums = (self_org_iters + 40, self_org_iters + 140)
-N_INNER_LOOP_RANGE = (self_org_iters + 140, self_org_iters + 141) # Number of times to simulate network and plasticity rules per loss function evaluation
-READOUTS_PER_TRIAL = 40
+decoder_test_trial_nums = (self_org_iters + 40, self_org_iters + 60)
+N_INNER_LOOP_RANGE = (self_org_iters + 60, self_org_iters + 61) # Number of times to simulate network and plasticity rules per loss function evaluation
+READOUTS_PER_TRIAL = 100
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -79,7 +79,8 @@ dt = 1e-4 # Timestep
 input_start = int(20e-3/dt)
 input_end = int(100e-3/dt)
 input_len = input_end - input_start
-decoding_len = int(T / dt - input_start)
+decoder_lag = int(5e-3/dt)
+decoding_len = int(T / dt - decoder_lag - input_start)
 input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
 t = np.linspace(0, T, int(T / dt))
 n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
@@ -356,10 +357,10 @@ def calc_loss(r : np.ndarray, train_diff_drives : np.ndarray, test_diff_drives :
 	for i in range(readout_times.shape[0]):
 		trial_num = int(i / READOUTS_PER_TRIAL)
 		if i < train_diff_drives.shape[0] * READOUTS_PER_TRIAL:
-			stacked_activities_train.append(r_readout[trial_num, readout_times[i], :].flatten())
+			stacked_activities_train.append(r_readout[trial_num, readout_times[i] + decoder_lag, :].flatten())
 			y_train.append(train_diff_drives[trial_num, readout_times[i] - input_start])
 		else:
-			stacked_activities_test.append(r_readout[trial_num, readout_times[i], :].flatten())
+			stacked_activities_test.append(r_readout[trial_num, readout_times[i] + decoder_lag, :].flatten())
 			y_test.append(test_diff_drives[trial_num - train_diff_drives.shape[0], readout_times[i] - input_start])
 
 	X_train = np.stack(stacked_activities_train)
@@ -368,7 +369,7 @@ def calc_loss(r : np.ndarray, train_diff_drives : np.ndarray, test_diff_drives :
 	X_test = np.stack(stacked_activities_test)
 	y_test = np.array(y_test)
 
-	reg = LinearRegression().fit(X_train, y_train)
+	reg = Lasso(alpha=0.05).fit(X_train, y_train)
 	loss = 1000 * (1 - reg.score(X_test, y_test))
 
 	return loss
@@ -566,8 +567,8 @@ def simulate_single_network(index, x, train, track_params=True):
 		if i == decoder_train_trial_nums[0]:
 			t = np.linspace(0, T_TEST, int(T_TEST / dt))
 
-		input_spks = np.zeros((decoding_len, 2 * n_e_side))
-		inputs = np.zeros((decoding_len,)).astype(int)
+		input_spks = np.zeros((decoding_len + decoder_lag, 2 * n_e_side))
+		inputs = np.zeros((decoding_len + decoder_lag,)).astype(int)
 		inputs[0] = np.random.choice([-1, 0, 1])
 
 		for k in range(input_len):
