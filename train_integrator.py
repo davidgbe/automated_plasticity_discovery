@@ -541,7 +541,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	num_readouts = (decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]) * READOUTS_PER_TRIAL
 	readout_times = (np.random.rand(num_readouts) * decoding_len + input_start).astype(int)
 
-	input_signal_totals = np.zeros((n_inner_loop_iters, decoding_len))
+	input_signal_totals = np.zeros((n_inner_loop_iters, decoding_len + decoder_lag))
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
