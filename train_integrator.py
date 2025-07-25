@@ -185,7 +185,7 @@ write_csv(test_data_path, header)
 
 # define weight values
 w_e_i = 2.5e-4 / dt / n_e_pool
-w_i_e = -1.4e-4 / dt / n_i
+w_i_e = -4.5e-4 / dt / n_i
 
 if args.struct_prior == 'hard_coded':
 	if args.w_e_e is not None:
