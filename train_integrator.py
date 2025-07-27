@@ -44,7 +44,7 @@ parser.add_argument('--self_org_iters', metavar='sot', type=int, default=280)
 parser.add_argument('--dc_input', metavar='dc', type=float, default=0)
 parser.add_argument('--instant_inhibition', metavar='ih', type=int, default=0)
 parser.add_argument('--w_e_e', metavar='w', type=float, default=None)
-parser.add_argument('--run_num', metavar='rn', type=int, default=None)
+parser.add_argument('--run_num', metavar='rn', type=float, default=None)
 
 
 args = parser.parse_args()
