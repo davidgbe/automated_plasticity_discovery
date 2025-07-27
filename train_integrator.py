@@ -44,7 +44,7 @@ parser.add_argument('--self_org_iters', metavar='sot', type=int, default=280)
 parser.add_argument('--dc_input', metavar='dc', type=float, default=0)
 parser.add_argument('--instant_inhibition', metavar='ih', type=int, default=0)
 parser.add_argument('--w_e_e', metavar='w', type=float, default=None)
-parser.add_argument('--run_num', metavar='rn', type=float, default=None)
+parser.add_argument('--run_num', metavar='rn', type=str, default=None)
 
 
 args = parser.parse_args()
@@ -851,7 +851,7 @@ if __name__ == '__main__':
 		if args.train and len(existing_dirs_with_run_num) == 0: # if starting a new training run, create options, initial condition, evolutionary strategy
 			options = {
 				'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-				'popsize': 30,
+				'popsize': 2,
 				'bounds': [
 					[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
 					[10] * N_RULES + [40e-3] * N_TIMECONSTS,
@@ -887,8 +887,8 @@ if __name__ == '__main__':
 
 	else:
 
-		if args.train and len(existing_dirs_with_run_num) == 0:
-			eval_all([x0], eval_tracker=eval_tracker)
+		# if args.train and len(existing_dirs_with_run_num) == 0:
+		# 	eval_all([x0], eval_tracker=eval_tracker)
 
 		while not es.stop():
 			X = es.ask()
