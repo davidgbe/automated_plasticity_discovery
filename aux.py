@@ -4,6 +4,7 @@ import os
 from copy import deepcopy as copy
 from time import time
 import sys
+import re
 
 
 class Generic(object):
