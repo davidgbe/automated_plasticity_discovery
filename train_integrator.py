@@ -851,7 +851,7 @@ if __name__ == '__main__':
 		if args.train and len(existing_dirs_with_run_num) == 0: # if starting a new training run, create options, initial condition, evolutionary strategy
 			options = {
 				'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-				'popsize': 2,
+				'popsize': 30,
 				'bounds': [
 					[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
 					[10] * N_RULES + [40e-3] * N_TIMECONSTS,
@@ -887,8 +887,8 @@ if __name__ == '__main__':
 
 	else:
 
-		# if args.train and len(existing_dirs_with_run_num) == 0:
-		# 	eval_all([x0], eval_tracker=eval_tracker)
+		if args.train and len(existing_dirs_with_run_num) == 0:
+			eval_all([x0], eval_tracker=eval_tracker)
 
 		while not es.stop():
 			X = es.ask()
