@@ -823,7 +823,7 @@ if __name__ == '__main__':
 		# Make subdirectory for this particular experiment
 		time_stamp = str(datetime.now()).replace(' ', '_')
 		joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-		out_dir = f'sims_out/{args.exp_title}_{args.struct_prior}_{BATCH_SIZE}_TH_{args.threshold_het}_STD_EXPL_{STD_EXPL}__L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}_run_{RUN_NUM}'
+		out_dir = f'sims_out/{args.exp_title}_{args.struct_prior}_{BATCH_SIZE}_TH_{args.threshold_het}_STD_EXPL_{STD_EXPL}__L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}_run_{args.run_num}'
 		os.mkdir(out_dir)
 
 		# Make subdirectory for outputting CMAES info
