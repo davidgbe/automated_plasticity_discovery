@@ -219,3 +219,11 @@ def format_pc_plot(axs):
     pc_axes = add_pc_axes(axs)
     format_plot(axs, leftspine=False, bottomspine=False, ticklabelsize=16)
     format_plot(pc_axes)
+
+
+def find_dirs_with_fragment(base_path, frag):
+    pattern = re.compile(frag)
+    return [
+        name for name in sorted(os.listdir(base_path))
+        if os.path.isdir(os.path.join(base_path, name)) and pattern.search(name)
+    ]

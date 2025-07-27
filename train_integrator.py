@@ -4,7 +4,7 @@ import os
 import sys
 import time
 from functools import partial
-from aux import gaussian_if_under_val, start_timer, zero_pad
+from aux import gaussian_if_under_val, start_timer, zero_pad, find_dirs_with_fragment
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from datetime import datetime
@@ -18,6 +18,7 @@ from csv_reader import read_csv
 from csv_writer import write_csv
 from rate_network import simulate
 from rate_network_for_analysis import simulate as simulate_for_analysis
+import pickle
 
 ### Parse arguments 
 
@@ -43,6 +44,7 @@ parser.add_argument('--self_org_iters', metavar='sot', type=int, default=280)
 parser.add_argument('--dc_input', metavar='dc', type=float, default=0)
 parser.add_argument('--instant_inhibition', metavar='ih', type=int, default=0)
 parser.add_argument('--w_e_e', metavar='w', type=float, default=None)
+parser.add_argument('--run_num', metavar='rn', type=int, default=None)
 
 
 args = parser.parse_args()
@@ -146,42 +148,6 @@ rule_names += [
 rule_names = [r for rs in rule_names for r in rs]
 rule_names = np.array(rule_names, dtype=object)
 
-
-# Make directory for outputting simulations
-if not os.path.exists('sims_out'):
-	os.mkdir('sims_out')
-
-# Make subdirectory for this particular experiment
-time_stamp = str(datetime.now()).replace(' ', '_')
-joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
-out_dir = f'sims_out/{args.exp_title}_{args.struct_prior}_{BATCH_SIZE}_TH_{args.threshold_het}_STD_EXPL_{STD_EXPL}__L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}'
-os.mkdir(out_dir)
-
-# Make subdirectory for outputting CMAES info
-os.mkdir(os.path.join(out_dir, 'outcmaes'))
-
-# make subdirectories for weights, rates, etc.
-if not args.train:
-	weight_path = os.path.join(out_dir, 'weights')
-	os.mkdir(weight_path)
-	activity_path = os.path.join(out_dir, 'activities')
-	os.mkdir(activity_path)
-	integrated_value_path = os.path.join(out_dir, 'integrated_values')
-	os.mkdir(integrated_value_path)
-	inputs_path = os.path.join(out_dir, 'inputs')
-	os.mkdir(inputs_path)
-
-# Made CSVs for outputting train & test data
-header = ['evals', 'loss'] + [f'true_loss_{i}' for i in np.arange(BATCH_SIZE)]
-header += list(rule_names)
-header += ['effect_means']
-header += ['effect_stds']
-
-train_data_path = os.path.join(out_dir, 'train_data.csv')
-write_csv(train_data_path, header)
-
-test_data_path = os.path.join(out_dir, 'test_data.csv')
-write_csv(test_data_path, header)
 
 # define weight values
 w_e_i = 2.5e-4 / dt / n_e_pool
@@ -845,15 +811,72 @@ def load_best_avg_params(file_names, n_plasticity_coefs, n_time_constants, batch
 if __name__ == '__main__':
 	mp.set_start_method('fork')
 
-	eval_tracker = {
-		'evals': 0,
-		'best_loss': np.nan,
-		'best_changed': False,
-	}
+	if not os.path.exists('sims_out'):
+		os.mkdir('sims_out')
+
+	if args.run_num is not None:
+		existing_dirs_with_run_num = find_dirs_with_fragment('sims_out', f'run_{args.run_num}')
+	else:
+		existing_dirs_with_run_num = []
+
+	if not args.train or len(existing_dirs_with_run_num) == 0:
+		# Make subdirectory for this particular experiment
+		time_stamp = str(datetime.now()).replace(' ', '_')
+		joined_l1 = '_'.join([str(p) for p in L1_PENALTIES])
+		out_dir = f'sims_out/{args.exp_title}_{args.struct_prior}_{BATCH_SIZE}_TH_{args.threshold_het}_STD_EXPL_{STD_EXPL}__L1_PENALTY_{joined_l1}_ACT_PEN_{args.asp}_CHANGEP_{CHANGE_PROB_PER_ITER}_SEED_{SEED}_{time_stamp}_run_{RUN_NUM}'
+		os.mkdir(out_dir)
+
+		# Make subdirectory for outputting CMAES info
+		os.mkdir(os.path.join(out_dir, 'outcmaes'))
+
+		eval_tracker = {
+			'evals': 0,
+			'best_loss': np.nan,
+			'best_changed': False,
+		}
+
+		# Made CSVs for outputting train & test data
+		header = ['evals', 'loss'] + [f'true_loss_{i}' for i in np.arange(BATCH_SIZE)]
+		header += list(rule_names)
+		header += ['effect_means']
+		header += ['effect_stds']
+
+		train_data_path = os.path.join(out_dir, 'train_data.csv')
+		write_csv(train_data_path, header)
+
+		test_data_path = os.path.join(out_dir, 'test_data.csv')
+		write_csv(test_data_path, header)
+
+
+		if args.train and len(existing_dirs_with_run_num) == 0: # if starting a new training run, create options, initial condition, evolutionary strategy
+			options = {
+				'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+				'popsize': 30,
+				'bounds': [
+					[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
+					[10] * N_RULES + [40e-3] * N_TIMECONSTS,
+				],
+			}
+
+			x0 = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
+
+			es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
+			options['popsize'] = es.opts['popsize']
+	
+	else: # otherwise, load existing run 
+
+		out_dir = os.path.join('sims_out', existing_dirs_with_run_num[-1])
+		train_data_path = os.path.join(out_dir, 'train_data.csv')
+		test_data_path = os.path.join(out_dir, 'test_data.csv')
+		with open(os.path.join(out_dir, 'eval_tracker.pkl'), 'rb') as f:
+			eval_tracker = pickle.load(f)
+		with open(os.path.join(out_dir, 'es_checkpoint.pkl'), 'rb') as f:
+			es = pickle.load(f)
 
 	if not args.train:
+
 		if args.struct_prior == 'hard_coded':
-			x_test = x0 = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
+			x_test = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
 		else:
 			# Load learned synaptic rules from root_file_name
 			file_names = [ROOT_FILE_NAME]
@@ -863,29 +886,22 @@ if __name__ == '__main__':
 		eval_all([x_test] * TEST_REPEATS, eval_tracker=eval_tracker)
 
 	else:
-		x0 = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
 
-		eval_all([x0], eval_tracker=eval_tracker)
-
-		options = {
-			'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-			'popsize': 30,
-			'bounds': [
-				[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
-				[10] * N_RULES + [40e-3] * N_TIMECONSTS,
-			],
-		}
-
-		es = cma.CMAEvolutionStrategy(x0, STD_EXPL, options)
-		options['popsize'] = es.opts['popsize']
-
-		# eval_all([x0], eval_tracker=eval_tracker, train=False)
+		if args.train and len(existing_dirs_with_run_num) == 0:
+			eval_all([x0], eval_tracker=eval_tracker)
 
 		while not es.stop():
 			X = es.ask()
 			print(X)
 			es.tell(X, eval_all(X, eval_tracker=eval_tracker))
+
+			# save optimizer state
+			with open(os.path.join(out_dir, 'es_checkpoint.pkl'), 'wb') as f:
+				pickle.dump(es, f)
+			# save eval_tracker state
+			with open(os.path.join(out_dir, 'eval_tracker.pkl'), 'wb') as f:
+				pickle.dump(eval_tracker, f)
+
 			if eval_tracker['best_changed']:
 				eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
 			es.disp()
-
