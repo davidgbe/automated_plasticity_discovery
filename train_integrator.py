@@ -876,6 +876,16 @@ if __name__ == '__main__':
 
 	if not args.train:
 
+		# make subdirectories for weights, rates, etc.
+		weight_path = os.path.join(out_dir, 'weights')
+		os.mkdir(weight_path)
+		activity_path = os.path.join(out_dir, 'activities')
+		os.mkdir(activity_path)
+		integrated_value_path = os.path.join(out_dir, 'integrated_values')
+		os.mkdir(integrated_value_path)
+		inputs_path = os.path.join(out_dir, 'inputs')
+		os.mkdir(inputs_path)
+
 		if args.struct_prior == 'hard_coded':
 			x_test = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
 		else:
