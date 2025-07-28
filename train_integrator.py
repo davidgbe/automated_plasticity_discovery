@@ -37,6 +37,7 @@ parser.add_argument('--hd_hr_sparsity', metavar='drs', type=float, default=1.)
 parser.add_argument('--struct_prior', metavar='sp', type=str, default='shift')
 parser.add_argument('--bump_init', metavar='bi', type=int, default=1)
 parser.add_argument('--threshold_het', metavar='th', type=float, default=0)
+parser.add_argument('--inh_het', metavar='ih', type=float, default=0)
 parser.add_argument('--root_file_name', metavar='rfn', type=str, default=None)
 parser.add_argument('--exp_title', metavar='et', type=str, default='')
 parser.add_argument('--train', metavar='t', type=int, default=1)
@@ -233,7 +234,7 @@ def make_hardcoded_network():
 		w_initial[:n_e_pool, :n_e_pool] += w_i_e
 	else:
 		w_initial[-n_i:, :n_e_pool] = gaussian_if_under_val(1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
-		w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, 0 * np.abs(w_i_e))
+		w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, args.inh_het * np.abs(w_i_e))
 		
 
 	np.fill_diagonal(w_initial, 0)
@@ -302,7 +303,7 @@ def make_network():
 		
 
 	w_initial[-n_i:, :n_e_pool] = gaussian_if_under_val(1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
-	w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, 0 * np.abs(w_i_e))
+	w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, args.inh_het * np.abs(w_i_e))
 
 	np.fill_diagonal(w_initial, 0)
 	return w_initial
