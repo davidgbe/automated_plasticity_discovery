@@ -7,6 +7,7 @@ __pycache__/**/*
 python-env/**/*
 cmaes_test/**/*
 figures/**/*
+**/*.svg
 **/*.zip
 data/**/*
 *_0*.slurm
