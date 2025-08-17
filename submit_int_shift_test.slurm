@@ -3,7 +3,7 @@
 ## Presets
 #SBATCH --job-name=int_cmaes
 
-#SBATCH -p compute-hugemem
+#SBATCH -p cpu-g2-mem2x
 #SBATCH -A stf
 
 #SBATCH --nodes=1

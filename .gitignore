@@ -8,6 +8,7 @@ python-env/**/*
 cmaes_test/**/*
 figures/**/*
 **/*.svg
+**/*.png
 **/*.zip
 data/**/*
 *_0*.slurm
