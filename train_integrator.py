@@ -76,12 +76,18 @@ N_TIMECONSTS = 36 + 32
 TEST_REPEATS = 10
 ROOT_FILE_NAME = args.root_file_name
 
-T = 0.250 # Total duration of one network simulation
-T_TEST = 0.250
+T = 0.260 # Total duration of one network simulation
+T_TEST = 0.260
 dt = 1e-4 # Timestep
 input_start = int(20e-3/dt)
-input_end = int(100e-3/dt)
+input_end = int(260e-3/dt)
 input_len = input_end - input_start
+input_pauses = [
+	(50e-3, 80e-3),
+	(110e-3, 140e-3),
+	(170e-3, 200e-3),
+	(230e-3, 260e-3),
+]
 decoder_lag = int(5e-3/dt)
 decoding_len = int(T / dt - decoder_lag - input_start)
 input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
@@ -97,6 +103,10 @@ if args.train:
 else:
 	train_seeds = np.random.randint(0, 1e7, size=TEST_REPEATS)
 	test_seeds = np.random.randint(0, 1e7, size=TEST_REPEATS)
+	
+input_on_mask = np.ones(input_len)
+for input_pause in input_pauses:
+	input_on_mask[int(input_pause[0] / dt) - input_start:int(input_pause[1] / dt) - input_start] = 0
 
 rule_names = [ # Define labels for all rules to be run during simulations
 	r'',
@@ -539,16 +549,19 @@ def simulate_single_network(index, x, train, track_params=True):
 		inputs[0] = np.random.choice([-1, 0, 1])
 
 		for k in range(input_len):
-			if k % input_block_timesteps == 0:
-				inputs[k] = np.random.choice([-1, 0, 1])
-				if inputs[k] == -1:
-					input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)), n_e_side, axis=1)
-					input_spks[k : k + input_block_timesteps, :n_e_side] = input_block
-				elif inputs[k] == 1:
-					input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)),n_e_side, axis=1)
-					input_spks[k : k + input_block_timesteps, n_e_side : 2 * n_e_side] = input_block
+			if input_on_mask[k] == 0:
+				inputs[k] = 0
 			else:
-				inputs[k] = inputs[k-1]
+				if k % input_block_timesteps == 0:
+					inputs[k] = np.random.choice([-1, 0, 1])
+					if inputs[k] == -1:
+						input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)), n_e_side, axis=1)
+						input_spks[k : k + input_block_timesteps, :n_e_side] = input_block
+					elif inputs[k] == 1:
+						input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)),n_e_side, axis=1)
+						input_spks[k : k + input_block_timesteps, n_e_side : 2 * n_e_side] = input_block
+				else:
+					inputs[k] = inputs[k-1]
 
 		filtered_input_to_sum_per_neuron = poisson_arrivals_to_inputs(input_spks, 3e-3)
 		filtered_input_to_sum = filtered_input_to_sum_per_neuron[:, n_e_side:2 * n_e_side].sum(axis=1) - filtered_input_to_sum_per_neuron[:, :n_e_side].sum(axis=1)
