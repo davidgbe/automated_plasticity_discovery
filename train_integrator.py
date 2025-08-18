@@ -83,8 +83,10 @@ input_start = int(20e-3/dt)
 input_end = int(260e-3/dt)
 input_len = input_end - input_start
 input_pauses = [
-	(60e-3, 140e-3),
-	(180e-3, 260e-3),
+	(50e-3, 80e-3),
+	(110e-3, 140e-3),
+	(170e-3, 200e-3),
+	(230e-3, 260e-3),
 ]
 decoder_lag = int(5e-3/dt)
 decoding_len = int(T / dt - decoder_lag - input_start)
