@@ -46,6 +46,7 @@ parser.add_argument('--dc_input', metavar='dc', type=float, default=0)
 parser.add_argument('--instant_inhibition', metavar='ih', type=int, default=0)
 parser.add_argument('--w_e_e', metavar='w', type=float, default=None)
 parser.add_argument('--run_num', metavar='rn', type=str, default=None)
+parser.add_argument('--cell_type_1_size', metavar='ps', type=int, default=15)
 
 
 args = parser.parse_args()
@@ -75,6 +76,7 @@ N_RULES = 60 + 16
 N_TIMECONSTS = 36 + 32
 TEST_REPEATS = 10
 ROOT_FILE_NAME = args.root_file_name
+INPUT_AMP = 0.1 # if args.struct_prior != '2D' else 0.02
 
 T = 0.260 # Total duration of one network simulation
 T_TEST = 0.260
@@ -92,8 +94,8 @@ decoder_lag = int(5e-3/dt)
 decoding_len = int(T / dt - decoder_lag - input_start)
 input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
 t = np.linspace(0, T, int(T / dt))
-n_e_pool = 15 # Number excitatory cells in sequence (also length of sequence)
-n_e_side = 15
+n_e_pool = args.cell_type_1_size # Number excitatory cells in sequence (also length of sequence)
+n_e_side = args.cell_type_1_size
 n_i = 1 # Number inhibitory cells
 v_thresh_e = 0.1
 v_thresh_i = 0
@@ -266,20 +268,6 @@ def make_network():
 		w_initial[:n_e_pool, :n_e_pool] = np.where(np.random.rand(n_e_pool, n_e_pool) < args.hd_hd_sparsity, w_e_e * np.random.rand(n_e_pool, n_e_pool), 0)
 	else:
 		w_initial[:n_e_pool, :n_e_pool] = w_e_e * np.random.rand(n_e_pool, n_e_pool) + np.diag(np.ones((n_e_pool - 1,)), k=-1)
-
-	### For initializing a ring-like shape in the pool neurons
-
-	# x = np.arange(n_e_pool) / n_e_pool
-	# connectivity_scale = 0.075
-	# exp_ring_connectivity = 4 * w_e_e * (np.exp(-x/connectivity_scale) + np.exp((x-1)/connectivity_scale))
-
-	# for r_idx in np.arange(n_e_pool):
-	# 	w_initial[r_idx:n_e_pool, r_idx] = exp_ring_connectivity[:(n_e_pool - r_idx)]
-	# 	w_initial[0:r_idx, r_idx] = exp_ring_connectivity[(n_e_pool - r_idx):]
-
-	# w_initial[:n_e_pool, :n_e_pool] = w_initial[:n_e_pool, :n_e_pool] * np.random.normal(size=(n_e_pool, n_e_pool), loc=1, scale=0.1)
-
-	###
 	
 	if args.struct_prior == 'shift' or args.struct_prior == 'ring':
 		init_ring = (args.struct_prior == 'ring')
@@ -310,12 +298,25 @@ def make_network():
 		# define connectivity from HD to HR neurons as random, semi-sparse matrix
 		w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = w_pool_side * np.where(np.random.rand(n_e_side, n_e_pool) < args.hd_hr_sparsity, np.random.rand(n_e_side, n_e_pool), 0)
 		w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = w_pool_side * np.where(np.random.rand(n_e_side, n_e_pool) < args.hd_hr_sparsity, np.random.rand(n_e_side, n_e_pool), 0)
+	elif args.struct_prior == '2D':
+		right_shift = np.array([
+			[1, 0],
+			[0, 0]
+		])
+		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * right_shift
+		
+		left_shift = np.array([
+			[0, 0],
+			[0, 1]
+		])
+		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * left_shift
 		
 
 	w_initial[-n_i:, :n_e_pool] = gaussian_if_under_val(1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
 	w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, args.inh_het * np.abs(w_i_e))
 
-	np.fill_diagonal(w_initial, 0)
+	if args.struct_prior != '2D':
+		np.fill_diagonal(w_initial, 0)
 	return w_initial
 
 
@@ -583,7 +584,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		input_signal_totals[i, :] = running_input_sums / input_len
 
 		r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
-		r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = 0.1 * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
+		r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = INPUT_AMP * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
 
 		r_in[:, :n_e_pool] += (0 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(len(t), n_e_pool)), 3e-3))
 		r_in[int(10e-3/dt):, :n_e_pool] += args.dc_input
@@ -620,7 +621,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	  		or (np.abs(w_out) > 100).any()
 			or (np.abs(w_out[:n_e_pool, :n_e_pool]) < 1.5e-6).all() 
 			or (np.abs(w_out[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)]) < 1.5e-6).all()
-			or (np.abs(w_out[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool]) < 1.5e-6).all()): # if simulation turns up nans in firing rate matrix, end the simulation
+			or ((np.abs(w_out[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool]) < 1.5e-6).all() and args.struct_prior != '2D')): # if simulation turns up nans in firing rate matrix, end the simulation
 			
 			return {
 				'blew_up': True,
