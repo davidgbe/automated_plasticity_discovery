@@ -559,7 +559,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			if input_flag == -1:
 				input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)), n_e_side, axis=1)
 				input_spks[k : k + input_block_timesteps, :n_e_side] = input_block
-			elif input_flag == -1:
+			elif input_flag == 1:
 				input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)), n_e_side, axis=1)
 				input_spks[k : k + input_block_timesteps, n_e_side : 2 * n_e_side] = input_block
 
