@@ -546,23 +546,22 @@ def simulate_single_network(index, x, train, track_params=True):
 			t = np.linspace(0, T_TEST, int(T_TEST / dt))
 
 		input_spks = np.zeros((decoding_len + decoder_lag, 2 * n_e_side))
-		inputs = np.zeros((decoding_len + decoder_lag,)).astype(int)
-		inputs[0] = np.random.choice([-1, 0, 1])
+		
+		n_input_blocks = input_len // input_block_timesteps
+		inputs = np.zeros((n_input_blocks), dtype=int)
+		n_inputs = np.random.randint(0, n_input_blocks + 1)
+		if n_inputs > 0:
+			inputs[:n_inputs] = np.random.choice([-1, 1], size=n_inputs)
+		np.random.shuffle(inputs)
 
-		for k in range(input_len):
-			if input_on_mask[k] == 0:
-				inputs[k] = 0
-			else:
-				if k % input_block_timesteps == 0:
-					inputs[k] = np.random.choice([-1, 0, 1])
-					if inputs[k] == -1:
-						input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)), n_e_side, axis=1)
-						input_spks[k : k + input_block_timesteps, :n_e_side] = input_block
-					elif inputs[k] == 1:
-						input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)),n_e_side, axis=1)
-						input_spks[k : k + input_block_timesteps, n_e_side : 2 * n_e_side] = input_block
-				else:
-					inputs[k] = inputs[k-1]
+		for i_input_block, input_flag in enumerate(inputs):
+			k = i_input_block * input_block_timesteps
+			if input_flag == -1:
+				input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)), n_e_side, axis=1)
+				input_spks[k : k + input_block_timesteps, :n_e_side] = input_block
+			elif input_flag == -1:
+				input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)), n_e_side, axis=1)
+				input_spks[k : k + input_block_timesteps, n_e_side : 2 * n_e_side] = input_block
 
 		filtered_input_to_sum_per_neuron = poisson_arrivals_to_inputs(input_spks, 3e-3)
 		filtered_input_to_sum = filtered_input_to_sum_per_neuron[:, n_e_side:2 * n_e_side].sum(axis=1) - filtered_input_to_sum_per_neuron[:, :n_e_side].sum(axis=1)
