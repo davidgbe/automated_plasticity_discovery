@@ -79,7 +79,7 @@ ROOT_FILE_NAME = args.root_file_name
 INPUT_AMP = 0.1 # if args.struct_prior != '2D' else 0.02
 
 T = 0.260 # Total duration of one network simulation
-T_TEST = 0.260
+T_TEST = 1
 dt = 1e-4 # Timestep
 input_start = int(20e-3/dt)
 input_end = int(260e-3/dt)
