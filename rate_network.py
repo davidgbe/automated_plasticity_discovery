@@ -100,11 +100,16 @@ def simulate_inner_loop(
 
         r_0_pow = np.ones(n_e + n_i)
         r_1_pow = r[i+1, :] / 0.2
-        r_2_pow = np.square(r[i+1, :])
+        r_2_pow = np.square(r_1_pow)
+        r_3_pow = np.pow(r_1_pow, 3)
+        r_4_pow = np.pow(r_1_pow, 4)
         r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.2
 
         r_0_pow_split = [r_0_pow[s] for s in pop_slices]
         r_1_pow_split = [r_1_pow[s] for s in pop_slices]
+        r_2_pow_split = [r_2_pow[s] for s in pop_slices]
+        r_3_pow_split = [r_3_pow[s] for s in pop_slices]
+        r_4_pow_split = [r_4_pow[s] for s in pop_slices]
         r_exp_filtered_curr_split = [r_exp_filtered_curr[:, s] for s in pop_slices]
 
         # find outer products of zeroth, first powers of firing rates to compute updates due to plasticity rules
@@ -112,51 +117,53 @@ def simulate_inner_loop(
         r_0_r_1 = np.outer(r_1_pow, r_0_pow)
         r_1_r_0 = r_0_r_1.T
         r_1_r_1 = np.outer(r_1_pow, r_1_pow)
+        r_0_r_2 = np.outer(r_2_pow, r_0_pow)
+        r_2_r_0 = r_0_r_2.T
+        r_0_r_3 = np.outer(r_3_pow, r_0_pow)
+        r_3_r_0 = r_0_r_3.T
+        r_0_r_4 = np.outer(r_4_pow, r_0_pow)
+        r_4_r_0 = r_0_r_4.T
+        # continue with r^3 and r^4 if needed
 
         w_updates_unweighted = []
 
         for k, pop_indices in enumerate([[0, 0], [0, 1], [1, 0]]):
             p_i = pop_indices[0]
             p_j = pop_indices[1]
-            ts_for_pop_start = k * 12
+            ts_for_pop_start = k * 4
 
-            r_0_r_exp = np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start, :], r_0_pow_split[p_i])
-            r_1_r_exp = np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start + 1, :], r_1_pow_split[p_i])
-            r_exp_r_0 = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 2, :])
-            r_exp_r_1 = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 3, :])
-            r_0_by_r_exp_r = np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start + 4, :] * r_1_pow_split[p_j], r_0_pow_split[p_i])
-            r_exp_r_by_r_0 = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 5, :] * r_1_pow_split[p_i])
+            r_1_r_exp = np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start, :], r_1_pow_split[p_i])
+            r_exp_r_1 = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 1, :])
 
-            r_0_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start + 6, :], r_0_pow_split[p_i])
-            r_1_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start + 7, :], r_1_pow_split[p_i])
-            r_exp_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 8, :])
-            r_exp_r_1_w = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 9, :])
-            r_0_by_r_exp_r_w = np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start + 10, :] * r_1_pow_split[p_j], r_0_pow_split[p_i])
-            r_exp_r_by_r_0_w = np.outer(r_0_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 11, :] * r_1_pow_split[p_i])
+            r_1_r_exp_w = np.outer(r_exp_filtered_curr_split[p_j][ts_for_pop_start + 2, :], r_1_pow_split[p_i])
+            r_exp_r_1_w = np.outer(r_1_pow_split[p_j], r_exp_filtered_curr_split[p_i][ts_for_pop_start + 3, :])
 
             r_cross_products = np.stack((
                 r_0_r_0[pop_slices[p_j], pop_slices[p_i]],
                 r_0_r_1[pop_slices[p_j], pop_slices[p_i]],
                 r_1_r_0[pop_slices[p_j], pop_slices[p_i]],
+                r_0_r_2[pop_slices[p_j], pop_slices[p_i]],
+                r_2_r_0[pop_slices[p_j], pop_slices[p_i]],
+                r_0_r_3[pop_slices[p_j], pop_slices[p_i]],
+                r_3_r_0[pop_slices[p_j], pop_slices[p_i]],
+                r_0_r_4[pop_slices[p_j], pop_slices[p_i]],
+                r_4_r_0[pop_slices[p_j], pop_slices[p_i]],
                 r_1_r_1[pop_slices[p_j], pop_slices[p_i]],
-                r_0_r_exp,
                 r_1_r_exp,
-                r_exp_r_0,
                 r_exp_r_1,
-                r_0_by_r_exp_r,
-                r_exp_r_by_r_0,
 
                 r_0_r_0[pop_slices[p_j], pop_slices[p_i]],
                 r_0_r_1[pop_slices[p_j], pop_slices[p_i]],
                 r_1_r_0[pop_slices[p_j], pop_slices[p_i]],
+                r_0_r_2[pop_slices[p_j], pop_slices[p_i]],
+                r_2_r_0[pop_slices[p_j], pop_slices[p_i]],
+                r_0_r_3[pop_slices[p_j], pop_slices[p_i]],
+                r_3_r_0[pop_slices[p_j], pop_slices[p_i]],
+                r_0_r_4[pop_slices[p_j], pop_slices[p_i]],
+                r_4_r_0[pop_slices[p_j], pop_slices[p_i]],
                 r_1_r_1[pop_slices[p_j], pop_slices[p_i]],
-                r_0_r_exp_w,
                 r_1_r_exp_w,
-                r_exp_r_0_w,
                 r_exp_r_1_w,
-                r_0_by_r_exp_r_w,
-                r_exp_r_by_r_0_w,
-
             ))
 
             w_updates_unweighted.append(r_cross_products)

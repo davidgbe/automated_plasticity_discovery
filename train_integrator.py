@@ -72,24 +72,18 @@ CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 1000
 INPUT_BLOCK_DURATION = 5e-3
-N_RULES = 60 + 16
-N_TIMECONSTS = 36 + 32
+N_RULES = (12 * 2 * 3) + 16 #twelve terms, for both weighted and unweights, times 3 rule sets + 3 factor terms
+N_TIMECONSTS = 12 + 32
 TEST_REPEATS = 10
 ROOT_FILE_NAME = args.root_file_name
 INPUT_AMP = 0.1 # if args.struct_prior != '2D' else 0.02
 
 T = 0.260 # Total duration of one network simulation
-T_TEST = 1
+T_TEST = 0.260
 dt = 1e-4 # Timestep
 input_start = int(20e-3/dt)
 input_end = int(260e-3/dt)
-input_len = input_end - input_start
-input_pauses = [
-	(50e-3, 80e-3),
-	(110e-3, 140e-3),
-	(170e-3, 200e-3),
-	(230e-3, 260e-3),
-]
+max_input_len = input_end - input_start
 decoder_lag = int(5e-3/dt)
 decoding_len = int(T / dt - decoder_lag - input_start)
 input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
@@ -105,33 +99,33 @@ if args.train:
 else:
 	train_seeds = np.random.randint(0, 1e7, size=TEST_REPEATS)
 	test_seeds = np.random.randint(0, 1e7, size=TEST_REPEATS)
-	
-input_on_mask = np.ones(input_len)
-for input_pause in input_pauses:
-	input_on_mask[int(input_pause[0] / dt) - input_start:int(input_pause[1] / dt) - input_start] = 0
 
 rule_names = [ # Define labels for all rules to be run during simulations
 	r'',
 	r'$y$',
 	r'$x$',
+	r'$y^$',
+	r'$x^2$',
+	r'$y^3$',
+	r'$x^3$',
+	r'$y^4$',
+	r'$x^4$',
 	r'$x \, y$',
-	r'$\tilde{y}$',
 	r'$x \, \tilde{y}$',
-	r'$\tilde{x}$',
 	r'$\tilde{x} \, y$',
-	r'$\tilde{y} \, y$',
-	r'$\tilde{x} \, x$',
 
 	r'$w$',
 	r'$w y$',
 	r'$w x$',
+	r'$w y^$',
+	r'$w x^2$',
+	r'$w y^3$',
+	r'$w x^3$',
+	r'$w y^4$',
+	r'$w x^4$',
 	r'$w x \, y$',
-	r'$w \tilde{y}$',
 	r'$w x \, \tilde{y}$',
-	r'$w \tilde{x}$',
 	r'$w \tilde{x} \, y$',
-	r'$w \tilde{y} \, y$',
-	r'$w \tilde{x} \, x$',
 ]
 
 rule_names = [
@@ -534,7 +528,7 @@ def simulate_single_network(index, x, train, track_params=True):
 	all_weight_deltas = []
 	w_hist.append(w)
 
-	blew_up = False
+	input_len = int((index + 1) / (BATCH_SIZE + 1) * max_input_len)
 
 	surviving_synapse_mask = np.ones((n_e_pool, n_e_pool)).astype(bool)
 
