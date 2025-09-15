@@ -101,8 +101,8 @@ def simulate_inner_loop(
         r_0_pow = np.ones(n_e + n_i)
         r_1_pow = r[i+1, :] / 0.2
         r_2_pow = np.square(r_1_pow)
-        r_3_pow = np.pow(r_1_pow, 3)
-        r_4_pow = np.pow(r_1_pow, 4)
+        r_3_pow = np.power(r_1_pow, 3)
+        r_4_pow = np.power(r_1_pow, 4)
         r_exp_filtered_curr = r_exp_filtered[:, i+1, :] / 0.2
 
         r_0_pow_split = [r_0_pow[s] for s in pop_slices]
