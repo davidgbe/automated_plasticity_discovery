@@ -107,9 +107,6 @@ def simulate_inner_loop(
 
         r_0_pow_split = [r_0_pow[s] for s in pop_slices]
         r_1_pow_split = [r_1_pow[s] for s in pop_slices]
-        r_2_pow_split = [r_2_pow[s] for s in pop_slices]
-        r_3_pow_split = [r_3_pow[s] for s in pop_slices]
-        r_4_pow_split = [r_4_pow[s] for s in pop_slices]
         r_exp_filtered_curr_split = [r_exp_filtered_curr[:, s] for s in pop_slices]
 
         # find outer products of zeroth, first powers of firing rates to compute updates due to plasticity rules
@@ -178,7 +175,7 @@ def simulate_inner_loop(
             p_j = pop_indices[1]
             p_l = pop_indices[2]
 
-            ts_for_pop_start = 36 + k * (2 * tc_offset)
+            ts_for_pop_start = 12 + k * (2 * tc_offset)
 
             # how to read this:
             # first factor is presynaptic neuron from first population (p_i)
