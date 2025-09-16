@@ -78,8 +78,8 @@ def simulate_inner_loop(
 
     n_e = n_e_pool + 2 * n_e_side
 
-    coefficient_for_division_pair = [slice(0, 20), slice(20, 40), slice(40, 60)]
-    coefficient_for_division_trip = [slice(60, 68), slice(68, 76)]
+    coefficient_for_division_pair = [slice(0, 24), slice(24, 48), slice(48, 72)]
+    coefficient_for_division_trip = [slice(72, 80), slice(80, 88)]
     pop_slices = [slice(0, n_e_pool), slice(n_e_pool, n_e_pool + 2 * n_e_side)]
 
     w_copy = np.copy(w)
@@ -123,7 +123,6 @@ def simulate_inner_loop(
         r_3_r_0 = r_0_r_3.T
         r_0_r_4 = np.outer(r_4_pow, r_0_pow)
         r_4_r_0 = r_0_r_4.T
-        # continue with r^3 and r^4 if needed
 
         w_updates_unweighted = []
 
