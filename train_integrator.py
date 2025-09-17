@@ -543,7 +543,7 @@ def simulate_single_network(index, x, train, track_params=True):
 		
 		n_input_blocks = input_len // input_block_timesteps
 		inputs = np.zeros((n_input_blocks), dtype=int)
-		n_inputs = np.random.randint(0, n_input_blocks + 1)
+		n_inputs = np.random.randint(0, n_input_blocks)
 		if n_inputs > 0:
 			inputs[:n_inputs] = np.random.choice([-1, 1], size=n_inputs)
 		np.random.shuffle(inputs)
