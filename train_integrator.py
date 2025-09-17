@@ -528,7 +528,10 @@ def simulate_single_network(index, x, train, track_params=True):
 	all_weight_deltas = []
 	w_hist.append(w)
 
-	input_len = int((index + 1) / (BATCH_SIZE + 1) * max_input_len)
+	if args.train:
+		input_len = int((index + 1) / (BATCH_SIZE + 1) * max_input_len)
+	else:
+		input_len = int((index + 1) / (TEST_REPEATS + 1) * max_input_len)
 
 	surviving_synapse_mask = np.ones((n_e_pool, n_e_pool)).astype(bool)
 
