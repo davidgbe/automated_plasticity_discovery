@@ -281,19 +281,12 @@ def simulate(
 
         r, ds, dr_exp, dw, dsyn, unstable = learning_dynamics(s, r_exp, w, syn, unstable, r_in, args, n_e, n_i, n_e_pool, n_e_side)
 
-        ds, dr_exp, dw, dsyn = jax.lax.cond(
+        s_prime, r_exp_prime, w_prime, syn_prime = jax.lax.cond(
             unstable,
-            lambda _: (jnp.zeros_like(ds), jnp.zeros_like(dr_exp), jnp.zeros_like(dw), jnp.zeros_like(dsyn)),
-            lambda _: (ds, dr_exp, dw, dsyn),
+            lambda _: (jnp.zeros_like(s), jnp.zeros_like(r_exp), jnp.zeros_like(w), jnp.zeros_like(syn)),
+            lambda _: (s + ds, r_exp + dr_exp, enforce_polarity_and_structure(w + dw, w_polarity, w0), syn + dsyn),
             None,
         )
-
-        s_prime = s + ds
-        r_exp_prime = r_exp + dr_exp
-        w_prime = w + dw
-        syn_prime = syn + dsyn
-
-        w_prime = enforce_polarity_and_structure(w_prime, w_polarity, w0)
 
         return (s_prime, r_exp_prime, w_prime, syn_prime, unstable), r
 
