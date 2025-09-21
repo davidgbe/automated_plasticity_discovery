@@ -16,7 +16,7 @@ from scipy.sparse import csc_matrix
 from sklearn.linear_model import LinearRegression, Lasso
 from csv_reader import read_csv
 from csv_writer import write_csv
-from rate_network import simulate
+from rate_network_jax import simulate
 from rate_network_for_analysis import simulate as simulate_for_analysis
 import pickle
 
@@ -72,7 +72,7 @@ CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 1000
 INPUT_BLOCK_DURATION = 5e-3
-N_RULES = (12 * 2 * 3) + 16 #twelve terms, for both weighted and unweights, times 3 rule sets + 3 factor terms
+N_RULES = ((12 * 2) * 3) + 16 #twelve terms, for both weighted and unweights, times 3 rule sets + 3 factor terms
 N_TIMECONSTS = 12 + 32
 TEST_REPEATS = 10
 ROOT_FILE_NAME = args.root_file_name
@@ -80,7 +80,7 @@ INPUT_AMP = 0.1 # if args.struct_prior != '2D' else 0.02
 
 T = 0.260 # Total duration of one network simulation
 T_TEST = 0.260
-dt = 1e-4 # Timestep
+dt = 1e-4 # Timesteps
 input_start = int(20e-3/dt)
 input_end = int(260e-3/dt)
 max_input_len = input_end - input_start
@@ -90,6 +90,7 @@ input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
 t = np.linspace(0, T, int(T / dt))
 n_e_pool = args.cell_type_1_size # Number excitatory cells in sequence (also length of sequence)
 n_e_side = args.cell_type_1_size
+n_e = n_e_pool + 2 * n_e_side
 n_i = 1 # Number inhibitory cells
 v_thresh_e = 0.1
 v_thresh_i = 0
@@ -401,7 +402,7 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 				elif l_idx >= (r.shape[1] - n_i):
 					axs[4 * i + plotted_trial_count][1].plot(np.arange(len(r[:, l_idx])), r[:, l_idx], c='black') # graph inh activity
 
-			axs[4 * i + plotted_trial_count][0].matshow(r[:, :n_e_pool + 2 * n_e_side].T, aspect=1/0.1)
+			axs[4 * i + plotted_trial_count][0].matshow(r[:, :n_e_pool + 2 * n_e_side].T, aspect='auto')
 			plotted_trial_count += 1
 
 		vbound = np.max(w)
@@ -597,7 +598,33 @@ def simulate_single_network(index, x, train, track_params=True):
 		# 	w[:n_e, :n_e] = np.where(birth_mask_for_i, w_e_e_added, w[:n_e, :n_e])
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, v_thresh, dt=dt, tau_e=10e-3, tau_i=1e-3, g=1, w_u=1, track_params=track_params)
+
+		cell_time_consts = np.concatenate([
+			np.ones((n_e)) * 10e-3,
+			np.ones((n_i)) * 1e-3,
+		])
+
+		r, w_out, effects, r_exp_filtered = simulate(
+			len(t),
+			N_TIMECONSTS,
+			dt,
+			t,
+			w,
+			r_in,
+			plasticity_coefs,
+			rule_time_constants,
+			g=1,
+			s_offsets=v_thresh,
+			w_u=1,
+			tau_s=cell_time_consts,
+			eta=5,
+			n_e=n_e,
+			n_i=n_i,
+			n_e_pool=n_e_pool,
+			n_e_side=n_e_side,
+		)
+
+		# r, s, v, w_out, effects, r_exp_filtered = simulate(len(t), t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, v_thresh, dt=dt, tau_e=10e-3, tau_i=1e-3, g=1, w_u=1, track_params=track_params)
 
 		if not args.train:
 			# save weights
@@ -680,8 +707,10 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 
 	true_losses = np.array([res['loss'] for res in results])
 	syn_effects = np.stack([res['syn_effects'] for res in results])
+	print(syn_effects.shape)
+	print(type(syn_effects))
 	total_activity_penalties = ACTIVITY_LOSS_COEF * np.array([res['rs_for_loss'].mean() for res in results])
-	syn_effect_penalties = L1_PENALTIES[0] * np.sum(np.abs(syn_effects), axis=1)
+	syn_effect_penalties = L1_PENALTIES[0] * np.sum(np.abs(np.asarray(syn_effects)), axis=1)
 
 	losses = true_losses + syn_effect_penalties + total_activity_penalties
 	loss = np.sum(losses)
