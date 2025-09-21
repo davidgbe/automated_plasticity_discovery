@@ -177,7 +177,7 @@ else:
 	w_side_pool = 9e-4 / dt * 0.1 / n_e_side
 
 
-def create_shuffled_one_to_onex(size):
+def create_shuffled_one_to_one(size):
 	w = np.diag(np.ones((size)))
 	x = np.arange(size).astype(int)
 	order = copy(x)

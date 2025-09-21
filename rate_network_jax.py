@@ -7,7 +7,7 @@ from typing import Tuple, Dict, Any, Optional
 R_RESCALING = 5
 R_EXP_RESCALING = 5
 W_RESCALING = 1
-THREE_FACTOR_RESCALING = 1
+THREE_FACTOR_RESCALING = 2
 
 @jax.jit
 def _delta_W_ij_two_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j):
@@ -119,13 +119,16 @@ def learning_dynamics(
     n_2 = 2 * n_e_side
     n_plastic = n_1 + n_2
 
-    pool_weights_zero = jnp.all(w[:n_e_pool, :n_e_pool] < 1e-6)
-    pool_side_weights_zero = jnp.all(w[:n_e_pool, n_e_pool:n_e_pool + 2 * n_e_side] < 1e-6)
-    side_pool_weights_zero = jnp.all(w[n_e_pool:n_e_pool + 2 * n_e_side, :n_e_pool] < 1e-6)
-    weights_blew_up = jnp.any(jnp.abs(w) > 20)
-    activity_blew_up = jnp.any(s > 10)
+    abs_w = jnp.abs(w)
 
-    delta_unstable = pool_weights_zero | pool_side_weights_zero | side_pool_weights_zero | weights_blew_up | activity_blew_up | unstable
+    pool_weights_zero = jnp.all(abs_w[:n_e_pool, :n_e_pool] < 1e-6)
+    pool_side_weights_zero = jnp.all(abs_w[:n_e_pool, n_e_pool:n_e_pool + 2 * n_e_side] < 1e-6)
+    # SHOULD CHANGE FOR NON 2D!
+    side_pool_weights_zero = False # jnp.all(abs_w[n_e_pool:n_e_pool + 2 * n_e_side, :n_e_pool] < 1e-6)
+    weights_blew_up = jnp.any(abs_w > 20)
+    activity_blew_up = jnp.any(s > 20)
+
+    unstable = pool_weights_zero | pool_side_weights_zero | side_pool_weights_zero | weights_blew_up | activity_blew_up | unstable
 
     r = calc_r_from_s(s, s_offsets, g, n_e)
     v = w @ r + w_u * u
@@ -153,7 +156,7 @@ def learning_dynamics(
         r_exp[:n_1, 12:20] * R_EXP_RESCALING,
         r_exp[:n_1, 12:20] * R_EXP_RESCALING,
         # (2) -> (1)
-        w[:n_1, n_1:n_plastic] @ r_exp[n_1:n_plastic, 20:28] * R_EXP_RESCALING,
+        w[:n_1, n_1:n_plastic] @ r_exp[n_1:n_plastic, 20:28] * R_EXP_RESCALING * THREE_FACTOR_RESCALING,
         c[72:80],
     )
 
@@ -202,7 +205,7 @@ def learning_dynamics(
         r_exp[:n_1, 28:36] * R_EXP_RESCALING,
         r_exp[n_1:n_plastic, 28:36] * R_EXP_RESCALING,
         # (1) -> (1)
-        w[:n_1, :n_1] @ r_exp[:n_1, 36:44] * R_EXP_RESCALING,
+        w[:n_1, :n_1] @ r_exp[:n_1, 36:44] * R_EXP_RESCALING * THREE_FACTOR_RESCALING,
         c[80:88],
     )
 
