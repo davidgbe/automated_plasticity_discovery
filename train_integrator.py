@@ -17,7 +17,6 @@ from sklearn.linear_model import LinearRegression, Lasso
 from csv_reader import read_csv
 from csv_writer import write_csv
 from rate_network_jax import simulate
-from rate_network_for_analysis import simulate as simulate_for_analysis
 import pickle
 
 ### Parse arguments 
@@ -58,7 +57,6 @@ self_org_iters = args.self_org_iters
 decoder_train_trial_nums = (self_org_iters, self_org_iters + 40)
 decoder_test_trial_nums = (self_org_iters + 40, self_org_iters + 140)
 N_INNER_LOOP_RANGE = (self_org_iters + 140, self_org_iters + 141) # Number of times to simulate network and plasticity rules per loss function evaluation
-READOUTS_PER_TRIAL = 100
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -79,7 +77,7 @@ ROOT_FILE_NAME = args.root_file_name
 INPUT_AMP = 0.1 # if args.struct_prior != '2D' else 0.02
 
 T = 0.260 # Total duration of one network simulation
-T_TEST = 1.0
+T_TEST = 0.260
 dt = 1e-4 # Timesteps
 input_start = int(20e-3/dt)
 input_end = int(260e-3/dt)
@@ -87,6 +85,7 @@ max_input_len = input_end - input_start
 decoder_lag = int(5e-3/dt)
 decoding_len_self_org = int(T / dt - decoder_lag - input_start)
 decoding_len_test = int(T_TEST / dt - decoder_lag - input_start)
+READOUTS_PER_TRIAL = int(400 * T_TEST)
 input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
 t = np.linspace(0, T, int(T / dt))
 t_test = np.linspace(0, T_TEST, int(T_TEST / dt))
