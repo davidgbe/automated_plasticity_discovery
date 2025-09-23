@@ -633,6 +633,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			n_i=n_i,
 			n_e_pool=n_e_pool,
 			n_e_side=n_e_side,
+			n_rules=N_RULES,
 			n_pairwise_rules=N_PAIRWISE_RULES_PER_TYPE,
     		n_summed_weight_rules=N_SUMMED_WEIGHT_RULES_PER_TYPE,
     		n_triplet_rules=N_THREE_FACTOR_RULES_PER_TYPE,
