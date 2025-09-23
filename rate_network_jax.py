@@ -8,6 +8,7 @@ R_RESCALING = 5
 R_EXP_RESCALING = 5
 W_RESCALING = 1
 THREE_FACTOR_RESCALING = 2
+SUMMED_WEIGHT_RESCALING = 0.25
 
 # PAIRWISE RULE LOGIC
 
@@ -185,7 +186,7 @@ def learning_dynamics(
     del delta_syn_11_two_factor_raw
 
     delta_W_11_summed_weight, delta_syn_11_summed_weight_raw = _delta_W_ij_summed_weight_rules(
-        w[:n_1, :n_1],
+        w[:n_1, :n_1] * SUMMED_WEIGHT_RESCALING,
         c[n_pairwise_rules:n_pairwise_rules + n_summed_weight_rules],
         W_shape_1=n_1,
         W_shape_2=n_1,
@@ -232,7 +233,7 @@ def learning_dynamics(
     del delta_syn_21_two_factor_raw
 
     delta_W_21_summed_weight, delta_syn_21_summed_weight_raw = _delta_W_ij_summed_weight_rules(
-        w[n_1:n_plastic, :n_1],
+        w[n_1:n_plastic, :n_1] * SUMMED_WEIGHT_RESCALING ,
         c[coef_offset + n_pairwise_rules:coef_offset + n_pairwise_rules + n_summed_weight_rules],
         W_shape_1=n_2,
         W_shape_2=n_1,
@@ -261,7 +262,7 @@ def learning_dynamics(
     del delta_syn_12_two_factor_raw
 
     delta_W_12_summed_weight, delta_syn_12_summed_weight_raw = _delta_W_ij_summed_weight_rules(
-        w[:n_1, n_1:n_plastic],
+        w[:n_1, n_1:n_plastic] * SUMMED_WEIGHT_RESCALING,
         c[2 * coef_offset + n_pairwise_rules:2 * coef_offset + n_pairwise_rules + n_summed_weight_rules],
         W_shape_1=n_1,
         W_shape_2=n_2,
