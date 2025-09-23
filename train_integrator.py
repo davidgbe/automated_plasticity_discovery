@@ -50,9 +50,6 @@ parser.add_argument('--cell_type_1_size', metavar='ps', type=int, default=15)
 
 
 args = parser.parse_args()
-print(args)
-
-np.random.seed(args.seed)
 
 SEED = args.seed
 POOL_SIZE = args.pool_size
@@ -72,22 +69,27 @@ CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 1000
 INPUT_BLOCK_DURATION = 5e-3
-N_RULES = ((12 * 2) * 3) + 16 #twelve terms, for both weighted and unweights, times 3 rule sets + 3 factor terms
+N_PAIRWISE_RULES_PER_TYPE = 12 * 2
+N_SUMMED_WEIGHT_RULES_PER_TYPE = 6
+N_THREE_FACTOR_RULES_PER_TYPE = 8
+N_RULES = 3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE) + 2 * N_THREE_FACTOR_RULES_PER_TYPE
 N_TIMECONSTS = 12 + 32
 TEST_REPEATS = 10
 ROOT_FILE_NAME = args.root_file_name
 INPUT_AMP = 0.1 # if args.struct_prior != '2D' else 0.02
 
 T = 0.260 # Total duration of one network simulation
-T_TEST = 0.260
+T_TEST = 1.0
 dt = 1e-4 # Timesteps
 input_start = int(20e-3/dt)
 input_end = int(260e-3/dt)
 max_input_len = input_end - input_start
 decoder_lag = int(5e-3/dt)
-decoding_len = int(T / dt - decoder_lag - input_start)
+decoding_len_self_org = int(T / dt - decoder_lag - input_start)
+decoding_len_test = int(T_TEST / dt - decoder_lag - input_start)
 input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
 t = np.linspace(0, T, int(T / dt))
+t_test = np.linspace(0, T_TEST, int(T_TEST / dt))
 n_e_pool = args.cell_type_1_size # Number excitatory cells in sequence (also length of sequence)
 n_e_side = args.cell_type_1_size
 n_e = n_e_pool + 2 * n_e_side
@@ -127,6 +129,13 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$w x \, y$',
 	r'$w x \, \tilde{y}$',
 	r'$w \tilde{x} \, y$',
+
+	r'$\sum_k w_{kj}$',
+	r'$(\sum_k w_{kj})^2$',
+	r'$(\sum_k w_{kj})^3$',
+	r'$\sum_k w_{ik}$',
+	r'$(\sum_k w_{ik})^2$',
+	r'$(\sum_k w_{ik})^3$',
 ]
 
 rule_names = [
@@ -512,9 +521,9 @@ def simulate_single_network(index, x, train, track_params=True):
 	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
 	num_readouts = (decoder_train_trial_nums[1] - decoder_train_trial_nums[0] + decoder_test_trial_nums[1] - decoder_test_trial_nums[0]) * READOUTS_PER_TRIAL
-	readout_times = (np.random.rand(num_readouts) * decoding_len + input_start).astype(int)
+	readout_times = (np.random.rand(num_readouts) * decoding_len_test + input_start).astype(int)
 
-	input_signal_totals = np.zeros((n_inner_loop_iters, decoding_len + decoder_lag))
+	input_signal_totals = []
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
@@ -540,10 +549,12 @@ def simulate_single_network(index, x, train, track_params=True):
 		# print(f'Activation number: {i}')
 		# Define input for activation of the network
 
-		if i == decoder_train_trial_nums[0]:
-			t = np.linspace(0, T_TEST, int(T_TEST / dt))
-
-		input_spks = np.zeros((decoding_len + decoder_lag, 2 * n_e_side))
+		if i >= decoder_train_trial_nums[0]:
+			input_spks = np.zeros((decoding_len_test + decoder_lag, 2 * n_e_side))
+			t_for_iter = t_test
+		else:
+			input_spks = np.zeros((decoding_len_self_org + decoder_lag, 2 * n_e_side))
+			t_for_iter = t
 		
 		n_input_blocks = input_len // input_block_timesteps
 		inputs = np.zeros((n_input_blocks), dtype=int)
@@ -569,21 +580,21 @@ def simulate_single_network(index, x, train, track_params=True):
 				running_input_sums[j] += running_input_sums[j-1]
 			running_input_sums[j] += filtered_input_to_sum[j]
 
-		r_in_spks = np.zeros((len(t), n_e_pool + 2 * n_e_side + n_i))
+		r_in_spks = np.zeros((len(t_for_iter), n_e_pool + 2 * n_e_side + n_i))
 		input_size = 3
 		input_slice = slice(int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
 		if bool(args.bump_init):
 			r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), input_size))
 
-		r_in_spks[input_start:decoding_len + decoder_lag + input_start, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
+		r_in_spks[input_start:input_spks.shape[0] + decoder_lag + input_start, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
 		
-		input_signal_totals[i, :] = running_input_sums / input_len
+		input_signal_totals.append(running_input_sums / input_len)
 
 		r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
 		r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = INPUT_AMP * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
 
-		r_in[:, :n_e_pool] += (0 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(len(t), n_e_pool)), 3e-3))
+		r_in[:, :n_e_pool] += (0 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(len(t_for_iter), n_e_pool)), 3e-3))
 		r_in[int(10e-3/dt):, :n_e_pool] += args.dc_input
 
 		# if i <= 400:
@@ -608,7 +619,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			len(t),
 			N_TIMECONSTS,
 			dt,
-			t,
+			t_for_iter,
 			w,
 			r_in,
 			plasticity_coefs,
@@ -622,6 +633,9 @@ def simulate_single_network(index, x, train, track_params=True):
 			n_i=n_i,
 			n_e_pool=n_e_pool,
 			n_e_side=n_e_side,
+			n_pairwise_rules=N_PAIRWISE_RULES_PER_TYPE,
+    		n_summed_weight_rules=N_SUMMED_WEIGHT_RULES_PER_TYPE,
+    		n_triplet_rules=N_THREE_FACTOR_RULES_PER_TYPE,
 		)
 
 		# r, s, v, w_out, effects, r_exp_filtered = simulate(len(t), t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, v_thresh, dt=dt, tau_e=10e-3, tau_i=1e-3, g=1, w_u=1, track_params=track_params)
@@ -635,7 +649,7 @@ def simulate_single_network(index, x, train, track_params=True):
 			np.save(activity_file_name, r)
 			# save integrated_values
 			integrated_value_file_name = os.path.join(integrated_value_path, f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
-			np.save(integrated_value_file_name, input_signal_totals[i, :])
+			np.save(integrated_value_file_name, input_signal_totals[i])
 			# save inputs
 			inputs_file_name = os.path.join(inputs_path, f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
 			np.save(inputs_file_name, filtered_input_to_sum_per_neuron)
@@ -666,8 +680,8 @@ def simulate_single_network(index, x, train, track_params=True):
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
-	train_diffs = input_signal_totals[decoder_train_trial_nums[0]:decoder_train_trial_nums[1], :]
-	test_diffs = input_signal_totals[decoder_test_trial_nums[0]:decoder_test_trial_nums[1], :]
+	train_diffs = np.asarray(input_signal_totals[decoder_train_trial_nums[0]:decoder_train_trial_nums[1]])
+	test_diffs = np.asarray(input_signal_totals[decoder_test_trial_nums[0]:decoder_test_trial_nums[1]])
 
 	rs_for_loss = np.stack(rs_for_loss)
 	normed_loss = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
@@ -850,6 +864,9 @@ def load_best_avg_params(file_names, n_plasticity_coefs, n_time_constants, batch
 
 if __name__ == '__main__':
 	mp.set_start_method('forkserver')
+	np.random.seed(args.seed)
+
+	print(args)
 
 	if not os.path.exists('sims_out'):
 		os.mkdir('sims_out')

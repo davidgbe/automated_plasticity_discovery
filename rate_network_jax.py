@@ -52,6 +52,28 @@ delta_W_ij_two_factor = jax.vmap(
     (0, 0, None, 0, None, None),
 )
 
+def compute_row_or_column_sum_and_exp(W, axis):
+    W_sum = jnp.sum(W, axis=axis)
+
+    return jnp.array([
+        W_sum,
+        jnp.power(W_sum, 2),
+        jnp.power(W_sum, 3),
+    ])
+
+
+@partial(jax.jit, static_argnames=['W_shape_1', 'W_shape_2'])
+def _delta_W_ij_summed_weight_rules(W, c, W_shape_1, W_shape_2): # c, W_shape_1, W_shape_2
+    delta_w_incoming = compute_row_or_column_sum_and_exp(W, 0)
+    delta_w_outgoing = compute_row_or_column_sum_and_exp(W, 1)
+
+    delta_w =  c.reshape(c.shape[0], 1, 1) * jnp.concatenate([
+        jnp.repeat(delta_w_incoming[:, None, :], repeats=W_shape_1, axis=1),
+        jnp.repeat(delta_w_outgoing[..., None], repeats=W_shape_2, axis=2)
+    ])
+
+    return delta_w.sum(), jnp.abs(delta_w).sum()
+
 
 @jax.jit
 def _delta_W_ij_three_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j, f_i):
@@ -99,7 +121,7 @@ enforce_polarity_and_structure = jax.vmap(
 )
 
 
-@partial(jax.jit, static_argnames=['n_e', 'n_i', 'n_e_pool', 'n_e_side'])
+@partial(jax.jit, static_argnames=['n_e', 'n_i', 'n_e_pool', 'n_e_side', 'n_pairwise_rules', 'n_summed_weight_rules', 'n_triplet_rules'])
 def learning_dynamics(
     s : jnp.ndarray,
     r_exp: jnp.ndarray,
@@ -112,7 +134,13 @@ def learning_dynamics(
     n_i : int,
     n_e_pool : int,
     n_e_side : int,
+    n_pairwise_rules : int,
+    n_summed_weight_rules : int,
+    n_triplet_rules : int,
 ):
+    coef_offset = n_pairwise_rules + n_summed_weight_rules
+    triplet_rule_start = 3 * coef_offset
+
     c, tau_rules, g, s_offsets, w_u, tau_s, eta, dt = args
 
     n_1 = n_e_pool
@@ -135,6 +163,7 @@ def learning_dynamics(
     delta_s = (v - s) * dt / tau_s
     delta_r_exp = (r[:, None] - r_exp) * dt / tau_rules
 
+
     # Weight change from (1) -> (1)
 
     delta_W_11_two_factor, delta_syn_11_two_factor_raw = delta_W_ij_two_factor(
@@ -143,12 +172,19 @@ def learning_dynamics(
         r[:n_1] * R_RESCALING,
         r_exp[:n_1, :4] * R_EXP_RESCALING,
         r_exp[:n_1, :4] * R_EXP_RESCALING,
-        c[:24],
+        c[:n_pairwise_rules],
     )
 
     delta_syn_11_two_factor = delta_syn_11_two_factor_raw.sum()
     del delta_syn_11_two_factor_raw
 
+    delta_W_11_summed_weight, delta_syn_11_summed_weight = _delta_W_ij_summed_weight_rules(
+        w[:n_1, :n_1],
+        c[n_pairwise_rules:n_pairwise_rules + n_summed_weight_rules],
+        W_shape_1=n_1,
+        W_shape_2=n_1,
+    )
+    
     delta_W_11_three_factor, delta_syn_11_three_factor_raw = delta_W_ij_three_factor(
         w[:n_1, :n_1] * W_RESCALING,
         r[:n_1] * R_RESCALING,
@@ -157,7 +193,7 @@ def learning_dynamics(
         r_exp[:n_1, 12:20] * R_EXP_RESCALING,
         # (2) -> (1)
         w[:n_1, n_1:n_plastic] @ r_exp[n_1:n_plastic, 20:28] * R_EXP_RESCALING * THREE_FACTOR_RESCALING,
-        c[72:80],
+        c[triplet_rule_start:triplet_rule_start + n_triplet_rules],
     )
 
     delta_syn_11_three_factor = delta_syn_11_three_factor_raw.sum()
@@ -166,6 +202,8 @@ def learning_dynamics(
     delta_W_11 = (
         # (1) -> (1)
         delta_W_11_two_factor
+        # (1) -> (1) based on incoming and outgoing weight
+        + delta_W_11_summed_weight
         # (1) -> (1) modulated by (2)
         + delta_W_11_three_factor 
     )
@@ -178,11 +216,23 @@ def learning_dynamics(
         r[:n_1] * R_RESCALING,
         r_exp[n_1:n_plastic, 4:8] * R_EXP_RESCALING,
         r_exp[:n_1, 4:8] * R_EXP_RESCALING,
-        c[24:48],
+        c[coef_offset:coef_offset + n_pairwise_rules],
     )
 
     delta_syn_21_two_factor = delta_syn_21_two_factor_raw.sum()
     del delta_syn_21_two_factor_raw
+
+    delta_W_21_summed_weight, delta_syn_21_summed_weight = _delta_W_ij_summed_weight_rules(
+        w[n_1:n_plastic, :n_1],
+        c[coef_offset + n_pairwise_rules:coef_offset + n_pairwise_rules + n_summed_weight_rules],
+        W_shape_1=n_2,
+        W_shape_2=n_1,
+    )
+
+    delta_W_21 = (
+        delta_W_21_two_factor
+        + delta_W_21_summed_weight
+    )
 
     # Weight change from (1) -> (2)
 
@@ -198,6 +248,13 @@ def learning_dynamics(
     delta_syn_12_two_factor =  delta_syn_12_two_factor_raw.sum()
     del delta_syn_12_two_factor_raw
 
+    delta_W_12_summed_weight, delta_syn_12_summed_weight = _delta_W_ij_summed_weight_rules(
+        w[:n_1, n_1:n_plastic],
+        c[2 * coef_offset + n_pairwise_rules:2 * coef_offset + n_pairwise_rules + n_summed_weight_rules],
+        W_shape_1=n_1,
+        W_shape_2=n_2,
+    )
+
     delta_W_12_three_factor, delta_syn_12_three_factor_raw = delta_W_ij_three_factor(
         w[:n_1, n_1:n_plastic] * W_RESCALING,
         r[:n_1] * R_RESCALING,
@@ -206,7 +263,7 @@ def learning_dynamics(
         r_exp[n_1:n_plastic, 28:36] * R_EXP_RESCALING,
         # (1) -> (1)
         w[:n_1, :n_1] @ r_exp[:n_1, 36:44] * R_EXP_RESCALING * THREE_FACTOR_RESCALING,
-        c[80:88],
+        c[triplet_rule_start + n_triplet_rules:triplet_rule_start + 2 * n_triplet_rules],
     )
 
     delta_syn_12_three_factor = delta_syn_12_three_factor_raw.sum()
@@ -215,6 +272,8 @@ def learning_dynamics(
     delta_W_12 = (
         # (2) -> (1)
         delta_W_12_two_factor
+        # (2) -> (1) based on incoming and outgoing summed weight
+        + delta_W_12_summed_weight
         # (2) -> (1) modulated by (1)
         + delta_W_12_three_factor
     )
@@ -226,7 +285,7 @@ def learning_dynamics(
     ], axis=1)
 
     row2 = jnp.concatenate([
-        delta_W_21_two_factor,              # (n_2, n_1)
+        delta_W_21,              # (n_2, n_1)
         jnp.zeros((n_2, n_2 + n_i))         # (n_2, n_2 + n_i)
     ], axis=1)
 
@@ -249,7 +308,7 @@ def learning_dynamics(
     return r, delta_s, delta_r_exp, delta_w, delta_syn, unstable
 
 
-@partial(jax.jit, static_argnames=['len_t', 'n_timeconsts', 'n_e', 'n_i', 'n_e_pool', 'n_e_side'])
+@partial(jax.jit, static_argnames=['len_t', 'n_timeconsts', 'n_e', 'n_i', 'n_e_pool', 'n_e_side', 'n_pairwise_rules', 'n_summed_weight_rules', 'n_triplet_rules'])
 def simulate(
     len_t,
     n_timeconsts,
@@ -268,7 +327,10 @@ def simulate(
     n_i : int,
     n_e_pool : int,
     n_e_side : int,
-    ):
+    n_pairwise_rules : int,
+    n_summed_weight_rules : int,
+    n_triplet_rules : int,
+):
 
     args = (c, tau_rules, g, s_offsets, w_u, tau_s, eta, dt)
 
@@ -282,7 +344,22 @@ def simulate(
     def scan(carry, r_in):
         s, r_exp, w, syn, unstable = carry
 
-        r, ds, dr_exp, dw, dsyn, unstable = learning_dynamics(s, r_exp, w, syn, unstable, r_in, args, n_e, n_i, n_e_pool, n_e_side)
+        r, ds, dr_exp, dw, dsyn, unstable = learning_dynamics(
+            s=s,
+            r_exp=r_exp,
+            w=w,
+            syn=syn,
+            unstable=unstable,
+            u=r_in,
+            args=args,
+            n_e=n_e,
+            n_i=n_i,
+            n_e_pool=n_e_pool,
+            n_e_side=n_e_side,
+            n_pairwise_rules=n_pairwise_rules,
+            n_summed_weight_rules=n_summed_weight_rules,
+            n_triplet_rules=n_triplet_rules,
+        )
 
         s_prime, r_exp_prime, w_prime, syn_prime = jax.lax.cond(
             unstable,
