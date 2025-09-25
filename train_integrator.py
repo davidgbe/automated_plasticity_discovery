@@ -489,7 +489,7 @@ def poisson_arrivals_to_inputs(arrivals, tau_alpha):
 	return input_current
 
 
-def simulate_single_network(index, x, train, track_params=True):
+def simulate_single_network(index, x, train, save_paths=None):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
@@ -634,24 +634,24 @@ def simulate_single_network(index, x, train, track_params=True):
 			n_e_side=n_e_side,
 			n_rules=N_RULES,
 			n_pairwise_rules=N_PAIRWISE_RULES_PER_TYPE,
-    		n_summed_weight_rules=N_SUMMED_WEIGHT_RULES_PER_TYPE,
-    		n_triplet_rules=N_THREE_FACTOR_RULES_PER_TYPE,
+			n_summed_weight_rules=N_SUMMED_WEIGHT_RULES_PER_TYPE,
+			n_triplet_rules=N_THREE_FACTOR_RULES_PER_TYPE,
 		)
 
 		# r, s, v, w_out, effects, r_exp_filtered = simulate(len(t), t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, v_thresh, dt=dt, tau_e=10e-3, tau_i=1e-3, g=1, w_u=1, track_params=track_params)
 
 		if not args.train:
 			# save weights
-			weight_file_name = os.path.join(weight_path, f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
+			weight_file_name = os.path.join(save_paths['weight_path'], f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
 			np.save(weight_file_name, w)
 			# save activity
-			activity_file_name = os.path.join(activity_path, f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
+			activity_file_name = os.path.join(save_paths['activity_path'], f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
 			np.save(activity_file_name, r)
 			# save integrated_values
-			integrated_value_file_name = os.path.join(integrated_value_path, f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
+			integrated_value_file_name = os.path.join(save_paths['integrated_value_path'], f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
 			np.save(integrated_value_file_name, input_signal_totals[i])
 			# save inputs
-			inputs_file_name = os.path.join(inputs_path, f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
+			inputs_file_name = os.path.join(save_paths['inputs_path'], f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
 			np.save(inputs_file_name, filtered_input_to_sum_per_neuron)
 
 		if (np.isnan(r).any()
@@ -781,7 +781,7 @@ def simulate_single_network_wrapper(tup):
 	return simulate_single_network(*tup)
 
 
-def eval_all(X, eval_tracker=None, train=True):
+def eval_all(X, eval_tracker=None, train=True, save_paths=None):
 	start = time.time()
 
 	indices = np.arange(BATCH_SIZE)
@@ -792,11 +792,11 @@ def eval_all(X, eval_tracker=None, train=True):
 	if args.train:
 		for x in X:
 			for idx in indices:
-				task_vars.append((idx, x, train))
+				task_vars.append((idx, x, train, save_paths))
 	else:
 		for i_x, x in enumerate(X):
 			for idx in indices:
-				task_vars.append((i_x, x, train))
+				task_vars.append((i_x, x, train, save_paths))
 	results = pool.map(simulate_single_network_wrapper, task_vars)
 
 	pool.close()
@@ -941,6 +941,13 @@ if __name__ == '__main__':
 		os.mkdir(integrated_value_path)
 		inputs_path = os.path.join(out_dir, 'inputs')
 		os.mkdir(inputs_path)
+		
+		save_paths = {
+			'weight_path': weight_path,
+			'activity_path': activity_path,
+			'integrated_value_path': integrated_value_path,
+			'inputs_path': inputs_path,
+		}
 
 		if args.struct_prior == 'hard_coded':
 			x_test = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
@@ -950,7 +957,7 @@ if __name__ == '__main__':
 			syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 			print(x_test)
 
-		eval_all([x_test] * TEST_REPEATS, eval_tracker=eval_tracker)
+		eval_all([x_test] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths)
 
 	else:
 
