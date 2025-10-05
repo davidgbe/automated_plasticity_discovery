@@ -46,6 +46,8 @@ parser.add_argument('--instant_inhibition', metavar='ih', type=int, default=0)
 parser.add_argument('--w_e_e', metavar='w', type=float, default=None)
 parser.add_argument('--run_num', metavar='rn', type=str, default=None)
 parser.add_argument('--cell_type_1_size', metavar='ps', type=int, default=15)
+parser.add_argument('--time', type=float, default=1.0)
+parser.add_argument('--time_test', type=float, default=1.0)
 
 
 args = parser.parse_args()
@@ -76,8 +78,8 @@ TEST_REPEATS = 10
 ROOT_FILE_NAME = args.root_file_name
 INPUT_AMP = 0.1 # if args.struct_prior != '2D' else 0.02
 
-T = 0.260 # Total duration of one network simulation
-T_TEST = 1.0
+T = args.time # Total duration of one network simulation
+T_TEST = args.time_test
 dt = 1e-4 # Timesteps
 input_start = int(20e-3/dt)
 input_end = int(260e-3/dt)
@@ -173,7 +175,7 @@ if args.struct_prior == 'hard_coded':
 	if args.w_e_e is not None:
 		w_e_e = args.w_e_e / dt
 	else:	
-		w_e_e = 0.91e-4 / dt
+		w_e_e = 1.02e-4 / dt
 	w_pool_side = -0.2e-4 / dt
 	w_side_pool = 0.45e-4 / dt
 
@@ -832,7 +834,7 @@ def load_best_avg_params(file_names, n_plasticity_coefs, n_time_constants, batch
 	all_best_coefs = []
 
 	for file_name in file_names:
-		test_data_path = f'./sims_out/{file_name}/test_data.csv'
+		test_data_path = f'./sims_out/{file_name}/train_data.csv'
 		df_test = read_csv(test_data_path, read_header=False)
 
 		syn_effect_start = 2 + batch_size + n_plasticity_coefs + n_time_constants
@@ -908,7 +910,7 @@ if __name__ == '__main__':
 		if args.train and len(existing_dirs_with_run_num) == 0: # if starting a new training run, create options, initial condition, evolutionary strategy
 			options = {
 				'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-				'popsize': 30,
+				'popsize': 30, #formerly 30
 				'bounds': [
 					[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
 					[10] * N_RULES + [40e-3] * N_TIMECONSTS,
