@@ -616,7 +616,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 			np.ones((n_i)) * 1e-3,
 		])
 
-		r, w_out, effects, r_exp_filtered = simulate(
+		r, w_out, effects, syn_factors, r_exp_filtered = simulate(
 			len(t),
 			N_TIMECONSTS,
 			dt,
@@ -679,6 +679,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 
 		if effects is not None:
 			all_effects += effects[:N_RULES]
+			print(syn_factors)
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 

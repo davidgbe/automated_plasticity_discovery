@@ -335,7 +335,18 @@ def learning_dynamics(
         + delta_syn_12_three_factor
     )
 
-    return r, delta_s, delta_r_exp, delta_w, delta_syn, unstable
+    delta_syn_factors = (
+        delta_syn_11_two_factor,
+        delta_syn_11_summed_weight,
+        delta_syn_21_two_factor,
+        delta_syn_21_summed_weight,
+        delta_syn_12_two_factor,
+        delta_syn_12_summed_weight,
+        delta_syn_11_three_factor,
+        delta_syn_12_three_factor,
+    )
+
+    return r, delta_s, delta_r_exp, delta_w, delta_syn, delta_syn_factors, unstable
 
 # Simulate a full unroll of network dynamics for len_t timesteps
 
@@ -369,14 +380,15 @@ def simulate(
     s0 = jnp.zeros((n_e + n_i))
     r_exp0 = jnp.zeros((n_e + n_i, n_timeconsts))
     syn0 = jnp.zeros((n_rules,))
+    syn_factors0 = jnp.zeros((8,))
     unstable0 = False
 
     w_polarity = (-1 + 2 * (w0 >= 0).astype(int)).astype(int)
 
     def scan(carry, r_in):
-        s, r_exp, w, syn, unstable = carry
+        s, r_exp, w, syn, syn_factors, unstable = carry
 
-        r, ds, dr_exp, dw, dsyn, unstable = learning_dynamics(
+        r, ds, dr_exp, dw, dsyn, dsyn_factors, unstable = learning_dynamics(
             s=s,
             r_exp=r_exp,
             w=w,
@@ -393,20 +405,20 @@ def simulate(
             n_triplet_rules=n_triplet_rules,
         )
 
-        s_prime, r_exp_prime, w_prime, syn_prime = jax.lax.cond(
+        s_prime, r_exp_prime, w_prime, syn_prime, syn_factors_prime = jax.lax.cond(
             unstable,
-            lambda _: (jnp.zeros_like(s), jnp.zeros_like(r_exp), jnp.zeros_like(w), jnp.zeros_like(syn)),
-            lambda _: (s + ds, r_exp + dr_exp, enforce_polarity_and_structure(w + dw, w_polarity, w0), syn + dsyn),
+            lambda _: (jnp.zeros_like(s), jnp.zeros_like(r_exp), jnp.zeros_like(w), jnp.zeros_like(syn), jnp.zeros_like(syn_factors)),
+            lambda _: (s + ds, r_exp + dr_exp, enforce_polarity_and_structure(w + dw, w_polarity, w0), syn + dsyn, syn_factors + dsyn_factors),
             None,
         )
 
-        return (s_prime, r_exp_prime, w_prime, syn_prime, unstable), r
+        return (s_prime, r_exp_prime, w_prime, syn_prime, syn_factors_prime, unstable), r
 
 
-    (s, r_exp, w, syn, unstable), r = jax.lax.scan(
+    (s, r_exp, w, syn, syn_factors, unstable), r = jax.lax.scan(
         scan,
-        (s0, r_exp0, w0, syn0, unstable0),
+        (s0, r_exp0, w0, syn0, syn_factors0, unstable0),
         r_in,
     )
 
-    return r, w, syn, r_exp
+    return r, w, syn, syn_factors, r_exp
