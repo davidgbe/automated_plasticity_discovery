@@ -335,7 +335,7 @@ def learning_dynamics(
         + delta_syn_12_three_factor
     )
 
-    delta_syn_factors = (
+    delta_syn_factors = jnp.array([
         delta_syn_11_two_factor,
         delta_syn_11_summed_weight,
         delta_syn_21_two_factor,
@@ -344,7 +344,7 @@ def learning_dynamics(
         delta_syn_12_summed_weight,
         delta_syn_11_three_factor,
         delta_syn_12_three_factor,
-    )
+    ])
 
     return r, delta_s, delta_r_exp, delta_w, delta_syn, delta_syn_factors, unstable
 
