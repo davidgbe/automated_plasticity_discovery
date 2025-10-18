@@ -679,7 +679,6 @@ def simulate_single_network(index, x, train, save_paths=None):
 
 		if effects is not None:
 			all_effects += effects[:N_RULES]
-			print(syn_factors)
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
@@ -964,8 +963,8 @@ if __name__ == '__main__':
 
 	else:
 
-		if args.train and len(existing_dirs_with_run_num) == 0:
-			eval_all([x0], eval_tracker=eval_tracker)
+		# if args.train and len(existing_dirs_with_run_num) == 0:
+			# eval_all([x0], eval_tracker=eval_tracker)
 
 		while not es.stop():
 			X = es.ask()

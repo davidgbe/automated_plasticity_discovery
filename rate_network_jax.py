@@ -389,7 +389,7 @@ def simulate(
         s, r_exp, w, syn, syn_factors, unstable = carry
 
         def run_step():
-            r, ds, dr_exp, dw, dsyn, dsyn_factors, unstable = learning_dynamics(
+            r, ds, dr_exp, dw, dsyn, dsyn_factors, unstable_out = learning_dynamics(
                 s=s,
                 r_exp=r_exp,
                 w=w,
@@ -405,16 +405,16 @@ def simulate(
                 n_summed_weight_rules=n_summed_weight_rules,
                 n_triplet_rules=n_triplet_rules,
             )
-            return (s + ds, r_exp + dr_exp, enforce_polarity_and_structure(w + dw, w_polarity, w0), syn + dsyn, syn_factors + dsyn_factors)
+            return (s + ds, r_exp + dr_exp, enforce_polarity_and_structure(w + dw, w_polarity, w0), syn + dsyn, syn_factors + dsyn_factors, r, unstable_out)
 
 
-        s_prime, r_exp_prime, w_prime, syn_prime, syn_factors_prime = jax.lax.cond(
+        s_prime, r_exp_prime, w_prime, syn_prime, syn_factors_prime, r, unstable_out = jax.lax.cond(
             unstable,
-            lambda _: (jnp.zeros_like(s), jnp.zeros_like(r_exp), jnp.zeros_like(w), jnp.zeros_like(syn), jnp.zeros_like(syn_factors)),
+            lambda : (jnp.zeros_like(s), jnp.zeros_like(r_exp), jnp.zeros_like(w), jnp.zeros_like(syn), jnp.zeros_like(syn_factors), jnp.zeros_like(s), True),
             run_step,
         )
 
-        return (s_prime, r_exp_prime, w_prime, syn_prime, syn_factors_prime, unstable), r
+        return (s_prime, r_exp_prime, w_prime, syn_prime, syn_factors_prime, unstable_out), r
 
 
     (s, r_exp, w, syn, syn_factors, unstable), r = jax.lax.scan(
