@@ -545,6 +545,8 @@ def simulate_single_network(index, x, train, save_paths=None):
 		input_len = int((index + 1) / (TEST_REPEATS + 1) * max_input_len)
 
 	surviving_synapse_mask = np.ones((n_e_pool, n_e_pool)).astype(bool)
+	
+	start = time.time()
 
 	for i in range(n_inner_loop_iters):
 		# print(f'Activation number: {i}')
@@ -687,6 +689,8 @@ def simulate_single_network(index, x, train, save_paths=None):
 
 	rs_for_loss = np.stack(rs_for_loss)
 	normed_loss = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
+
+	print('single sim time: ', time.time() - start)
 
 	return {
 		'loss': normed_loss,
