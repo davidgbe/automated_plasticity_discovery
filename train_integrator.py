@@ -691,6 +691,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 	normed_loss = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
 
 	print('single sim time: ', time.time() - start)
+	sys.stdout.flush()
 
 	return {
 		'loss': normed_loss,
