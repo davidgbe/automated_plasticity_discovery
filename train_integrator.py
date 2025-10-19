@@ -664,6 +664,9 @@ def simulate_single_network(index, x, train, save_paths=None):
 			or (np.abs(w_out[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)]) < 1.5e-6).all()
 			or ((np.abs(w_out[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool]) < 1.5e-6).all() and args.struct_prior != '2D')): # if simulation turns up nans in firing rate matrix, end the simulation
 			
+			print('single sim time: ', time.time() - start, 'exited on step:', i)
+			sys.stdout.flush()
+
 			return {
 				'blew_up': True,
 			}
