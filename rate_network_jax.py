@@ -364,31 +364,28 @@ def simulate(
     def scan(carry, r_in):
         s, r_exp, w, syn, syn_factors, unstable = carry
 
-        def run_step():
-            r, ds, dr_exp, dw, dsyn, dsyn_factors, unstable_out = learning_dynamics(
-                s=s,
-                r_exp=r_exp,
-                w=w,
-                syn=syn,
-                unstable=unstable,
-                u=r_in,
-                args=args,
-                n_e=n_e,
-                n_i=n_i,
-                n_e_pool=n_e_pool,
-                n_e_side=n_e_side,
-                n_pairwise_rules=n_pairwise_rules,
-                n_summed_weight_rules=n_summed_weight_rules,
-                n_triplet_rules=n_triplet_rules,
-            )
-            return (s + ds, r_exp + dr_exp, enforce_polarity_and_structure(w + dw, w_polarity, w0), syn + dsyn, syn_factors + dsyn_factors, r, unstable_out)
-
-
-        s_prime, r_exp_prime, w_prime, syn_prime, syn_factors_prime, r, unstable_out = jax.lax.cond(
-            unstable,
-            lambda : (jnp.zeros_like(s), jnp.zeros_like(r_exp), jnp.zeros_like(w), jnp.zeros_like(syn), jnp.zeros_like(syn_factors), jnp.zeros_like(s), True),
-            run_step,
+        r, ds, dr_exp, dw, dsyn, dsyn_factors, unstable_out = learning_dynamics(
+            s=s,
+            r_exp=r_exp,
+            w=w,
+            syn=syn,
+            unstable=unstable,
+            u=r_in,
+            args=args,
+            n_e=n_e,
+            n_i=n_i,
+            n_e_pool=n_e_pool,
+            n_e_side=n_e_side,
+            n_pairwise_rules=n_pairwise_rules,
+            n_summed_weight_rules=n_summed_weight_rules,
+            n_triplet_rules=n_triplet_rules,
         )
+
+        s_prime = s + ds
+        r_exp_prime = r_exp + dr_exp
+        w_prime = enforce_polarity_and_structure(w + dw, w_polarity, w0)
+        syn_prime = syn + dsyn
+        syn_factors_prime = syn_factors + dsyn_factors
 
         return (s_prime, r_exp_prime, w_prime, syn_prime, syn_factors_prime, unstable_out), r
 
