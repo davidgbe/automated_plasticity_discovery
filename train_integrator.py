@@ -549,6 +549,11 @@ def simulate_single_network(index, x, train, save_paths=None):
 	start = time.time()
 
 	for i in range(n_inner_loop_iters):
+		if i % 5 == 0:
+			if i > 0:
+				print('5 cycles:', time.time() - iter_start)
+				sys.stdout.flush()
+			iter_start = time.time()
 		# print(f'Activation number: {i}')
 		# Define input for activation of the network
 
@@ -618,8 +623,6 @@ def simulate_single_network(index, x, train, save_paths=None):
 			np.ones((n_i)) * 1e-3,
 		])
 
-		iter_start = time.time()
-
 		r, w_out, effects, syn_factors, r_exp_filtered = simulate(
 			len(t),
 			N_TIMECONSTS,
@@ -643,9 +646,6 @@ def simulate_single_network(index, x, train, save_paths=None):
 			n_summed_weight_rules=N_SUMMED_WEIGHT_RULES_PER_TYPE,
 			n_triplet_rules=N_THREE_FACTOR_RULES_PER_TYPE,
 		)
-
-		print('1 cycle:', time.time() - iter_start)
-		sys.stdout.flush()
 
 		# r, s, v, w_out, effects, r_exp_filtered = simulate(len(t), t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, v_thresh, dt=dt, tau_e=10e-3, tau_i=1e-3, g=1, w_u=1, track_params=track_params)
 
