@@ -495,7 +495,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
-	plasticity_coefs = x[:N_RULES]
+	plasticity_coefs = x[:N_RULES] * 0
 	rule_time_constants = x[N_RULES:]
 
 	t = np.linspace(0, T, int(T / dt))
@@ -878,7 +878,7 @@ def load_best_avg_params(file_names, n_plasticity_coefs, n_time_constants, batch
 
 
 if __name__ == '__main__':
-	mp.set_start_method('forkserver')
+	mp.set_start_method('fork')
 	np.random.seed(args.seed)
 
 	print(args)
