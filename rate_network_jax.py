@@ -3,6 +3,7 @@ import jax.numpy as jnp
 import jax.random as jr
 from functools import partial
 from typing import Tuple, Dict, Any, Optional
+import sys
 
 R_RESCALING = 1 #5
 R_EXP_RESCALING = 1 #5
@@ -67,12 +68,13 @@ def _delta_W_ij_summed_weight_rules(W, c, W_shape_1, W_shape_2): # c, W_shape_1,
     delta_w_incoming = compute_row_or_column_sum_and_exp(W, 0)
     delta_w_outgoing = compute_row_or_column_sum_and_exp(W, 1)
 
+
     delta_w =  c.reshape(c.shape[0], 1, 1) * jnp.concatenate([
         jnp.repeat(delta_w_incoming[:, None, :], repeats=W_shape_1, axis=1),
         jnp.repeat(delta_w_outgoing[..., None], repeats=W_shape_2, axis=2)
     ])
 
-    return delta_w.sum(), jnp.abs(delta_w).sum()
+    return delta_w.sum(axis=0), jnp.abs(delta_w).sum()
 
 # THREE FACTOR RULE LOGIC
 
@@ -166,9 +168,7 @@ def learning_dynamics(
 
     delta_syn_11_two_factor = delta_syn_11_two_factor_raw.sum()
 
-    delta_W_11_summed_weight, delta_syn_11_summed_weight_raw = jnp.zeros((n_1, n_1)), jnp.zeros((6))
-    
-    _delta_W_ij_summed_weight_rules(
+    delta_W_11_summed_weight, delta_syn_11_summed_weight_raw =_delta_W_ij_summed_weight_rules(
         w[:n_1, :n_1] * SUMMED_WEIGHT_RESCALING,
         c[n_pairwise_rules:n_pairwise_rules + n_summed_weight_rules],
         W_shape_1=n_1,
