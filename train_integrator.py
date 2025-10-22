@@ -549,11 +549,11 @@ def simulate_single_network(index, x, train, save_paths=None):
 	start = time.time()
 
 	for i in range(n_inner_loop_iters):
-		if i % 5 == 0:
-			if i > 0:
-				print('5 cycles:', time.time() - iter_start)
-				sys.stdout.flush()
-			iter_start = time.time()
+		# if i % 5 == 0:
+		# 	if i > 0:
+		# 		print('5 cycles:', time.time() - iter_start)
+		# 		sys.stdout.flush()
+			# iter_start = time.time()
 		# print(f'Activation number: {i}')
 		# Define input for activation of the network
 
