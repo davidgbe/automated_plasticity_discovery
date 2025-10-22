@@ -5,10 +5,10 @@ from functools import partial
 from typing import Tuple, Dict, Any, Optional
 import sys
 
-R_RESCALING = 1 #5
-R_EXP_RESCALING = 1 #5
+R_RESCALING = 5 #5
+R_EXP_RESCALING = 5 #5
 W_RESCALING = 1
-THREE_FACTOR_RESCALING = 20 #2
+THREE_FACTOR_RESCALING = 2 #2
 SUMMED_WEIGHT_RESCALING = 0.1 # formerly 0.05
 
 # PAIRWISE RULE LOGIC
