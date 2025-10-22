@@ -495,7 +495,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
-	plasticity_coefs = x[:N_RULES] * 0
+	plasticity_coefs = x[:N_RULES]
 	rule_time_constants = x[N_RULES:]
 
 	t = np.linspace(0, T, int(T / dt))
@@ -976,8 +976,8 @@ if __name__ == '__main__':
 
 	else:
 
-		# if args.train and len(existing_dirs_with_run_num) == 0:
-			# eval_all([x0], eval_tracker=eval_tracker)
+		if args.train and len(existing_dirs_with_run_num) == 0:
+			eval_all([x0], eval_tracker=eval_tracker)
 
 		while not es.stop():
 			X = es.ask()
