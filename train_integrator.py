@@ -878,7 +878,7 @@ def load_best_avg_params(file_names, n_plasticity_coefs, n_time_constants, batch
 
 
 if __name__ == '__main__':
-	mp.set_start_method('fork')
+	mp.set_start_method('forkserver')
 	np.random.seed(args.seed)
 
 	print(args)
