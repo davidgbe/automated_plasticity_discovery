@@ -131,6 +131,7 @@ def learning_dynamics(
     syn : jnp.ndarray,
     unstable : bool,
     u : jnp.ndarray,
+    reset_cue : jnp.ndarray,
     args : Tuple,
     n_e : int,
     n_i : int,
@@ -190,6 +191,17 @@ def learning_dynamics(
 
     delta_syn_11_three_factor = delta_syn_11_three_factor_raw.sum()
 
+    delta_W_11_reset, delta_syn_11_reset_raw = delta_W_ij_two_factor(
+        w[:n_1, :n_1] * W_RESCALING,
+        r[:n_1] * R_RESCALING,
+        r[:n_1] * R_RESCALING,
+        r_exp[:n_1, 44:] * R_EXP_RESCALING,
+        r_exp[:n_1, 44:] * R_EXP_RESCALING,
+        c[triplet_rule_start + 2 * n_triplet_rules:triplet_rule_start + 2 * n_triplet_rules + n_pairwise_rules],
+    )
+
+    delta_syn_11_reset = delta_syn_11_reset_raw.sum()
+
     delta_W_11 = (
         # (1) -> (1)
         delta_W_11_two_factor
@@ -197,6 +209,8 @@ def learning_dynamics(
         + delta_W_11_summed_weight
         # (1) -> (1) modulated by (2)
         + delta_W_11_three_factor 
+        # 1) -> (1) modulated by the reset
+        + delta_W_11_reset * reset_cue
     )
 
     # Weight change from (2) -> (1)
@@ -309,6 +323,7 @@ def learning_dynamics(
         + delta_syn_12_summed_weight
         + delta_syn_11_three_factor
         + delta_syn_12_three_factor
+        + delta_syn_11_reset
     )
 
     delta_syn_factors = eta * dt * jnp.array([
@@ -320,6 +335,7 @@ def learning_dynamics(
         delta_syn_12_summed_weight,
         delta_syn_11_three_factor,
         delta_syn_12_three_factor,
+        delta_syn_11_reset,
     ])
 
     return r, delta_s, delta_r_exp, delta_w, delta_syn, delta_syn_factors, unstable
@@ -334,6 +350,7 @@ def simulate(
     t,
     w0,
     r_in,
+    reset_cue,
     c,
     tau_rules,
     g,
@@ -356,12 +373,13 @@ def simulate(
     s0 = jnp.zeros((n_e + n_i))
     r_exp0 = jnp.zeros((n_e + n_i, n_timeconsts))
     syn0 = jnp.zeros((n_rules,))
-    syn_factors0 = jnp.zeros((8,))
+    syn_factors0 = jnp.zeros((9,))
     unstable0 = False
 
     w_polarity = (-1 + 2 * (w0 >= 0).astype(int)).astype(int)
 
-    def scan(carry, r_in):
+    def scan(carry, x):
+        r_in, reset = x
         s, r_exp, w, syn, syn_factors, unstable = carry
 
         r, ds, dr_exp, dw, dsyn, dsyn_factors, unstable_out = learning_dynamics(
@@ -371,6 +389,7 @@ def simulate(
             syn=syn,
             unstable=unstable,
             u=r_in,
+            reset_cue=reset,
             args=args,
             n_e=n_e,
             n_i=n_i,
@@ -393,7 +412,7 @@ def simulate(
     (s, r_exp, w, syn, syn_factors, unstable), r = jax.lax.scan(
         scan,
         (s0, r_exp0, w0, syn0, syn_factors0, unstable0),
-        r_in,
+        (r_in, reset_cue),
     )
 
     return r, w, syn, syn_factors, r_exp

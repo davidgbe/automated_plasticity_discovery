@@ -72,8 +72,8 @@ INPUT_BLOCK_DURATION = 5e-3
 N_PAIRWISE_RULES_PER_TYPE = 12 * 2
 N_SUMMED_WEIGHT_RULES_PER_TYPE = 6
 N_THREE_FACTOR_RULES_PER_TYPE = 8
-N_RULES = 3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE) + 2 * N_THREE_FACTOR_RULES_PER_TYPE
-N_TIMECONSTS = 12 + 32
+N_RULES = 3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE) + 2 * N_THREE_FACTOR_RULES_PER_TYPE + N_PAIRWISE_RULES_PER_TYPE
+N_TIMECONSTS = 12 + 32 + 4
 TEST_REPEATS = 10
 ROOT_FILE_NAME = args.root_file_name
 INPUT_AMP = 0.1 # if args.struct_prior != '2D' else 0.02
@@ -83,10 +83,11 @@ T_TEST = args.time_test
 dt = 1e-4 # Timesteps
 input_start = int(20e-3/dt)
 input_end = int(260e-3/dt)
+reset_length = int(50e-3/dt)
 max_input_len = input_end - input_start
 decoder_lag = int(5e-3/dt)
-decoding_len_self_org = int(T / dt - decoder_lag - input_start)
-decoding_len_test = int(T_TEST / dt - decoder_lag - input_start)
+decoding_len_self_org = int(T / dt - decoder_lag - input_start - reset_length)
+decoding_len_test = int(T_TEST / dt - decoder_lag - input_start - reset_length)
 READOUTS_PER_TRIAL = int(400 * T_TEST)
 input_block_timesteps = int(INPUT_BLOCK_DURATION / dt)
 t = np.linspace(0, T, int(T / dt))
@@ -104,7 +105,7 @@ else:
 	train_seeds = np.random.randint(0, 1e7, size=TEST_REPEATS)
 	test_seeds = np.random.randint(0, 1e7, size=TEST_REPEATS)
 
-rule_names = [ # Define labels for all rules to be run during simulations
+rule_names_pairwise = [ # Define labels for all rules to be run during simulations
 	r'',
 	r'$y$',
 	r'$x$',
@@ -130,7 +131,9 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$w x \, y$',
 	r'$w x \, \tilde{y}$',
 	r'$w \tilde{x} \, y$',
+]
 
+rule_names_summed_weight = [
 	r'$\sum_k w_{kj}$',
 	r'$(\sum_k w_{kj})^2$',
 	r'$(\sum_k w_{kj})^3$',
@@ -138,11 +141,12 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$(\sum_k w_{ik})^2$',
 	r'$(\sum_k w_{ik})^3$',
 ]
+rule_names_pairwise_and_summed = rule_names_pairwise + rule_names_summed_weight
 
 rule_names = [
-	[r'$HD \rightarrow HD$ ' + r_name for r_name in rule_names],
-	[r'$HD \rightarrow HR$ ' + r_name for r_name in rule_names],
-	[r'$HR \rightarrow HD$ ' + r_name for r_name in rule_names],
+	[r'$HD \rightarrow HD$ ' + r_name for r_name in rule_names_pairwise_and_summed],
+	[r'$HD \rightarrow HR$ ' + r_name for r_name in rule_names_pairwise_and_summed],
+	[r'$HR \rightarrow HD$ ' + r_name for r_name in rule_names_pairwise_and_summed],
 ]
 
 rule_names_tripartite = [
@@ -162,6 +166,9 @@ rule_names += [
 	[r'$HR \rightarrow HD, HD \sim HD$' + r_name for r_name in rule_names_tripartite],
 ]
 
+rule_names += [
+	[r'$HD \rightarrow HD, reset$ ' + r_name for r_name in rule_names_pairwise],
+]
 
 rule_names = [r for rs in rule_names for r in rs]
 rule_names = np.array(rule_names, dtype=object)
@@ -594,7 +601,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 		if bool(args.bump_init):
 			r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), input_size))
 
-		r_in_spks[input_start:input_spks.shape[0] + decoder_lag + input_start, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
+		r_in_spks[input_start:input_start + input_spks.shape[0], n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
 		
 		input_signal_totals.append(running_input_sums / input_len)
@@ -604,6 +611,10 @@ def simulate_single_network(index, x, train, save_paths=None):
 
 		r_in[:, :n_e_pool] += (0 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(len(t_for_iter), n_e_pool)), 3e-3))
 		r_in[int(10e-3/dt):, :n_e_pool] += args.dc_input
+
+		reset_cue = np.zeros((r_in.shape[0]))
+		reset_cue[-reset_length:] = np.random.normal(loc=1, scale=0.1, size=(reset_length,))
+
 
 		# if i <= 400:
 		# 	synapse_change_mask_for_i = np.random.rand(n_e, n_e) < CHANGE_PROB_PER_ITER
@@ -630,6 +641,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 			t_for_iter,
 			w,
 			r_in,
+			reset_cue,
 			plasticity_coefs,
 			rule_time_constants,
 			g=1,
@@ -751,7 +763,6 @@ def process_plasticity_rule_results(results, x, eval_tracker=None, train=True):
 					eval_tracker['best_loss'] = loss
 					eval_tracker['best_changed'] = True
 					eval_tracker['params'] = copy(x)
-
 
 				plot_results(
 					results,
