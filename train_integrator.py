@@ -16,6 +16,7 @@ from scipy.sparse import csc_matrix
 from sklearn.linear_model import LinearRegression, Lasso
 from csv_reader import read_csv
 from csv_writer import write_csv
+import jax.numpy as jnp
 from rate_network_jax import simulate
 import pickle
 
@@ -183,8 +184,8 @@ if args.struct_prior == 'hard_coded':
 		w_i_e = -4.5e-4 / dt / n_e_pool
 else:
 	w_e_e = 9e-4 / dt * 0.1 / n_e_pool
-	w_pool_side = -3e-4 / dt * 0.1 / n_e_pool
-	w_side_pool = 9e-4 / dt * 0.1 / n_e_side
+	w_pool_side = -3e-4 / dt * 1 / n_e_pool
+	w_side_pool = 9e-4 / dt * 1 / n_e_side
 
 
 def create_shuffled_one_to_one(size):
@@ -623,6 +624,13 @@ def simulate_single_network(index, x, train, save_paths=None):
 			np.ones((n_i)) * 1e-3,
 		])
 
+		w_new = np.diag(np.ones(15))+ np.diag(np.ones(15 - 1), k=-1) + np.diag(np.ones(15 - 1), k=+1) + np.abs(np.random.normal(loc=0.1, scale=0.1, size=(15, 15)))
+
+		if i == 0:
+			w[:15, :15] = 5/5 * w_new
+		else:
+			w = w.at[:15, :15].set(jnp.asarray(5/5 * w_new))
+
 		r, w_out, effects, syn_factors, r_exp_filtered = simulate(
 			len(t),
 			N_TIMECONSTS,
@@ -700,6 +708,8 @@ def simulate_single_network(index, x, train, save_paths=None):
 
 	print('single sim time: ', time.time() - start)
 	sys.stdout.flush()
+
+	print(w_out)
 
 	return {
 		'loss': normed_loss,
@@ -977,20 +987,25 @@ if __name__ == '__main__':
 	else:
 
 		if args.train and len(existing_dirs_with_run_num) == 0:
+			x0[92] = 0.02 * 2
+			x0[11] = -0.003 * 4
+			x0[24] = -1 * 2
+			x0[0] = 0.5 * 2
+
 			eval_all([x0], eval_tracker=eval_tracker)
 
-		while not es.stop():
-			X = es.ask()
-			print(X)
-			es.tell(X, eval_all(X, eval_tracker=eval_tracker))
+		# while not es.stop():
+		# 	X = es.ask()
+		# 	print(X)
+		# 	es.tell(X, eval_all(X, eval_tracker=eval_tracker))
 
-			# save optimizer state
-			with open(os.path.join(out_dir, 'es_checkpoint.pkl'), 'wb') as f:
-				pickle.dump(es, f)
-			# save eval_tracker state
-			with open(os.path.join(out_dir, 'eval_tracker.pkl'), 'wb') as f:
-				pickle.dump(eval_tracker, f)
+		# 	# save optimizer state
+		# 	with open(os.path.join(out_dir, 'es_checkpoint.pkl'), 'wb') as f:
+		# 		pickle.dump(es, f)
+		# 	# save eval_tracker state
+		# 	with open(os.path.join(out_dir, 'eval_tracker.pkl'), 'wb') as f:
+		# 		pickle.dump(eval_tracker, f)
 
-			if eval_tracker['best_changed']:
-				eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
-			es.disp()
+		# 	if eval_tracker['best_changed']:
+		# 		eval_all([eval_tracker['params']], eval_tracker=eval_tracker, train=False)
+		# 	es.disp()
