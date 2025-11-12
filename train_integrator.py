@@ -11,7 +11,6 @@ from datetime import datetime
 import multiprocessing as mp
 import argparse
 import cma
-import numba
 from scipy.sparse import csc_matrix
 from sklearn.linear_model import LinearRegression, Lasso
 from csv_reader import read_csv
@@ -48,6 +47,9 @@ parser.add_argument('--run_num', metavar='rn', type=str, default=None)
 parser.add_argument('--cell_type_1_size', metavar='ps', type=int, default=15)
 parser.add_argument('--time', type=float, default=1.0)
 parser.add_argument('--time_test', type=float, default=1.0)
+parser.add_argument('--HR_to_HD_width', type=int, default=3)
+parser.add_argument('--HD_to_HR_width', type=int, default=2)
+parser.add_argument('--input_size', type=int, default=3)
 
 
 args = parser.parse_args()
@@ -277,11 +279,11 @@ def make_network():
 	if args.struct_prior == 'shift' or args.struct_prior == 'ring':
 		init_ring = (args.struct_prior == 'ring')
 		# define connectivity from HR to HD neurons as "shift" matrix
-		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=3, ring=init_ring), 0)
-		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool *  np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=-3, ring=init_ring), 0)
+		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=args.HR_to_HD_width, ring=init_ring), 0)
+		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool *  np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=-1 * args.HR_to_HD_width, ring=init_ring), 0)
 
 		# define connectivity from HD to HR as inhibiting all but the corresponding group along the diagonal
-		left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=2, ring=init_ring) + create_shift_matrix(n_e_side, k=-2, ring=init_ring)))
+		left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=args.HD_to_HR_width, ring=init_ring) + create_shift_matrix(n_e_side, k=-1 * args.HD_to_HR_width, ring=init_ring)))
 		np.fill_diagonal(left_input_cells, 0)
 		right_input_cells = copy(left_input_cells)
 
@@ -589,7 +591,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 			running_input_sums[j] += filtered_input_to_sum[j]
 
 		r_in_spks = np.zeros((len(t_for_iter), n_e_pool + 2 * n_e_side + n_i))
-		input_size = 3
+		input_size = args.input_size
 		input_slice = slice(int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
 		if bool(args.bump_init):
 			r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), input_size))
@@ -847,7 +849,7 @@ def load_best_avg_params(file_names, n_plasticity_coefs, n_time_constants, batch
 	all_best_coefs = []
 
 	for file_name in file_names:
-		test_data_path = f'./sims_out/{file_name}/train_data.csv'
+		test_data_path = f'./sims_out/{file_name}/test_data.csv'
 		df_test = read_csv(test_data_path, read_header=False)
 
 		syn_effect_start = 2 + batch_size + n_plasticity_coefs + n_time_constants
