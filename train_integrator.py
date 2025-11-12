@@ -49,6 +49,9 @@ parser.add_argument('--run_num', metavar='rn', type=str, default=None)
 parser.add_argument('--cell_type_1_size', metavar='ps', type=int, default=15)
 parser.add_argument('--time', type=float, default=1.0)
 parser.add_argument('--time_test', type=float, default=1.0)
+parser.add_argument('--HR_to_HD_width', type=int, default=3)
+parser.add_argument('--HD_to_HR_width', type=int, default=2)
+parser.add_argument('--input_size', type=int, default=3)
 
 
 args = parser.parse_args()
@@ -57,9 +60,9 @@ SEED = args.seed
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch if args.train else 1
 self_org_iters = args.self_org_iters
-decoder_train_trial_nums = (self_org_iters, self_org_iters + 40)
-decoder_test_trial_nums = (self_org_iters + 40, self_org_iters + 140)
-N_INNER_LOOP_RANGE = (self_org_iters + 140, self_org_iters + 141) # Number of times to simulate network and plasticity rules per loss function evaluation
+decoder_train_trial_nums = (self_org_iters, self_org_iters + 10)
+decoder_test_trial_nums = (self_org_iters + 10, self_org_iters + 20)
+N_INNER_LOOP_RANGE = (self_org_iters + 20, self_org_iters + 21) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 DW_LAG = 5
 FIXED_DATA = bool(args.fixed_data)
@@ -70,14 +73,14 @@ CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 1000
 INPUT_BLOCK_DURATION = 5e-3
-N_PAIRWISE_RULES_PER_TYPE = 12 * 2
+N_PAIRWISE_RULES_PER_TYPE = 12 * 2 + 2
 N_SUMMED_WEIGHT_RULES_PER_TYPE = 6
 N_THREE_FACTOR_RULES_PER_TYPE = 8
 N_RULES = 3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE) + 2 * N_THREE_FACTOR_RULES_PER_TYPE
 N_TIMECONSTS = 12 + 32
 TEST_REPEATS = 10
 ROOT_FILE_NAME = args.root_file_name
-INPUT_AMP = 0.1 # if args.struct_prior != '2D' else 0.02
+INPUT_AMP = 0.2 # if args.struct_prior != '2D' else 0.02
 
 T = args.time # Total duration of one network simulation
 T_TEST = args.time_test
@@ -132,6 +135,9 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$w x \, \tilde{y}$',
 	r'$w \tilde{x} \, y$',
 
+	r'$w^2$',
+	r'$w^3$',
+
 	r'$\sum_k w_{kj}$',
 	r'$(\sum_k w_{kj})^2$',
 	r'$(\sum_k w_{kj})^3$',
@@ -185,7 +191,7 @@ if args.struct_prior == 'hard_coded':
 else:
 	w_e_e = 9e-4 / dt * 0.1 / n_e_pool
 	w_pool_side = -3e-4 / dt * 1 / n_e_pool
-	w_side_pool = 9e-4 / dt * 1 / n_e_side
+	w_side_pool = 9e-4 / dt * 5 / n_e_side
 
 
 def create_shuffled_one_to_one(size):
@@ -278,11 +284,11 @@ def make_network():
 	if args.struct_prior == 'shift' or args.struct_prior == 'ring':
 		init_ring = (args.struct_prior == 'ring')
 		# define connectivity from HR to HD neurons as "shift" matrix
-		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=3, ring=init_ring), 0)
-		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool *  np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=-3, ring=init_ring), 0)
+		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=args.HR_to_HD_width, ring=init_ring), 0)
+		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool *  np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=-1 * args.HR_to_HD_width, ring=init_ring), 0)
 
 		# define connectivity from HD to HR as inhibiting all but the corresponding group along the diagonal
-		left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=2, ring=init_ring) + create_shift_matrix(n_e_side, k=-2, ring=init_ring)))
+		left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=args.HD_to_HR_width, ring=init_ring) + create_shift_matrix(n_e_side, k=-1 * args.HD_to_HR_width, ring=init_ring)))
 		np.fill_diagonal(left_input_cells, 0)
 		right_input_cells = copy(left_input_cells)
 
@@ -529,6 +535,13 @@ def simulate_single_network(index, x, train, save_paths=None):
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
+	# w_new = (
+	# 	np.diag(np.ones(args.cell_type_1_size))
+	# 	+ np.diag(np.ones(args.cell_type_1_size - 1), k=-1)
+	# 	+ np.diag(np.ones(args.cell_type_1_size - 1), k=+1)
+	# 	+ np.abs(np.random.normal(loc=0.1, scale=0.1, size=(args.cell_type_1_size, args.cell_type_1_size)))
+	# )
+	# w[:args.cell_type_1_size, :args.cell_type_1_size] = w_new
 
 	all_effects = np.zeros(plasticity_coefs.shape)
 	normed_loss = 10000	
@@ -590,10 +603,10 @@ def simulate_single_network(index, x, train, save_paths=None):
 			running_input_sums[j] += filtered_input_to_sum[j]
 
 		r_in_spks = np.zeros((len(t_for_iter), n_e_pool + 2 * n_e_side + n_i))
-		input_size = 3
+		input_size = args.input_size
 		input_slice = slice(int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
 		if bool(args.bump_init):
-			r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), input_size))
+			r_in_spks[:int(20e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(20e-3/dt), input_size)) * 4
 
 		r_in_spks[input_start:input_spks.shape[0] + decoder_lag + input_start, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
@@ -624,12 +637,12 @@ def simulate_single_network(index, x, train, save_paths=None):
 			np.ones((n_i)) * 1e-3,
 		])
 
-		w_new = np.diag(np.ones(15))+ np.diag(np.ones(15 - 1), k=-1) + np.diag(np.ones(15 - 1), k=+1) + np.abs(np.random.normal(loc=0.1, scale=0.1, size=(15, 15)))
+		# w_new = np.diag(np.ones(15))+ np.diag(np.ones(15 - 1), k=-1) + np.diag(np.ones(15 - 1), k=+1) + np.abs(np.random.normal(loc=0.1, scale=0.1, size=(15, 15)))
 
-		if i == 0:
-			w[:15, :15] = 5/5 * w_new
-		else:
-			w = w.at[:15, :15].set(jnp.asarray(5/5 * w_new))
+		# if i == 0:
+		# 	w[:15, :15] = 5/5 * w_new
+		# else:
+		# 	w = w.at[:15, :15].set(jnp.asarray(5/5 * w_new))
 
 		r, w_out, effects, syn_factors, r_exp_filtered = simulate(
 			len(t),
@@ -987,10 +1000,19 @@ if __name__ == '__main__':
 	else:
 
 		if args.train and len(existing_dirs_with_run_num) == 0:
-			x0[92] = 0.02 * 2
-			x0[11] = -0.003 * 4
-			x0[24] = -1 * 2
-			x0[0] = 0.5 * 2
+			x0[97] = 0.02 * 2
+			# x0[10] = -0.0045 * 4
+			# x0[11] = 0.0045 * 4
+
+			x0[12] = 0.5 * 0.1
+			x0[26] = -50 * 0.1
+			# x0[0] = 0.05 * 2
+			w_prefactor = 0.05
+			a = 1
+			b = 0.75
+			# x0[12] = -1 * (a * b) * w_prefactor
+			# x0[24] = (a+b) * w_prefactor
+			# x0[25] = -1 * w_prefactor
 
 			eval_all([x0], eval_tracker=eval_tracker)
 

@@ -40,6 +40,8 @@ def _delta_W_ij_two_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j):
             w_ij * r_i * r_j,
             w_ij * r_exp_i[2] * r_j,
             w_ij * r_exp_j[3] * r_i,
+            jnp.power(w_ij, 2),
+            jnp.power(w_ij, 3),
         ]
     )
 
@@ -68,11 +70,10 @@ def _delta_W_ij_summed_weight_rules(W, c, W_shape_1, W_shape_2): # c, W_shape_1,
     delta_w_incoming = compute_row_or_column_sum_and_exp(W, 0)
     delta_w_outgoing = compute_row_or_column_sum_and_exp(W, 1)
 
-
     delta_w =  c.reshape(c.shape[0], 1, 1) * jnp.concatenate([
         jnp.repeat(delta_w_incoming[:, None, :], repeats=W_shape_1, axis=1),
         jnp.repeat(delta_w_outgoing[..., None], repeats=W_shape_2, axis=2)
-    ])
+    ]) * W[None, :, :]
 
     return delta_w.sum(axis=0), jnp.abs(delta_w).sum()
 
