@@ -134,7 +134,7 @@ def format_plot(
     topspine=False,
     bottomspine=True,
     ):
-    print(axs)
+
     if type(axs) is not list and type(axs) is not np.array and type(axs) is not np.ndarray:
         axs = [axs]
 
