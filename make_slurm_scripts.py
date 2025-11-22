@@ -33,8 +33,7 @@ def main():
         output_filename = os.path.join(args.outdir, args.template[:-6] + '_' + zero_pad(i, 3) + '.slurm')
         with open(output_filename, "w") as out:
             out.write(template.render(**params))
-        print("Wrote", output_filename)
-
-
+        print(f'sbatch {output_filename}')
+    
 if __name__ == "__main__":
     main()
