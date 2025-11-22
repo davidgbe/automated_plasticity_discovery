@@ -1,0 +1,162 @@
+[
+  {
+    "partition": "ckpt-all",
+    "seed": 8000,
+    "run_num": "000410",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8001,
+    "run_num": "000411",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8002,
+    "run_num": "000412",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8003,
+    "run_num": "000413",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8004,
+    "run_num": "000414",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8005,
+    "run_num": "000415",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8006,
+    "run_num": "000416",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8007,
+    "run_num": "000417",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8008,
+    "run_num": "000418",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8009,
+    "run_num": "000419",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8010,
+    "run_num": "000420",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8011,
+    "run_num": "000421",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8012,
+    "run_num": "000422",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8013,
+    "run_num": "000423",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8014,
+    "run_num": "000424",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8015,
+    "run_num": "000425",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8016,
+    "run_num": "000426",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8017,
+    "run_num": "000427",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8018,
+    "run_num": "000428",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8019,
+    "run_num": "000429",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27
+  }
+]

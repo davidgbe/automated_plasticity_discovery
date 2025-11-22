@@ -1,0 +1,47 @@
+#!/bin/bash
+
+## Presets
+#SBATCH --job-name=int_cmaes
+
+#SBATCH -p {{ partition }}
+#SBATCH -A stf
+
+#SBATCH --nodes=1
+#SBATCH --time=130:00:00
+#SBATCH --ntasks=30
+#SBATCH --mem=200G
+
+#SBATCH --chdir=.
+
+## Module import
+module load foster/python/miniconda/3.8
+
+## Commands to run
+source python-env/bin/activate
+
+python train_integrator.py \
+    --std_expl 2e-4 \
+    --pool_size 30 \
+    --batch 10 \
+    --fixed_data 1 \
+    --l1_pen 5e-7 \
+    --asp 50 \
+    --frac_inputs_fixed 0 \
+    --syn_change_prob 0 \
+    --seed {{ seed }} \
+    --struct_prior 2D \
+    --bump_init 1 \
+    --train 1 \
+    --exp_title "2d_time_{{ time }}_inp_{{ time_input }}_het_{{ inh_het }}" \
+    --dc_input 1.0 \
+    --run_num {{ run_num }} \
+    --inh_het {{ inh_het }} \
+    --cell_type_1_size 2 \
+    --time {{ time }} \
+    --time_test {{ time }} \
+    --time_input {{ time_input }} \
+
+deactivate
+
+## Exit
+exit 0
