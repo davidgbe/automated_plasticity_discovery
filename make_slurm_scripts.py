@@ -28,11 +28,9 @@ def main():
     # Ensure output directory exists
     os.makedirs(args.outdir, exist_ok=True)
 
-    
-
     # Generate output scripts
     for i, params in enumerate(param_list):
-        output_filename = os.path.join(args.outdir, args.template[:-6] + zero_pad(i, 3) + '.slurm')
+        output_filename = os.path.join(args.outdir, args.template[:-6] + '_' + zero_pad(i, 3) + '.slurm')
         with open(output_filename, "w") as out:
             out.write(template.render(**params))
         print("Wrote", output_filename)
