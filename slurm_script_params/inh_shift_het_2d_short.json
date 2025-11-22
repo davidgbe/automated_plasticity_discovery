@@ -4,7 +4,7 @@
     "seed": 8000,
     "run_num": "000430",
     "inh_het": 0.2,
-    "time": 0.29,
+    "time": 0.3,
     "time_input": 0.27
   },
   {
@@ -12,7 +12,7 @@
     "seed": 8001,
     "run_num": "000431",
     "inh_het": 0.2,
-    "time": 0.29,
+    "time": 0.3,
     "time_input": 0.27
   },
   {
@@ -20,7 +20,7 @@
     "seed": 8002,
     "run_num": "000432",
     "inh_het": 0.2,
-    "time": 0.29,
+    "time": 0.3,
     "time_input": 0.27
   },
   {
@@ -28,7 +28,7 @@
     "seed": 8003,
     "run_num": "000433",
     "inh_het": 0.2,
-    "time": 0.29,
+    "time": 0.3,
     "time_input": 0.27
   },
   {
@@ -36,7 +36,7 @@
     "seed": 8004,
     "run_num": "000434",
     "inh_het": 0.2,
-    "time": 0.29,
+    "time": 0.3,
     "time_input": 0.27
   },
   {
@@ -44,7 +44,7 @@
     "seed": 8005,
     "run_num": "000435",
     "inh_het": 0.2,
-    "time": 0.29,
+    "time": 0.3,
     "time_input": 0.27
   },
   {
@@ -52,7 +52,7 @@
     "seed": 8006,
     "run_num": "000436",
     "inh_het": 0.2,
-    "time": 0.29,
+    "time": 0.3,
     "time_input": 0.27
   },
   {
@@ -60,7 +60,7 @@
     "seed": 8007,
     "run_num": "000437",
     "inh_het": 0.2,
-    "time": 0.29,
+    "time": 0.3,
     "time_input": 0.27
   },
   {
@@ -68,7 +68,7 @@
     "seed": 8008,
     "run_num": "000438",
     "inh_het": 0.2,
-    "time": 0.29,
+    "time": 0.3,
     "time_input": 0.27
   },
   {
@@ -76,7 +76,7 @@
     "seed": 8009,
     "run_num": "000439",
     "inh_het": 0.2,
-    "time": 0.29,
+    "time": 0.3,
     "time_input": 0.27
   }
 ]
