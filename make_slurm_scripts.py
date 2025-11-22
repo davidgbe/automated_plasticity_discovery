@@ -30,7 +30,7 @@ def main():
 
     # Generate output scripts
     for i, params in enumerate(param_list):
-        output_filename = os.path.join(args.outdir, args.template[:-6] + '_' + zero_pad(i, 3) + '.slurm')
+        output_filename = os.path.join(args.outdir, os.path.basename(args.template)[:-6] + '_' + zero_pad(i, 3) + '.slurm')
         with open(output_filename, "w") as out:
             out.write(template.render(**params))
         print(f'sbatch {output_filename}')
