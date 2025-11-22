@@ -1,6 +1,6 @@
 [
   {
-    "partition": "cpu-g2-mem2x",
+    "partition": "ckpt-all",
     "seed": 8000,
     "run_num": "000400",
     "inh_het": 0.2,
@@ -8,7 +8,7 @@
     "time_input": 0.27
   },
   {
-    "partition": "cpu-g2-mem2x",
+    "partition": "ckpt-all",
     "seed": 8001,
     "run_num": "000401",
     "inh_het": 0.2,
@@ -16,7 +16,7 @@
     "time_input": 0.27
   },
   {
-    "partition": "cpu-g2-mem2x",
+    "partition": "ckpt-all",
     "seed": 8002,
     "run_num": "000402",
     "inh_het": 0.2,
@@ -24,7 +24,7 @@
     "time_input": 0.27
   },
   {
-    "partition": "cpu-g2-mem2x",
+    "partition": "ckpt-all",
     "seed": 8003,
     "run_num": "000403",
     "inh_het": 0.2,
@@ -32,7 +32,7 @@
     "time_input": 0.27
   },
   {
-    "partition": "cpu-g2-mem2x",
+    "partition": "ckpt-all",
     "seed": 8004,
     "run_num": "000404",
     "inh_het": 0.2,
@@ -40,7 +40,7 @@
     "time_input": 0.27
   },
   {
-    "partition": "cpu-g2",
+    "partition": "ckpt-all",
     "seed": 8005,
     "run_num": "000405",
     "inh_het": 0.2,
@@ -48,7 +48,7 @@
     "time_input": 0.27
   },
   {
-    "partition": "cpu-g2",
+    "partition": "ckpt-all",
     "seed": 8006,
     "run_num": "000406",
     "inh_het": 0.2,
@@ -56,7 +56,7 @@
     "time_input": 0.27
   },
   {
-    "partition": "cpu-g2",
+    "partition": "ckpt-all",
     "seed": 8007,
     "run_num": "000407",
     "inh_het": 0.2,
@@ -64,7 +64,7 @@
     "time_input": 0.27
   },
   {
-    "partition": "cpu-g2",
+    "partition": "ckpt-all",
     "seed": 8008,
     "run_num": "000408",
     "inh_het": 0.2,
@@ -72,7 +72,7 @@
     "time_input": 0.27
   },
   {
-    "partition": "cpu-g2",
+    "partition": "ckpt-all",
     "seed": 8009,
     "run_num": "000409",
     "inh_het": 0.2,
