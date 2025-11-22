@@ -51,6 +51,8 @@ parser.add_argument('--time_input', type=float, default=0.24)
 parser.add_argument('--HR_to_HD_width', type=int, default=3)
 parser.add_argument('--HD_to_HR_width', type=int, default=2)
 parser.add_argument('--input_size', type=int, default=3)
+parser.add_argument('--pop_size', type=int, default=30)
+
 
 
 args = parser.parse_args()
@@ -922,7 +924,7 @@ if __name__ == '__main__':
 		if args.train and len(existing_dirs_with_run_num) == 0: # if starting a new training run, create options, initial condition, evolutionary strategy
 			options = {
 				'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
-				'popsize': 30, #formerly 30
+				'popsize': args.pop_size, #formerly 30
 				'bounds': [
 					[-10] * N_RULES + [0.5e-3] * N_TIMECONSTS,
 					[10] * N_RULES + [40e-3] * N_TIMECONSTS,
