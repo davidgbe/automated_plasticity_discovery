@@ -1,0 +1,82 @@
+[
+  {
+    "partition": "ckpt-all",
+    "seed": 8000,
+    "run_num": "000410",
+    "inh_het": 0.2,
+    "time": 0.29,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8001,
+    "run_num": "000411",
+    "inh_het": 0.2,
+    "time": 0.29,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8002,
+    "run_num": "000412",
+    "inh_het": 0.2,
+    "time": 0.29,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8003,
+    "run_num": "000413",
+    "inh_het": 0.2,
+    "time": 0.29,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8004,
+    "run_num": "000414",
+    "inh_het": 0.2,
+    "time": 0.29,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8005,
+    "run_num": "000415",
+    "inh_het": 0.2,
+    "time": 0.29,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8006,
+    "run_num": "000416",
+    "inh_het": 0.2,
+    "time": 0.29,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8007,
+    "run_num": "000417",
+    "inh_het": 0.2,
+    "time": 0.29,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8008,
+    "run_num": "000418",
+    "inh_het": 0.2,
+    "time": 0.29,
+    "time_input": 0.27
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8009,
+    "run_num": "000419",
+    "inh_het": 0.2,
+    "time": 0.29,
+    "time_input": 0.27
+  }
+]
