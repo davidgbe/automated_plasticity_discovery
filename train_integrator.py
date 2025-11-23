@@ -549,6 +549,8 @@ def simulate_single_network(index, x, train, save_paths=None):
 	all_weight_deltas = []
 	w_hist.append(w)
 
+	print('train', train)
+
 	if train:
 		input_rate_for_trial = 2 * INPUT_RATE_PER_CELL * (0.25 + 0.75 * index / (BATCH_SIZE - 1))
 	else:
