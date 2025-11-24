@@ -1,0 +1,101 @@
+[
+  {
+    "partition": "ckpt-all",
+    "seed": 8000,
+    "run_num": "000500",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_optim_cmaes",
+    "pop_size": 30,
+    "std_expl": 0.0002
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8000,
+    "run_num": "000501",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_optim_cmaes",
+    "pop_size": 60,
+    "std_expl": 0.0002
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8000,
+    "run_num": "000502",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_optim_cmaes",
+    "pop_size": 90,
+    "std_expl": 0.0002
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8000,
+    "run_num": "000503",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_optim_cmaes",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8000,
+    "run_num": "000504",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_optim_cmaes",
+    "pop_size": 60,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8000,
+    "run_num": "000505",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_optim_cmaes",
+    "pop_size": 90,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8000,
+    "run_num": "000506",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_optim_cmaes",
+    "pop_size": 30,
+    "std_expl": 0.002
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8000,
+    "run_num": "000507",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_optim_cmaes",
+    "pop_size": 60,
+    "std_expl": 0.002
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8000,
+    "run_num": "000508",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_optim_cmaes",
+    "pop_size": 90,
+    "std_expl": 0.002
+  }
+]
