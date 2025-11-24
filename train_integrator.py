@@ -549,9 +549,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 	all_weight_deltas = []
 	w_hist.append(w)
 
-	print('train', train)
-
-	if train:
+	if args.train:
 		input_rate_for_trial = 2 * INPUT_RATE_PER_CELL * (0.25 + 0.75 * index / (BATCH_SIZE - 1))
 	else:
 		input_rate_for_trial = 2 * INPUT_RATE_PER_CELL * (0.25 + 0.75 * index / (TEST_REPEATS - 1))
@@ -575,11 +573,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 			t_for_iter = t
 		
 		n_input_blocks = max_input_len // input_block_timesteps
-		inputs = np.zeros((n_input_blocks), dtype=int)
-		n_inputs = np.random.randint(0, n_input_blocks)
-		if n_inputs > 0:
-			inputs[:n_inputs] = np.random.choice([-1, 1], size=n_inputs)
-		np.random.shuffle(inputs)
+		inputs = np.random.choice([-1, 0, 1], size=n_input_blocks).astype(int)
 
 		for i_input_block, input_flag in enumerate(inputs):
 			k = i_input_block * input_block_timesteps
