@@ -32,7 +32,7 @@ python train_integrator.py \
     --struct_prior 2D \
     --bump_init 0 \
     --train 1 \
-    --exp_title "2d_time_{{ time }}_inp_{{ time_input }}_het_{{ inh_het }}" \
+    --exp_title "{{ title }}_time_{{ time }}_inp_{{ time_input }}_het_{{ inh_het }}" \
     --dc_input 1.0 \
     --run_num {{ run_num }} \
     --inh_het {{ inh_het }} \
