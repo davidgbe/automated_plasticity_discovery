@@ -702,7 +702,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 	print('single sim time: ', time.time() - start)
 	sys.stdout.flush()
 
-	print('avg_syn_effect', np.stack(all_syn_factors).sum(axis=1))
+	print('avg_syn_effect', np.stack(all_syn_factors).sum(axis=0))
 
 	return {
 		'loss': normed_loss,
