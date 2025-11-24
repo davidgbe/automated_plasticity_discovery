@@ -556,6 +556,8 @@ def simulate_single_network(index, x, train, save_paths=None):
 	
 	start = time.time()
 
+	all_syn_factors = []
+
 	for i in range(n_inner_loop_iters):
 		# if i % 5 == 0:
 		# 	if i > 0:
@@ -644,6 +646,8 @@ def simulate_single_network(index, x, train, save_paths=None):
 			n_triplet_rules=N_THREE_FACTOR_RULES_PER_TYPE,
 		)
 
+		all_syn_factors.append(syn_factors)
+
 		# r, s, v, w_out, effects, r_exp_filtered = simulate(len(t), t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, v_thresh, dt=dt, tau_e=10e-3, tau_i=1e-3, g=1, w_u=1, track_params=track_params)
 
 		if not args.train:
@@ -697,6 +701,8 @@ def simulate_single_network(index, x, train, save_paths=None):
 
 	print('single sim time: ', time.time() - start)
 	sys.stdout.flush()
+
+	print('avg_syn_effect', np.stack(all_syn_factors).sum(axis=1))
 
 	return {
 		'loss': normed_loss,
