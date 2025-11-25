@@ -9,6 +9,7 @@
 #SBATCH --nodes=1
 #SBATCH --time=130:00:00
 #SBATCH --ntasks=30
+#SBATCH --cpus-per-task=3
 #SBATCH --mem=200G
 
 #SBATCH --chdir=.
