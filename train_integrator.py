@@ -73,7 +73,7 @@ ACTIVITY_LOSS_COEF = args.asp
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 1000
-INPUT_BLOCK_DURATION = 5e-3
+INPUT_BLOCK_DURATION = 10e-3
 N_PAIRWISE_RULES_PER_TYPE = 12 * 2
 N_SUMMED_WEIGHT_RULES_PER_TYPE = 6
 N_THREE_FACTOR_RULES_PER_TYPE = 8
@@ -550,9 +550,9 @@ def simulate_single_network(index, x, train, save_paths=None):
 	w_hist.append(w)
 
 	if args.train:
-		input_rate_for_trial = 2 * INPUT_RATE_PER_CELL * (0.25 + 0.75 * index / (BATCH_SIZE - 1))
+		p_active = 0.1 + 0.9 * index / BATCH_SIZE
 	else:
-		input_rate_for_trial = 2 * INPUT_RATE_PER_CELL * (0.25 + 0.75 * index / (TEST_REPEATS - 1))
+		p_active = 0.1 + 0.9 * index / TEST_REPEATS
 	
 	start = time.time()
 
@@ -573,17 +573,17 @@ def simulate_single_network(index, x, train, save_paths=None):
 		else:
 			input_spks = np.zeros((decoding_len_self_org + decoder_lag, 2 * n_e_side))
 			t_for_iter = t
-		
+
 		n_input_blocks = max_input_len // input_block_timesteps
-		inputs = np.random.choice([-1, 0, 1], size=n_input_blocks).astype(int)
+		inputs = np.random.choice([0, -1, 1], size=n_input_blocks, p=[1-p_active, p_active/2, p_active/2])
 
 		for i_input_block, input_flag in enumerate(inputs):
 			k = i_input_block * input_block_timesteps
 			if input_flag == -1:
-				input_block = np.repeat(np.random.poisson(lam=input_rate_for_trial * dt, size=(input_block_timesteps, 1)), n_e_side, axis=1)
+				input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)), n_e_side, axis=1)
 				input_spks[k : k + input_block_timesteps, :n_e_side] = input_block
 			elif input_flag == 1:
-				input_block = np.repeat(np.random.poisson(lam=input_rate_for_trial * dt, size=(input_block_timesteps, 1)), n_e_side, axis=1)
+				input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)), n_e_side, axis=1)
 				input_spks[k : k + input_block_timesteps, n_e_side : 2 * n_e_side] = input_block
 
 		filtered_input_to_sum_per_neuron = poisson_arrivals_to_inputs(input_spks, 3e-3)
