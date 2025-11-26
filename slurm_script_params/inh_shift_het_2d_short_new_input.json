@@ -1,0 +1,112 @@
+[
+  {
+    "partition": "ckpt-all",
+    "seed": 8000,
+    "run_num": "000540",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_new_input",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8001,
+    "run_num": "000541",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_new_input",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8002,
+    "run_num": "000542",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_new_input",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8003,
+    "run_num": "000543",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_new_input",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8004,
+    "run_num": "000544",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_new_input",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8005,
+    "run_num": "000545",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_new_input",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8006,
+    "run_num": "000546",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_new_input",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8007,
+    "run_num": "000547",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_new_input",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8008,
+    "run_num": "000548",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_new_input",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8009,
+    "run_num": "000549",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_new_input",
+    "pop_size": 30,
+    "std_expl": 0.001
+  }
+]
