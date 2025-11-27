@@ -96,7 +96,7 @@ def _delta_W_ij_three_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j, f_i):
 @jax.jit
 def _delta_W_ij_three_factor(w_ij, r_i, r_j, r_exp_i, r_exp_j, f_i, c):
     delta_w = c * _delta_W_ij_three_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j, f_i)
-    return delta_w.sum(), jnp.abs(delta_w).sum()
+    return delta_w.sum(axis=0), jnp.abs(delta_w).sum()
 
 
 delta_W_ij_three_factor = jax.vmap(

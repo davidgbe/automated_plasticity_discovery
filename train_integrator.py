@@ -489,7 +489,7 @@ def calc_alpha_func(tau_alpha):
 
 
 def gen_gaussian(x, u, s):
-    return 1 / np.sqrt(2 * np.pi * s**2) * np.exp(-0.5 * (x - u)**2 / s**2)
+	return 1 / np.sqrt(2 * np.pi * s**2) * np.exp(-0.5 * (x - u)**2 / s**2)
 
 
 def poisson_arrivals_to_inputs(arrivals, tau_alpha):
@@ -554,9 +554,11 @@ def simulate_single_network(index, x, train, save_paths=None):
 	all_syn_factors = []
 
 	if args.train:
-		input_len = int((index + 1) / (BATCH_SIZE + 1) * max_input_len)
+		p_active = 0.1 + 0.9 * index / BATCH_SIZE
 	else:
-		input_len = int((index + 1) / (TEST_REPEATS + 1) * max_input_len)
+		p_active = 0.1 + 0.9 * index / TEST_REPEATS
+		
+	n_input_blocks = max_input_len // input_block_timesteps
 
 	for i in range(n_inner_loop_iters):
 		# print(f'Activation number: {i}')
@@ -569,12 +571,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 			input_spks = np.zeros((decoding_len_self_org + decoder_lag, 2 * n_e_side))
 			t_for_iter = t
 		
-		n_input_blocks = input_len // input_block_timesteps
-		inputs = np.zeros((n_input_blocks), dtype=int)
-		n_inputs = np.random.randint(0, n_input_blocks)
-		if n_inputs > 0:
-			inputs[:n_inputs] = np.random.choice([-1, 1], size=n_inputs)
-		np.random.shuffle(inputs)
+		inputs = np.random.choice([0, -1, 1], size=n_input_blocks, p=[1-p_active, p_active/2, p_active/2])
 
 		for i_input_block, input_flag in enumerate(inputs):
 			k = i_input_block * input_block_timesteps
@@ -604,7 +601,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 		r_in_spks[input_start:input_spks.shape[0] + decoder_lag + input_start, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
 		
-		input_signal_totals.append(running_input_sums / input_len)
+		input_signal_totals.append(running_input_sums / max_input_len)
 
 		r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
 		r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = INPUT_AMP * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
