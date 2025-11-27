@@ -1,0 +1,102 @@
+[
+  {
+    "partition": "ckpt-all",
+    "seed": 8000,
+    "run_num": "000590",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "n5_short",
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8001,
+    "run_num": "000591",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "n5_short",
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8002,
+    "run_num": "000592",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "n5_short",
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8003,
+    "run_num": "000593",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "n5_short",
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8004,
+    "run_num": "000594",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "n5_short",
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8005,
+    "run_num": "000595",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "n5_short",
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8006,
+    "run_num": "000596",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "n5_short",
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8007,
+    "run_num": "000597",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "n5_short",
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8008,
+    "run_num": "000598",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "n5_short",
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8009,
+    "run_num": "000599",
+    "inh_het": 0.2,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "n5_short",
+    "std_expl": 0.001
+  }
+]

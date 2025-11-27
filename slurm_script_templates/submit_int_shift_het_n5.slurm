@@ -20,7 +20,7 @@ module load foster/python/miniconda/3.8
 source python-env/bin/activate
 
 python train_integrator.py \
-    --std_expl 2e-4 \
+    --std_expl {{ std_expl }} \
     --pool_size 30 \
     --batch 10 \
     --fixed_data 1 \
