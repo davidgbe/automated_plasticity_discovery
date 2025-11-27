@@ -395,7 +395,7 @@ def simulate(
             n_triplet_rules=n_triplet_rules,
         )
 
-        s_prime, r_exp_prime, w_prime, syn_factors_prime, syn_prime = jax.lax.cond(
+        s_prime, r_exp_prime, w_prime, syn_prime, syn_factors_prime = jax.lax.cond(
             unstable,
             lambda _: (jnp.zeros_like(s), jnp.zeros_like(r_exp), jnp.zeros_like(w), jnp.zeros_like(syn), jnp.zeros_like(syn_factors)),
             lambda _: (s + ds, r_exp + dr_exp, enforce_polarity_and_structure(w + dw, w_polarity, w0), syn + dsyn, syn_factors + dsyn_factors),
@@ -411,4 +411,4 @@ def simulate(
         r_in,
     )
 
-    return r, w, syn, r_exp
+    return r, w, syn, syn_factors, r_exp
