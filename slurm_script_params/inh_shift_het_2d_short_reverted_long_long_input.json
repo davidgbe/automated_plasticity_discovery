@@ -1,0 +1,112 @@
+[
+  {
+    "partition": "ckpt-all",
+    "seed": 8000,
+    "run_num": "000610",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.97,
+    "title": "2D_long_persist_input_reverted",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8001,
+    "run_num": "000611",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.97,
+    "title": "2D_long_persist_input_reverted",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8002,
+    "run_num": "000612",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.97,
+    "title": "2D_long_persist_input_reverted",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8003,
+    "run_num": "000613",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.97,
+    "title": "2D_long_persist_input_reverted",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8004,
+    "run_num": "000614",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.97,
+    "title": "2D_long_persist_input_reverted",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8005,
+    "run_num": "000615",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.97,
+    "title": "2D_long_persist_input_reverted",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8006,
+    "run_num": "000616",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.97,
+    "title": "2D_long_persist_input_reverted",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8007,
+    "run_num": "000617",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.97,
+    "title": "2D_long_persist_input_reverted",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8008,
+    "run_num": "000618",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.97,
+    "title": "2D_long_persist_input_reverted",
+    "pop_size": 30,
+    "std_expl": 0.001
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 8009,
+    "run_num": "000619",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.97,
+    "title": "2D_long_persist_input_reverted",
+    "pop_size": 30,
+    "std_expl": 0.001
+  }
+]
