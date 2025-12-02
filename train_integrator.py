@@ -34,6 +34,8 @@ parser.add_argument('--hd_hd_sparsity', metavar='dds', type=float, default=1.)
 parser.add_argument('--hd_hr_sparsity', metavar='drs', type=float, default=1.)
 parser.add_argument('--struct_prior', metavar='sp', type=str, default='shift')
 parser.add_argument('--bump_init', metavar='bi', type=int, default=1)
+parser.add_argument('--bump_init_onset', type=float, default=0)
+parser.add_argument('--bump_amp', type=float, default=0.25)
 parser.add_argument('--threshold_het', metavar='th', type=float, default=0)
 parser.add_argument('--inh_het', metavar='ih', type=float, default=0)
 parser.add_argument('--root_file_name', metavar='rfn', type=str, default=None)
@@ -41,6 +43,7 @@ parser.add_argument('--exp_title', metavar='et', type=str, default='')
 parser.add_argument('--train', metavar='t', type=int, default=1)
 parser.add_argument('--self_org_iters', metavar='sot', type=int, default=280)
 parser.add_argument('--dc_input', metavar='dc', type=float, default=0)
+parser.add_argument('--dc_input_onset', type=float, default=10e-3)
 parser.add_argument('--instant_inhibition', metavar='ih', type=int, default=0)
 parser.add_argument('--w_e_e', metavar='w', type=float, default=None)
 parser.add_argument('--run_num', metavar='rn', type=str, default=None)
@@ -596,7 +599,9 @@ def simulate_single_network(index, x, train, save_paths=None):
 		if bool(args.bump_init):
 			# r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), input_size))
 			# replace poisson-driven input with something less stochastic
-			r_in_spks[:int(10e-3/dt), input_slice] = 0.25 * np.ones((int(10e-3/dt), input_size),)
+			bump_start = int(args.bump_init_onset / dt)
+			bump_end = int((args.bump_init_onset + 10e-3) / dt)
+			r_in_spks[bump_start:bump_end, input_slice] = args.bump_amp * np.ones((int(10e-3/dt), input_size),)
 
 		r_in_spks[input_start:input_spks.shape[0] + decoder_lag + input_start, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
@@ -609,7 +614,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 		# zero out noise contribution to pool neurons, as this makes the task quite a bit harder
 		r_in[:, :n_e_pool] += (0 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(len(t_for_iter), n_e_pool)), 3e-3))
 		# add DC input
-		r_in[int(10e-3/dt):, :n_e_pool] += args.dc_input
+		r_in[int(args.dc_input_onset/dt):, :n_e_pool] += args.dc_input
 
 		# below, simulate one activation of the network for the period T
 
