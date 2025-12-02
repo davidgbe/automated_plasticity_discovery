@@ -11,8 +11,7 @@ figures/**/*
 **/*.png
 **/*.zip
 data/**/*
-*_0*.slurm
-*_1*.slurm
+*\d{3}.slurm
 *.mp4
 preprocessing
 

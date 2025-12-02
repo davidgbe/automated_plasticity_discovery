@@ -55,6 +55,8 @@ parser.add_argument('--HR_to_HD_width', type=int, default=3)
 parser.add_argument('--HD_to_HR_width', type=int, default=2)
 parser.add_argument('--input_size', type=int, default=3)
 parser.add_argument('--pop_size', type=int, default=30)
+parser.add_argument('--p_active_floor', type=float, default=0.1)
+
 
 
 
@@ -557,9 +559,9 @@ def simulate_single_network(index, x, train, save_paths=None):
 	all_syn_factors = []
 
 	if args.train:
-		p_active = 0.25 + 0.75 * index / BATCH_SIZE
+		p_active = args.p_active_floor + (1.0 - args.p_active_floor) * index / BATCH_SIZE
 	else:
-		p_active = 0.25 + 0.75 * index / TEST_REPEATS
+		p_active = args.p_active_floor + (1.0 - args.p_active_floor) * index / TEST_REPEATS
 		
 	n_input_blocks = max_input_len // input_block_timesteps
 
