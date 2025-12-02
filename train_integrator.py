@@ -557,9 +557,9 @@ def simulate_single_network(index, x, train, save_paths=None):
 	all_syn_factors = []
 
 	if args.train:
-		p_active = 0.1 + 0.9 * index / BATCH_SIZE
+		p_active = 0.25 + 0.75 * index / BATCH_SIZE
 	else:
-		p_active = 0.1 + 0.9 * index / TEST_REPEATS
+		p_active = 0.25 + 0.75 * index / TEST_REPEATS
 		
 	n_input_blocks = max_input_len // input_block_timesteps
 
