@@ -1,0 +1,46 @@
+[
+  {
+    "partition": "ckpt-all",
+    "seed": 2000,
+    "inh_het": 0,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_reverted_test_000652",
+    "pop_size": 30,
+    "std_expl": 0.001,
+    "root_file_name": "2D_short_reverted_time_0.3_inp_0.27_het_0_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8002_2025-12-02_16:46:27.700958_run_000652"
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 2000,
+    "inh_het": 0,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_reverted_test_000654",
+    "pop_size": 30,
+    "std_expl": 0.001,
+    "root_file_name": "2D_short_reverted_time_0.3_inp_0.27_het_0_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8004_2025-12-02_16:46:27.832414_run_000654"
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 2000,
+    "inh_het": 0,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_reverted_test_000657",
+    "pop_size": 30,
+    "std_expl": 0.001,
+    "root_file_name": "2D_short_reverted_time_0.3_inp_0.27_het_0_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8007_2025-12-02_16:46:27.208592_run_000657"
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 2000,
+    "inh_het": 0,
+    "time": 0.3,
+    "time_input": 0.27,
+    "title": "2D_short_reverted_test_000659",
+    "pop_size": 30,
+    "std_expl": 0.001,
+    "root_file_name": "2D_short_reverted_time_0.3_inp_0.27_het_0_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8009_2025-12-02_16:46:27.997662_run_000659"
+  }
+]
