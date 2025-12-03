@@ -540,6 +540,11 @@ def simulate_single_network(index, x, train, save_paths=None):
 	readout_times = (np.random.rand(num_readouts) * decoding_len_test + input_start).astype(int)
 
 	input_signal_totals = []
+	if not args.train:
+		all_r = []
+		all_w = []
+		all_inputs = []
+
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
@@ -651,21 +656,10 @@ def simulate_single_network(index, x, train, save_paths=None):
 
 		all_syn_factors.append(syn_factors)
 
-		# r, s, v, w_out, effects, r_exp_filtered = simulate(len(t), t, n_e_pool, n_e_side, n_i, r_in, plasticity_coefs, rule_time_constants, w, w_plastic, v_thresh, dt=dt, tau_e=10e-3, tau_i=1e-3, g=1, w_u=1, track_params=track_params)
-
 		if not args.train:
-			# save weights
-			weight_file_name = os.path.join(save_paths['weight_path'], f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
-			np.save(weight_file_name, w)
-			# save activity
-			activity_file_name = os.path.join(save_paths['activity_path'], f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
-			np.save(activity_file_name, r)
-			# save integrated_values
-			integrated_value_file_name = os.path.join(save_paths['integrated_value_path'], f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
-			np.save(integrated_value_file_name, input_signal_totals[i])
-			# save inputs
-			inputs_file_name = os.path.join(save_paths['inputs_path'], f'net_{zero_pad(index, 3)}_act_{zero_pad(i, 4)}.npy')
-			np.save(inputs_file_name, filtered_input_to_sum_per_neuron)
+			all_w.append(w)
+			all_r.append(r)
+			all_inputs.append(filtered_input_to_sum_per_neuron)
 
 		if (np.isnan(r).any()
 	  		or (np.abs(w_out) > 100).any()
@@ -695,6 +689,20 @@ def simulate_single_network(index, x, train, save_paths=None):
 			all_effects += effects[:N_RULES]
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
+
+	if not args.train:
+		# save weights
+		weight_file_name = os.path.join(save_paths['weight_path'], f'net_{zero_pad(index, 3)}.npy')
+		np.save(weight_file_name, np.asarray(all_w))
+		# save activity
+		activity_file_name = os.path.join(save_paths['activity_path'], f'net_{zero_pad(index, 3)}.npy')
+		np.save(activity_file_name, np.asarray(all_r))
+		# save integrated_values
+		integrated_value_file_name = os.path.join(save_paths['integrated_value_path'], f'net_{zero_pad(index, 3)}.npy')
+		np.save(integrated_value_file_name, np.asarray(input_signal_totals))
+		# save inputs
+		inputs_file_name = os.path.join(save_paths['inputs_path'], f'net_{zero_pad(index, 3)}.npy')
+		np.save(inputs_file_name, np.asarray(all_inputs))
 
 	train_diffs = np.asarray(input_signal_totals[decoder_train_trial_nums[0]:decoder_train_trial_nums[1]])
 	test_diffs = np.asarray(input_signal_totals[decoder_test_trial_nums[0]:decoder_test_trial_nums[1]])
