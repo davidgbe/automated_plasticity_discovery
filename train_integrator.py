@@ -80,7 +80,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 1000
 INPUT_BLOCK_DURATION = 10e-3
 N_PAIRWISE_RULES_PER_TYPE = 12 * 2
-N_SUMMED_WEIGHT_RULES_PER_TYPE = 6
+N_SUMMED_WEIGHT_RULES_PER_TYPE = 4
 N_THREE_FACTOR_RULES_PER_TYPE = 8
 N_RULES = 3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE) + 2 * N_THREE_FACTOR_RULES_PER_TYPE
 N_TIMECONSTS = 12 + 32
@@ -104,7 +104,7 @@ t = np.linspace(0, T, int(T / dt))
 t_test = np.linspace(0, T_TEST, int(T_TEST / dt))
 n_e_pool = args.cell_type_1_size # Number excitatory cells in sequence (also length of sequence)
 n_e_side = args.cell_type_1_size
-n_e = n_e_pool + 2 * n_e_side
+n_e = n_e_pool + 2 * n_e_side + 1
 n_i = 1 # Number inhibitory cells
 v_thresh_e = 0.1
 v_thresh_i = 0
@@ -143,11 +143,9 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$w \tilde{x} \, y$',
 
 	r'$\sum_k w_{kj}$',
-	r'$(\sum_k w_{kj})^2$',
-	r'$(\sum_k w_{kj})^3$',
+	r'$w \sum_k w_{kj}$',
 	r'$\sum_k w_{ik}$',
-	r'$(\sum_k w_{ik})^2$',
-	r'$(\sum_k w_{ik})^3$',
+	r'$w \sum_k w_{ik}$',
 ]
 
 rule_names = [
@@ -277,7 +275,7 @@ def make_network():
 	if args.struct_prior == 'hard_coded':
 		return make_hardcoded_network()
 
-	w_initial = np.zeros((n_e_pool + 2 * n_e_side + n_i, n_e_pool + 2 * n_e_side + n_i))
+	w_initial = np.zeros((n_e_pool + 2 * n_e_side + 1+ n_i, n_e_pool + 2 * n_e_side + 1 + n_i))
 
 	# sparsify e --> e connectivity to see in ring can be learned on top of heterogenous connectivity
 	if args.struct_prior != 'seq':
@@ -290,6 +288,10 @@ def make_network():
 		# define connectivity from HR to HD neurons as "shift" matrix
 		w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=args.HR_to_HD_width, ring=init_ring), 0)
 		w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool *  np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=-1 * args.HR_to_HD_width, ring=init_ring), 0)
+		
+		input_size = args.input_size
+		input_slice = slice(int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
+		w_initial[input_slice, n_e_pool + 2 * n_e_side] = w_side_pool
 
 		# define connectivity from HD to HR as inhibiting all but the corresponding group along the diagonal
 		left_input_cells = w_pool_side * (1 - (create_shift_matrix(n_e_side, k=args.HD_to_HR_width, ring=init_ring) + create_shift_matrix(n_e_side, k=-1 * args.HD_to_HR_width, ring=init_ring)))
@@ -601,14 +603,12 @@ def simulate_single_network(index, x, train, save_paths=None):
 			running_input_sums[j] += filtered_input_to_sum[j]
 
 		r_in_spks = np.zeros((len(t_for_iter), n_e_pool + 2 * n_e_side + n_i))
-		input_size = args.input_size
-		input_slice = slice(int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
 		if bool(args.bump_init):
 			# r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), input_size))
 			# replace poisson-driven input with something less stochastic
 			bump_start = int(args.bump_init_onset / dt)
 			bump_end = int((args.bump_init_onset + 10e-3) / dt)
-			r_in_spks[bump_start:bump_end, input_slice] = args.bump_amp * np.ones((int(10e-3/dt), input_size),)
+			r_in_spks[bump_start:bump_end, n_e_pool + 2 * n_e_side] = args.bump_amp * np.ones((int(10e-3/dt),),)
 
 		r_in_spks[input_start:input_spks.shape[0] + decoder_lag + input_start, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
 		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)

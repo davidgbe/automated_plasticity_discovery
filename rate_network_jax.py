@@ -60,8 +60,7 @@ def compute_row_or_column_sum_and_exp(W, axis):
 
     return jnp.array([
         W_sum,
-        jnp.power(W_sum, 2),
-        jnp.power(W_sum, 3),
+        W_sum,
     ])
 
 
