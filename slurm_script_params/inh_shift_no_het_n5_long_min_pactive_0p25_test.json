@@ -3,48 +3,12 @@
     "partition": "ckpt-all",
     "seed": 2000,
     "inh_het": 0,
-    "time": 0.3,
+    "time": 1.0,
     "time_input": 0.27,
-    "title": "n5_short_min_pactive_0p25_test_000672",
+    "title": "n5_long_min_pactive_0p25_test_000683",
     "bump_amp": 0.15,
     "bump_init_onset": 0.01,
     "p_active_floor": 0.25,
-    "root_file_name": "n5_short_min_pactive_0p25_0.3_inp_0.27_het_0_shift_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8002_2025-12-02_16:48:38.316655_run_000672"
-  },
-  {
-    "partition": "ckpt-all",
-    "seed": 2000,
-    "inh_het": 0,
-    "time": 0.3,
-    "time_input": 0.27,
-    "title": "n5_short_min_pactive_0p25_test_000677",
-    "bump_amp": 0.15,
-    "bump_init_onset": 0.01,
-    "p_active_floor": 0.25,
-    "root_file_name": "n5_short_min_pactive_0p25_0.3_inp_0.27_het_0_shift_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8007_2025-12-02_16:48:38.318552_run_000677"
-  },
-  {
-    "partition": "ckpt-all",
-    "seed": 2000,
-    "inh_het": 0,
-    "time": 0.3,
-    "time_input": 0.27,
-    "title": "n5_short_min_pactive_0p25_test_000678",
-    "bump_amp": 0.15,
-    "bump_init_onset": 0.01,
-    "p_active_floor": 0.25,
-    "root_file_name": "n5_short_min_pactive_0p25_0.3_inp_0.27_het_0_shift_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8008_2025-12-02_16:48:37.677239_run_000678"
-  },
-  {
-    "partition": "ckpt-all",
-    "seed": 2000,
-    "inh_het": 0,
-    "time": 0.3,
-    "time_input": 0.27,
-    "title": "n5_short_min_pactive_0p25_test_000679",
-    "bump_amp": 0.15,
-    "bump_init_onset": 0.01,
-    "p_active_floor": 0.25,
-    "root_file_name": "n5_short_min_pactive_0p25_0.3_inp_0.27_het_0_shift_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8009_2025-12-02_16:48:37.881489_run_000679"
+    "root_file_name": "n5_long_min_pactive_0p25_1.0_inp_0.27_het_0_shift_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8003_2025-12-02_16:50:15.248752_run_000683"
   }
 ]
