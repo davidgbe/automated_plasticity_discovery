@@ -55,25 +55,19 @@ delta_W_ij_two_factor = jax.vmap(
 
 # SUMMED WEIGHT BOUND RULE LOGIC
 
-def compute_row_or_column_sum_and_exp(W, axis):
-    W_sum = jnp.sum(W, axis=axis)
-
-    return jnp.array([
-        W_sum,
-        jnp.power(W_sum, 2),
-        jnp.power(W_sum, 3),
-    ])
-
-
 @partial(jax.jit, static_argnames=['W_shape_1', 'W_shape_2'])
-def _delta_W_ij_summed_weight_rules(W, c, W_shape_1, W_shape_2): # c, W_shape_1, W_shape_2
-    delta_w_incoming = compute_row_or_column_sum_and_exp(W, 0)
-    delta_w_outgoing = compute_row_or_column_sum_and_exp(W, 1)
+def delta_W_ij_summed_weight_rules(W, c, W_shape_1, W_shape_2): # c, W_shape_1, W_shape_2
+    delta_w_incoming = jnp.sum(W, axis=0)[None, :]
+    delta_w_outgoing = jnp.sum(W, axis=1)[:, None]
 
-    delta_w =  c.reshape(c.shape[0], 1, 1) * jnp.concatenate([
-        jnp.repeat(delta_w_incoming[:, None, :], repeats=W_shape_1, axis=1),
-        jnp.repeat(delta_w_outgoing[..., None], repeats=W_shape_2, axis=2)
+    stacked_deltas = jnp.array([
+        jnp.repeat(delta_w_incoming, repeats=W_shape_1, axis=0),
+        jnp.repeat(delta_w_outgoing, repeats=W_shape_2, axis=2),
+        delta_w_incoming * W,
+        delta_w_outgoing * W,
     ])
+
+    delta_w =  c.reshape(c.shape[0], 1, 1) * stacked_deltas
 
     return delta_w.sum(axis=0), jnp.abs(delta_w).sum()
 
@@ -185,7 +179,7 @@ def learning_dynamics(
     delta_syn_11_two_factor = delta_syn_11_two_factor_raw.sum()
     del delta_syn_11_two_factor_raw
 
-    delta_W_11_summed_weight, delta_syn_11_summed_weight_raw = _delta_W_ij_summed_weight_rules(
+    delta_W_11_summed_weight, delta_syn_11_summed_weight_raw = delta_W_ij_summed_weight_rules(
         w[:n_1, :n_1] * SUMMED_WEIGHT_RESCALING,
         c[n_pairwise_rules:n_pairwise_rules + n_summed_weight_rules],
         W_shape_1=n_1,
@@ -232,7 +226,7 @@ def learning_dynamics(
     delta_syn_21_two_factor = delta_syn_21_two_factor_raw.sum()
     del delta_syn_21_two_factor_raw
 
-    delta_W_21_summed_weight, delta_syn_21_summed_weight_raw = _delta_W_ij_summed_weight_rules(
+    delta_W_21_summed_weight, delta_syn_21_summed_weight_raw = delta_W_ij_summed_weight_rules(
         w[n_1:n_plastic, :n_1] * SUMMED_WEIGHT_RESCALING ,
         c[coef_offset + n_pairwise_rules:coef_offset + n_pairwise_rules + n_summed_weight_rules],
         W_shape_1=n_2,
@@ -261,7 +255,7 @@ def learning_dynamics(
     delta_syn_12_two_factor =  delta_syn_12_two_factor_raw.sum()
     del delta_syn_12_two_factor_raw
 
-    delta_W_12_summed_weight, delta_syn_12_summed_weight_raw = _delta_W_ij_summed_weight_rules(
+    delta_W_12_summed_weight, delta_syn_12_summed_weight_raw = delta_W_ij_summed_weight_rules(
         w[:n_1, n_1:n_plastic] * SUMMED_WEIGHT_RESCALING,
         c[2 * coef_offset + n_pairwise_rules:2 * coef_offset + n_pairwise_rules + n_summed_weight_rules],
         W_shape_1=n_1,

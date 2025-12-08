@@ -80,7 +80,7 @@ FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 1000
 INPUT_BLOCK_DURATION = 10e-3
 N_PAIRWISE_RULES_PER_TYPE = 12 * 2
-N_SUMMED_WEIGHT_RULES_PER_TYPE = 6
+N_SUMMED_WEIGHT_RULES_PER_TYPE = 4
 N_THREE_FACTOR_RULES_PER_TYPE = 8
 N_RULES = 3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE) + 2 * N_THREE_FACTOR_RULES_PER_TYPE
 N_TIMECONSTS = 12 + 32
@@ -143,11 +143,9 @@ rule_names = [ # Define labels for all rules to be run during simulations
 	r'$w \tilde{x} \, y$',
 
 	r'$\sum_k w_{kj}$',
-	r'$(\sum_k w_{kj})^2$',
-	r'$(\sum_k w_{kj})^3$',
+	r'$w \sum_k w_{kj}$',
 	r'$\sum_k w_{ik}$',
-	r'$(\sum_k w_{ik})^2$',
-	r'$(\sum_k w_{ik})^3$',
+	r'$w \sum_k w_{ik}$',
 ]
 
 rule_names = [
