@@ -59,23 +59,22 @@ def compute_row_or_column_sum_and_exp(W, axis):
     W_sum = jnp.sum(W, axis=axis)
 
     return jnp.array([
-        W_sum,
-        jnp.power(W_sum, 2),
-        jnp.power(W_sum, 3),
+        W_sum * jnp.ones_like(W),
+        W_sum * W,
     ])
 
 
-@partial(jax.jit, static_argnames=['W_shape_1', 'W_shape_2'])
-def _delta_W_ij_summed_weight_rules(W, c, W_shape_1, W_shape_2): # c, W_shape_1, W_shape_2
+@partial(jax.jit])
+def _delta_W_ij_summed_weight_rules(W, c): # c, W_shape_1, W_shape_2
     delta_w_incoming = compute_row_or_column_sum_and_exp(W, 0)
     delta_w_outgoing = compute_row_or_column_sum_and_exp(W, 1)
 
     delta_w =  c.reshape(c.shape[0], 1, 1) * jnp.concatenate([
-        jnp.repeat(delta_w_incoming[:, None, :], repeats=W_shape_1, axis=1),
-        jnp.repeat(delta_w_outgoing[..., None], repeats=W_shape_2, axis=2)
-    ])
+        delta_w_incoming,
+        delta_w_outgoing,
+    ], axis=0)
 
-    return delta_w.sum(axis=0), jnp.abs(delta_w).sum()
+    return delta_w.sum(), jnp.abs(delta_w).sum()
 
 # THREE FACTOR RULE LOGIC
 
@@ -96,7 +95,7 @@ def _delta_W_ij_three_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j, f_i):
 @jax.jit
 def _delta_W_ij_three_factor(w_ij, r_i, r_j, r_exp_i, r_exp_j, f_i, c):
     delta_w = c * _delta_W_ij_three_factor_rules(w_ij, r_i, r_j, r_exp_i, r_exp_j, f_i)
-    return delta_w.sum(), jnp.abs(delta_w).sum()
+    return delta_w.sum(axis=0), jnp.abs(delta_w).sum()
 
 
 delta_W_ij_three_factor = jax.vmap(
