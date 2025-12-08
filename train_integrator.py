@@ -716,10 +716,10 @@ def simulate_single_network(index, x, train, save_paths=None):
 		np.save(inputs_file_name, np.asarray(all_inputs))
 		# save sampled target values
 		targets_file_name = os.path.join(save_paths['targets_path'], f'net_{zero_pad(index, 3)}.npy')
-		np.save(targets_file_name, np.assarray(y_test))
+		np.save(targets_file_name, np.asarray(y_test))
 		# save predictions at sampled times
 		predictions_file_name = os.path.join(save_paths['predictions_path'], f'net_{zero_pad(index, 3)}.npy')
-		np.save(predictions_file_name, np.assarray(y_test_pred))
+		np.save(predictions_file_name, np.asarray(y_test_pred))
 	else:
 		normed_loss, _, _ = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
 
