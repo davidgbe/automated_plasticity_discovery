@@ -62,7 +62,7 @@ def delta_W_ij_summed_weight_rules(W, c, W_shape_1, W_shape_2): # c, W_shape_1, 
 
     stacked_deltas = jnp.array([
         jnp.repeat(delta_w_incoming, repeats=W_shape_1, axis=0),
-        jnp.repeat(delta_w_outgoing, repeats=W_shape_2, axis=2),
+        jnp.repeat(delta_w_outgoing, repeats=W_shape_2, axis=1),
         delta_w_incoming * W,
         delta_w_outgoing * W,
     ])
