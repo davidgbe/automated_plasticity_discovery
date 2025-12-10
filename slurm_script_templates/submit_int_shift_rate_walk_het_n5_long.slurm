@@ -45,7 +45,6 @@ python train_integrator.py \
     --time_input {{ time_input }} \
     --bump_amp {{ bump_amp }} \
     --bump_init_onset {{ bump_init_onset }} \
-    --p_active_floor {{ p_active_floor }}
 
 deactivate
 
