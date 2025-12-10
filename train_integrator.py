@@ -56,8 +56,7 @@ parser.add_argument('--HD_to_HR_width', type=int, default=2)
 parser.add_argument('--input_size', type=int, default=3)
 parser.add_argument('--pop_size', type=int, default=30)
 parser.add_argument('--p_active_floor', type=float, default=0.1)
-
-
+parser.add_argument('--input_block_duration', type=float, default=5e-3)
 
 
 args = parser.parse_args()
@@ -78,7 +77,7 @@ ACTIVITY_LOSS_COEF = args.asp
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 1000
-INPUT_BLOCK_DURATION = 5e-3
+INPUT_BLOCK_DURATION = args.input_block_duration # 5e-3 default, make mutable
 N_PAIRWISE_RULES_PER_TYPE = 12 * 2
 N_SUMMED_WEIGHT_RULES_PER_TYPE = 4
 N_THREE_FACTOR_RULES_PER_TYPE = 8
