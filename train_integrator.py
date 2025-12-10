@@ -428,7 +428,8 @@ def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, 
 				elif l_idx >= (r.shape[1] - n_i):
 					axs[4 * i + plotted_trial_count][1].plot(np.arange(len(r[:, l_idx])), r[:, l_idx], c='black') # graph inh activity
 
-			axs[4 * i + plotted_trial_count][0].matshow(r[:, :n_e_pool + 2 * n_e_side].T, aspect='auto')
+			cbar = axs[4 * i + plotted_trial_count][0].matshow(r[:, :n_e_pool + 2 * n_e_side].T, aspect='auto')
+			fig.colorbar(cbar)
 			plotted_trial_count += 1
 
 		vbound = np.max(w)
