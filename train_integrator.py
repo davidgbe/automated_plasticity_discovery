@@ -600,7 +600,7 @@ def simulate_single_network(index, x, train, save_paths=None):
                         inputs[k : k + input_block_timesteps,  n_e_side : 2 * n_e_side] = input_rate[1]
                 
                 cumsum_inputs = np.cumsum(inputs, axis=0)
-                running_input_sums = (cumsum_inputs[:, n_e_side] - cumsum_inputs[:, 0]) / (inputs.shape[0])
+                running_input_sums = (cumsum_inputs[:, n_e_side] - cumsum_inputs[:, 0])
                 
                 r_in = np.zeros((len(t_for_iter), n_e_pool + 2 * n_e_side + n_i))
                 input_size = args.input_size
@@ -613,7 +613,7 @@ def simulate_single_network(index, x, train, save_paths=None):
                         r_in[bump_start:bump_end, input_slice] = args.bump_amp * np.ones((int(10e-3/dt), input_size),)
 
                 r_in[input_start:inputs.shape[0] + decoder_lag + input_start, n_e_pool:n_e_pool + 2 * n_e_side] = inputs
-                input_signal_totals.append(running_input_sums / max_input_len)
+                input_signal_totals.append(running_input_sums)
 
                 r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
                 r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = INPUT_AMP * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
@@ -659,7 +659,7 @@ def simulate_single_network(index, x, train, save_paths=None):
                 if not args.train:
                         all_w.append(w)
                         all_r.append(r)
-                        all_inputs.append(filtered_input_to_sum_per_neuron)
+                        all_inputs.append(inputs)
 
                 if (np.isnan(r).any()
                         or (np.abs(w_out) > 100).any()
