@@ -78,7 +78,7 @@ ACTIVITY_LOSS_COEF = args.asp
 CHANGE_PROB_PER_ITER = args.syn_change_prob #0.0007
 FRAC_INPUTS_FIXED = args.frac_inputs_fixed
 INPUT_RATE_PER_CELL = 1000
-INPUT_BLOCK_DURATION = 10e-3
+INPUT_BLOCK_DURATION = 5e-3
 N_PAIRWISE_RULES_PER_TYPE = 12 * 2
 N_SUMMED_WEIGHT_RULES_PER_TYPE = 4
 N_THREE_FACTOR_RULES_PER_TYPE = 8
@@ -87,6 +87,9 @@ N_TIMECONSTS = 12 + 32
 TEST_REPEATS = 10
 ROOT_FILE_NAME = args.root_file_name
 INPUT_AMP = 0.1 # if args.struct_prior != '2D' else 0.02
+INPUT_RATE_LOW = 5
+INPUT_RATE_HIGH = 15
+STD_INPUT_RATE = 1.5
 
 T = args.time # Total duration of one network simulation
 T_TEST = args.time_test
@@ -566,9 +569,9 @@ def simulate_single_network(index, x, train, save_paths=None):
 	all_syn_factors = []
 
 	if args.train:
-		p_active = args.p_active_floor + (1.0 - args.p_active_floor) * index / BATCH_SIZE
+		mean_input_rate = INPUT_RATE_LOW + (INPUT_RATE_HIGH - INPUT_RATE_LOW) * index / BATCH_SIZE
 	else:
-		p_active = args.p_active_floor + (1.0 - args.p_active_floor) * index / TEST_REPEATS
+		mean_input_rate = INPUT_RATE_LOW + (INPUT_RATE_HIGH - INPUT_RATE_LOW) * index / TEST_REPEATS
 		
 	n_input_blocks = max_input_len // input_block_timesteps
 
@@ -577,32 +580,25 @@ def simulate_single_network(index, x, train, save_paths=None):
 		# Define input for activation of the network
 
 		if i >= decoder_train_trial_nums[0]:
-			input_spks = np.zeros((decoding_len_test + decoder_lag, 2 * n_e_side))
+			inputs = np.zeros((decoding_len_test + decoder_lag, 2 * n_e_side))
 			t_for_iter = t_test
 		else:
-			input_spks = np.zeros((decoding_len_self_org + decoder_lag, 2 * n_e_side))
+			inputs = np.zeros((decoding_len_self_org + decoder_lag, 2 * n_e_side))
 			t_for_iter = t
 		
-		inputs = np.random.choice([0, -1, 1], size=n_input_blocks, p=[1-p_active, p_active/2, p_active/2])
+		input_rates = np.random.normal(loc=mean_input_rate, size=(n_input_blocks, 2), scale=STD_INPUT_RATE)
 
-		for i_input_block, input_flag in enumerate(inputs):
+		for i_input_block in np.arange(input_rates.shape[0]):
+			input_rate = input_rates[i_input_block, :]
 			k = i_input_block * input_block_timesteps
-			if input_flag == -1:
-				input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)), n_e_side, axis=1)
-				input_spks[k : k + input_block_timesteps, :n_e_side] = input_block
-			elif input_flag == 1:
-				input_block = np.repeat(np.random.poisson(lam=2 * INPUT_RATE_PER_CELL * dt, size=(input_block_timesteps, 1)), n_e_side, axis=1)
-				input_spks[k : k + input_block_timesteps, n_e_side : 2 * n_e_side] = input_block
 
-		filtered_input_to_sum_per_neuron = poisson_arrivals_to_inputs(input_spks, 3e-3)
-		filtered_input_to_sum = filtered_input_to_sum_per_neuron[:, n_e_side:2 * n_e_side].sum(axis=1) - filtered_input_to_sum_per_neuron[:, :n_e_side].sum(axis=1)
-		running_input_sums = np.zeros_like(filtered_input_to_sum)
-		for j in range(len(running_input_sums)):
-			if j > 0:
-				running_input_sums[j] += running_input_sums[j-1]
-			running_input_sums[j] += filtered_input_to_sum[j]
+			inputs[k : k + input_block_timesteps, :n_e_side] = input_rate[0]
+			inputs[k : k + input_block_timesteps,  n_e_side : 2 * n_e_side] = input_rate[1]
 
-		r_in_spks = np.zeros((len(t_for_iter), n_e_pool + 2 * n_e_side + n_i))
+		cumsum_inputs = np.cumsum(inputs, axis=0)
+		running_input_sums = cumsum_inputs[:, 1] - cumsum_inputs[:, 0]
+
+		r_in = np.zeros((len(t_for_iter), n_e_pool + 2 * n_e_side + n_i))
 		input_size = args.input_size
 		input_slice = slice(int((n_e_pool - input_size)/ 2), int((n_e_pool + input_size)/ 2))
 		if bool(args.bump_init):
@@ -610,18 +606,16 @@ def simulate_single_network(index, x, train, save_paths=None):
 			# replace poisson-driven input with something less stochastic
 			bump_start = int(args.bump_init_onset / dt)
 			bump_end = int((args.bump_init_onset + 10e-3) / dt)
-			r_in_spks[bump_start:bump_end, input_slice] = args.bump_amp * np.ones((int(10e-3/dt), input_size),)
+			r_in[bump_start:bump_end, input_slice] = args.bump_amp * np.ones((int(10e-3/dt), input_size),)
 
-		r_in_spks[input_start:input_spks.shape[0] + decoder_lag + input_start, n_e_pool:n_e_pool + 2 * n_e_side] = input_spks
-		r_in = poisson_arrivals_to_inputs(r_in_spks, 3e-3)
-		
+		r_in[input_start:inputs.shape[0] + decoder_lag + input_start, n_e_pool:n_e_pool + 2 * n_e_side] = inputs
 		input_signal_totals.append(running_input_sums / max_input_len)
 
 		r_in[:, :n_e_pool]  = 0.25 * r_in[:, :n_e_pool]
 		r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)] = INPUT_AMP * r_in[:, n_e_pool:(n_e_pool + 2 * n_e_side)]
 
 		# zero out noise contribution to pool neurons, as this makes the task quite a bit harder
-		r_in[:, :n_e_pool] += (0 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(len(t_for_iter), n_e_pool)), 3e-3))
+		# r_in[:, :n_e_pool] += (0 * poisson_arrivals_to_inputs(np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(len(t_for_iter), n_e_pool)), 3e-3))
 		# add DC input
 		r_in[int(args.dc_input_onset/dt):, :n_e_pool] += args.dc_input
 
