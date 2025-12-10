@@ -87,9 +87,9 @@ N_TIMECONSTS = 12 + 32
 TEST_REPEATS = 10
 ROOT_FILE_NAME = args.root_file_name
 INPUT_AMP = 0.1 # if args.struct_prior != '2D' else 0.02
-INPUT_RATE_LOW = 5
-INPUT_RATE_HIGH = 15
-STD_INPUT_RATE = 1.5
+INPUT_RATE_LOW = 2
+INPUT_RATE_HIGH = 6
+STD_INPUT_RATE = 0.5
 
 T = args.time # Total duration of one network simulation
 T_TEST = args.time_test
@@ -587,7 +587,10 @@ def simulate_single_network(index, x, train, save_paths=None):
 			inputs = np.zeros((decoding_len_self_org + decoder_lag, 2 * n_e_side))
 			t_for_iter = t
 		
-		input_rates = np.random.normal(loc=mean_input_rate, size=(n_input_blocks, 2), scale=STD_INPUT_RATE)
+		input_rates = np.clip(
+			np.random.normal(loc=mean_input_rate, size=(n_input_blocks, 2), scale=STD_INPUT_RATE),
+			0,
+		)
 
 		for i_input_block in np.arange(input_rates.shape[0]):
 			input_rate = input_rates[i_input_block, :]
@@ -598,6 +601,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 
 		cumsum_inputs = np.cumsum(inputs, axis=0)
 		running_input_sums = cumsum_inputs[:, 1] - cumsum_inputs[:, 0]
+		print(running_input_sums)
 
 		r_in = np.zeros((len(t_for_iter), n_e_pool + 2 * n_e_side + n_i))
 		input_size = args.input_size
