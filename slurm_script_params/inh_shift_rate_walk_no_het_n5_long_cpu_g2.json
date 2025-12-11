@@ -1,0 +1,123 @@
+[
+  {
+    "partition": "cpu-g2-mem2x",
+    "seed": 8000,
+    "run_num": "000990",
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "rate_walk_n5_long",
+    "std_expl": 0.001,
+    "bump_amp": 0.15,
+    "bump_init_onset": 0.01
+  },
+  {
+    "partition": "cpu-g2-mem2x",
+    "seed": 8001,
+    "run_num": "000991",
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "rate_walk_n5_long",
+    "std_expl": 0.001,
+    "bump_amp": 0.15,
+    "bump_init_onset": 0.01
+  },
+  {
+    "partition": "cpu-g2-mem2x",
+    "seed": 8002,
+    "run_num": "000992",
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "rate_walk_n5_long",
+    "std_expl": 0.001,
+    "bump_amp": 0.15,
+    "bump_init_onset": 0.01
+  },
+  {
+    "partition": "cpu-g2-mem2x",
+    "seed": 8003,
+    "run_num": "000993",
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "rate_walk_n5_long",
+    "std_expl": 0.001,
+    "bump_amp": 0.15,
+    "bump_init_onset": 0.01
+  },
+  {
+    "partition": "cpu-g2-mem2x",
+    "seed": 8004,
+    "run_num": "000994",
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "rate_walk_n5_long",
+    "std_expl": 0.001,
+    "bump_amp": 0.15,
+    "bump_init_onset": 0.01
+  },
+
+  {
+    "partition": "cpu-g2",
+    "seed": 8005,
+    "run_num": "000995",
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "rate_walk_n5_long",
+    "std_expl": 0.001,
+    "bump_amp": 0.15,
+    "bump_init_onset": 0.01
+  },
+  {
+    "partition": "cpu-g2",
+    "seed": 8006,
+    "run_num": "000996",
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "rate_walk_n5_long",
+    "std_expl": 0.001,
+    "bump_amp": 0.15,
+    "bump_init_onset": 0.01
+  },
+  {
+    "partition": "cpu-g2",
+    "seed": 8007,
+    "run_num": "000997",
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "rate_walk_n5_long",
+    "std_expl": 0.001,
+    "bump_amp": 0.15,
+    "bump_init_onset": 0.01
+  },
+  {
+    "partition": "cpu-g2",
+    "seed": 8008,
+    "run_num": "000998",
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "rate_walk_n5_long",
+    "std_expl": 0.001,
+    "bump_amp": 0.15,
+    "bump_init_onset": 0.01
+  },
+  {
+    "partition": "cpu-g2",
+    "seed": 8009,
+    "run_num": "000999",
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "rate_walk_n5_long",
+    "std_expl": 0.001,
+    "bump_amp": 0.15,
+    "bump_init_onset": 0.01
+  }
+]
