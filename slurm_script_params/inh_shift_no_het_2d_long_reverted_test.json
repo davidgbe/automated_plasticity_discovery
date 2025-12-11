@@ -1,0 +1,24 @@
+[
+  {
+    "partition": "ckpt-all",
+    "seed": 2000,
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "2D_long_reverted_test_000866",
+    "pop_size": 30,
+    "std_expl": 0.001,
+    "root_file_name": "2D_long_reverted_time_1.0_inp_0.27_het_0_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8006_2025-12-08_00:43:52.554505_run_000866"
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 2000,
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "2D_long_reverted_test_000867",
+    "pop_size": 30,
+    "std_expl": 0.001,
+    "root_file_name": "2D_long_reverted_time_1.0_inp_0.27_het_0_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8007_2025-12-08_00:43:52.554512_run_000867"
+  }
+]

@@ -2,85 +2,34 @@
   {
     "partition": "ckpt-all",
     "seed": 2000,
-    "run_num": "000570",
     "inh_het": 0.2,
     "time": 0.3,
     "time_input": 0.27,
-    "title": "2D_short_reverted_test_000561",
+    "title": "2D_short_reverted_test_000755",
     "pop_size": 30,
     "std_expl": 0.001,
-    "root_file_name": "2D_short_reverted_time_0.3_inp_0.27_het_0.2_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8001_2025-11-27_11:35:18.795081_run_000561"
+    "root_file_name": "2D_short_reverted_input_time_0.3_inp_0.27_het_0.2_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8005_2025-12-08_00:39:51.663809_run_000755"
   },
   {
     "partition": "ckpt-all",
     "seed": 2000,
-    "run_num": "000571",
     "inh_het": 0.2,
     "time": 0.3,
     "time_input": 0.27,
-    "title": "2D_short_reverted_test_000562",
+    "title": "2D_short_reverted_test_000756",
     "pop_size": 30,
     "std_expl": 0.001,
-    "root_file_name": "2D_short_reverted_time_0.3_inp_0.27_het_0.2_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8002_2025-11-27_11:35:18.795083_run_000562"
+    "root_file_name": "2D_short_reverted_input_time_0.3_inp_0.27_het_0.2_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8006_2025-12-08_00:39:52.376865_run_000756"
   },
   {
     "partition": "ckpt-all",
     "seed": 2000,
-    "run_num": "000572",
     "inh_het": 0.2,
     "time": 0.3,
     "time_input": 0.27,
-    "title": "2D_short_reverted_test_000563",
+    "title": "2D_short_reverted_test_000758",
     "pop_size": 30,
     "std_expl": 0.001,
-    "root_file_name": "2D_short_reverted_time_0.3_inp_0.27_het_0.2_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8003_2025-11-27_11:35:19.145924_run_000563"
-  },
-  {
-    "partition": "ckpt-all",
-    "seed": 2000,
-    "run_num": "000573",
-    "inh_het": 0.2,
-    "time": 0.3,
-    "time_input": 0.27,
-    "title": "2D_short_reverted_test_000565",
-    "pop_size": 30,
-    "std_expl": 0.001,
-    "root_file_name": "2D_short_reverted_time_0.3_inp_0.27_het_0.2_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8005_2025-11-27_11:35:22.320036_run_000565"
-  },
-  {
-    "partition": "ckpt-all",
-    "seed": 2000,
-    "run_num": "000574",
-    "inh_het": 0.2,
-    "time": 0.3,
-    "time_input": 0.27,
-    "title": "2D_short_reverted_test_000566",
-    "pop_size": 30,
-    "std_expl": 0.001,
-    "root_file_name": "2D_short_reverted_time_0.3_inp_0.27_het_0.2_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8006_2025-11-27_11:35:22.320040_run_000566"
-  },
-  {
-    "partition": "ckpt-all",
-    "seed": 2000,
-    "run_num": "000575",
-    "inh_het": 0.2,
-    "time": 0.3,
-    "time_input": 0.27,
-    "title": "2D_short_reverted_test_000567",
-    "pop_size": 30,
-    "std_expl": 0.001,
-    "root_file_name": "2D_short_reverted_time_0.3_inp_0.27_het_0.2_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8007_2025-11-27_11:35:22.320039_run_000567"
-  },
-  {
-    "partition": "ckpt-all",
-    "seed": 2000,
-    "run_num": "000576",
-    "inh_het": 0.2,
-    "time": 0.3,
-    "time_input": 0.27,
-    "title": "2D_short_reverted_test_000568",
-    "pop_size": 30,
-    "std_expl": 0.001,
-    "root_file_name": "2D_short_reverted_time_0.3_inp_0.27_het_0.2_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8008_2025-11-27_11:35:22.320042_run_000568"
+    "root_file_name": "2D_short_reverted_input_time_0.3_inp_0.27_het_0.2_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8008_2025-12-08_00:39:55.972538_run_000758"
   }
 ]

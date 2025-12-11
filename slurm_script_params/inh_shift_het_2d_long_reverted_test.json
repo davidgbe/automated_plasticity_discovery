@@ -1,0 +1,14 @@
+[
+  {
+    "partition": "ckpt-all",
+    "seed": 2000,
+    "run_num": "000808",
+    "inh_het": 0.2,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "2D_long_reverted_test_000808",
+    "pop_size": 30,
+    "std_expl": 0.001,
+    "root_file_name": "2D_long_reverted_time_1.0_inp_0.27_het_0.2_2D_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8008_2025-12-08_00:40:52.070684_run_000808"
+  }
+]
