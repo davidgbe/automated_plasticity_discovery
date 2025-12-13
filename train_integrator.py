@@ -594,9 +594,11 @@ def simulate_single_network(index, x, train, save_paths=None):
 				for i_input_block in np.arange(input_rates.shape[0]):
 						input_rate = input_rates[i_input_block, :]
 						k = i_input_block * input_block_timesteps
-
-						inputs[k : k + input_block_timesteps, :n_e_side] = input_rate[0]
-						inputs[k : k + input_block_timesteps,  n_e_side : 2 * n_e_side] = input_rate[1]
+						
+						if np.random.rand() > 0.5:
+							inputs[k : k + input_block_timesteps, :n_e_side] = input_rate[0]
+						else:
+							inputs[k : k + input_block_timesteps,  n_e_side : 2 * n_e_side] = input_rate[1]
 				
 				cumsum_inputs = np.cumsum(inputs, axis=0)
 				running_input_sums = (cumsum_inputs[:, n_e_side] - cumsum_inputs[:, 0])
