@@ -2,11 +2,12 @@
   {
     "partition": "ckpt-all",
     "seed": 8000,
-    "run_num": "000970",
+    "run_num": "001010",
     "inh_het": 0.2,
     "time": 1.0,
     "time_input": 0.27,
-    "title": "rate_walk_n5_long",
+    "input_block_duration": 0.03,
+    "title": "rate_walk_n5_alt",
     "std_expl": 0.001,
     "bump_amp": 0.15,
     "bump_init_onset": 0.01
@@ -14,11 +15,12 @@
   {
     "partition": "ckpt-all",
     "seed": 8001,
-    "run_num": "000971",
+    "run_num": "001011",
     "inh_het": 0.2,
     "time": 1.0,
     "time_input": 0.27,
-    "title": "rate_walk_n5_long",
+    "input_block_duration": 0.03,
+    "title": "rate_walk_n5_alt",
     "std_expl": 0.001,
     "bump_amp": 0.15,
     "bump_init_onset": 0.01
@@ -26,11 +28,12 @@
   {
     "partition": "ckpt-all",
     "seed": 8002,
-    "run_num": "000972",
+    "run_num": "001012",
     "inh_het": 0.2,
     "time": 1.0,
     "time_input": 0.27,
-    "title": "rate_walk_n5_long",
+    "input_block_duration": 0.03,
+    "title": "rate_walk_n5_alt",
     "std_expl": 0.001,
     "bump_amp": 0.15,
     "bump_init_onset": 0.01
@@ -38,11 +41,12 @@
   {
     "partition": "ckpt-all",
     "seed": 8003,
-    "run_num": "000973",
+    "run_num": "001013",
     "inh_het": 0.2,
     "time": 1.0,
     "time_input": 0.27,
-    "title": "rate_walk_n5_long",
+    "input_block_duration": 0.03,
+    "title": "rate_walk_n5_alt",
     "std_expl": 0.001,
     "bump_amp": 0.15,
     "bump_init_onset": 0.01
@@ -50,11 +54,12 @@
   {
     "partition": "ckpt-all",
     "seed": 8004,
-    "run_num": "000974",
+    "run_num": "001014",
     "inh_het": 0.2,
     "time": 1.0,
     "time_input": 0.27,
-    "title": "rate_walk_n5_long",
+    "input_block_duration": 0.03,
+    "title": "rate_walk_n5_alt",
     "std_expl": 0.001,
     "bump_amp": 0.15,
     "bump_init_onset": 0.01
@@ -62,11 +67,12 @@
   {
     "partition": "ckpt-all",
     "seed": 8005,
-    "run_num": "000975",
+    "run_num": "001015",
     "inh_het": 0.2,
     "time": 1.0,
     "time_input": 0.27,
-    "title": "rate_walk_n5_long",
+    "input_block_duration": 0.03,
+    "title": "rate_walk_n5_alt",
     "std_expl": 0.001,
     "bump_amp": 0.15,
     "bump_init_onset": 0.01
@@ -74,11 +80,12 @@
   {
     "partition": "ckpt-all",
     "seed": 8006,
-    "run_num": "000976",
+    "run_num": "001016",
     "inh_het": 0.2,
     "time": 1.0,
     "time_input": 0.27,
-    "title": "rate_walk_n5_long",
+    "input_block_duration": 0.03,
+    "title": "rate_walk_n5_alt",
     "std_expl": 0.001,
     "bump_amp": 0.15,
     "bump_init_onset": 0.01
@@ -86,11 +93,12 @@
   {
     "partition": "ckpt-all",
     "seed": 8007,
-    "run_num": "000977",
+    "run_num": "001017",
     "inh_het": 0.2,
     "time": 1.0,
     "time_input": 0.27,
-    "title": "rate_walk_n5_long",
+    "input_block_duration": 0.03,
+    "title": "rate_walk_n5_alt",
     "std_expl": 0.001,
     "bump_amp": 0.15,
     "bump_init_onset": 0.01
@@ -98,11 +106,12 @@
   {
     "partition": "ckpt-all",
     "seed": 8008,
-    "run_num": "000978",
+    "run_num": "001018",
     "inh_het": 0.2,
     "time": 1.0,
     "time_input": 0.27,
-    "title": "rate_walk_n5_long",
+    "input_block_duration": 0.03,
+    "title": "rate_walk_n5_alt",
     "std_expl": 0.001,
     "bump_amp": 0.15,
     "bump_init_onset": 0.01
@@ -110,11 +119,12 @@
   {
     "partition": "ckpt-all",
     "seed": 8009,
-    "run_num": "000979",
+    "run_num": "001019",
     "inh_het": 0.2,
     "time": 1.0,
     "time_input": 0.27,
-    "title": "rate_walk_n5_long",
+    "input_block_duration": 0.03,
+    "title": "rate_walk_n5_alt",
     "std_expl": 0.001,
     "bump_amp": 0.15,
     "bump_init_onset": 0.01
