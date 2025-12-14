@@ -536,7 +536,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 	v_e = np.where(v_e > 0, v_e, 0)
 	v_thresh = np.concatenate([
 		v_e,
-		np.zeros((2 * n_e_pool,)),
+		np.zeros((2 * n_e_pool + 1,)),
 		v_thresh_i * np.ones((n_i,)),
 	])
 
