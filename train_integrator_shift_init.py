@@ -15,7 +15,7 @@ from scipy.sparse import csc_matrix
 from sklearn.linear_model import LinearRegression, Lasso
 from csv_reader import read_csv
 from csv_writer import write_csv
-from rate_network_jax import simulate
+from rate_network_jax_shift_init import simulate
 import pickle
 
 ### Parse arguments 
