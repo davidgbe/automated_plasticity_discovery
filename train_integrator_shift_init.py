@@ -368,7 +368,11 @@ def calc_loss(r : np.ndarray, train_diff_drives : np.ndarray, test_diff_drives :
 	reg = Lasso(alpha=0.05).fit(X_train, y_train)
 	loss = 1000 * (1 - reg.score(X_test, y_test))
 
-	return loss
+	if not args.train:
+		y_test_pred = reg.predict(X_test)
+		return loss, y_test_pred, y_test
+	else:
+		return loss, None, None
 
 
 def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, total_activity_penalties, train=True):
@@ -690,7 +694,14 @@ def simulate_single_network(index, x, train, save_paths=None):
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
+	train_diffs = np.asarray(input_signal_totals[decoder_train_trial_nums[0]:decoder_train_trial_nums[1]])
+	test_diffs = np.asarray(input_signal_totals[decoder_test_trial_nums[0]:decoder_test_trial_nums[1]])
+
+	rs_for_loss = np.stack(rs_for_loss)
+
 	if not args.train:
+		normed_loss, y_test_pred, y_test = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
+
 		# save weights
 		weight_file_name = os.path.join(save_paths['weight_path'], f'net_{zero_pad(index, 3)}.npy')
 		np.save(weight_file_name, np.asarray(all_w))
@@ -703,12 +714,14 @@ def simulate_single_network(index, x, train, save_paths=None):
 		# save inputs
 		inputs_file_name = os.path.join(save_paths['inputs_path'], f'net_{zero_pad(index, 3)}.npy')
 		np.save(inputs_file_name, np.asarray(all_inputs))
-
-	train_diffs = np.asarray(input_signal_totals[decoder_train_trial_nums[0]:decoder_train_trial_nums[1]])
-	test_diffs = np.asarray(input_signal_totals[decoder_test_trial_nums[0]:decoder_test_trial_nums[1]])
-
-	rs_for_loss = np.stack(rs_for_loss)
-	normed_loss = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
+		# save sampled target values
+		targets_file_name = os.path.join(save_paths['targets_path'], f'net_{zero_pad(index, 3)}.npy')
+		np.save(targets_file_name, np.asarray(y_test))
+		# save predictions at sampled times
+		predictions_file_name = os.path.join(save_paths['predictions_path'], f'net_{zero_pad(index, 3)}.npy')
+		np.save(predictions_file_name, np.asarray(y_test_pred))
+	else:
+		normed_loss, _, _ = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
 
 	print('single sim time: ', time.time() - start)
 	sys.stdout.flush()
@@ -970,12 +983,18 @@ if __name__ == '__main__':
 		os.mkdir(integrated_value_path)
 		inputs_path = os.path.join(out_dir, 'inputs')
 		os.mkdir(inputs_path)
+		targets_path = os.path.join(out_dir, 'targets')
+		os.mkdir(targets_path)
+		predictions_path = os.path.join(out_dir, 'predictions')
+		os.mkdir(predictions_path)
 		
 		save_paths = {
 			'weight_path': weight_path,
 			'activity_path': activity_path,
 			'integrated_value_path': integrated_value_path,
 			'inputs_path': inputs_path,
+			'targets_path': targets_path,
+			'predictions_path': predictions_path,
 		}
 
 		if args.struct_prior == 'hard_coded':
