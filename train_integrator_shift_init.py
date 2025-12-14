@@ -275,7 +275,7 @@ def make_network():
 	if args.struct_prior == 'hard_coded':
 		return make_hardcoded_network()
 
-	w_initial = np.zeros((n_e_pool + 2 * n_e_side + 1+ n_i, n_e_pool + 2 * n_e_side + 1 + n_i))
+	w_initial = np.zeros((n_e_pool + 2 * n_e_side + 1 + n_i, n_e_pool + 2 * n_e_side + 1 + n_i))
 
 	# sparsify e --> e connectivity to see in ring can be learned on top of heterogenous connectivity
 	if args.struct_prior != 'seq':
@@ -581,10 +581,10 @@ def simulate_single_network(index, x, train, save_paths=None):
 		# Define input for activation of the network
 
 		if i >= decoder_train_trial_nums[0]:
-			input_spks = np.zeros((decoding_len_test + decoder_lag, 2 * n_e_side))
+			input_spks = np.zeros((decoding_len_test + decoder_lag, 2 * n_e_side + 1))
 			t_for_iter = t_test
 		else:
-			input_spks = np.zeros((decoding_len_self_org + decoder_lag, 2 * n_e_side))
+			input_spks = np.zeros((decoding_len_self_org + decoder_lag, 2 * n_e_side + 1))
 			t_for_iter = t
 		
 		inputs = np.random.choice([0, -1, 1], size=n_input_blocks, p=[1-p_active, p_active/2, p_active/2])
