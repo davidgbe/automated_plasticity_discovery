@@ -29,18 +29,6 @@
     "inh_het": 0.2,
     "time": 0.3,
     "time_input": 0.27,
-    "title": "n5_short_min_pactive_0p25_test_000645",
-    "bump_amp": 0.15,
-    "bump_init_onset": 0.01,
-    "p_active_floor": 0.25,
-    "root_file_name": "n5_short_min_pactive_0p25_0.3_inp_0.27_het_0.2_shift_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8005_2025-12-08_01:00:05.422896_run_000645"
-  },
-  {
-    "partition": "ckpt-all",
-    "seed": 2000,
-    "inh_het": 0.2,
-    "time": 0.3,
-    "time_input": 0.27,
     "title": "n5_short_min_pactive_0p25_test_000646",
     "bump_amp": 0.15,
     "bump_init_onset": 0.01,
@@ -70,17 +58,5 @@
     "bump_init_onset": 0.01,
     "p_active_floor": 0.25,
     "root_file_name": "n5_short_min_pactive_0p25_0.3_inp_0.27_het_0.2_shift_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8008_2025-12-08_01:00:06.209034_run_000648"
-  },
-  {
-    "partition": "ckpt-all",
-    "seed": 2000,
-    "inh_het": 0.2,
-    "time": 0.3,
-    "time_input": 0.27,
-    "title": "n5_short_min_pactive_0p25_test_000649",
-    "bump_amp": 0.15,
-    "bump_init_onset": 0.01,
-    "p_active_floor": 0.25,
-    "root_file_name": "n5_short_min_pactive_0p25_0.3_inp_0.27_het_0.2_shift_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8009_2025-12-08_01:00:06.209026_run_000649"
   }
 ]
