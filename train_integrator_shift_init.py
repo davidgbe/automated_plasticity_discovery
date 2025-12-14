@@ -581,10 +581,10 @@ def simulate_single_network(index, x, train, save_paths=None):
 		# Define input for activation of the network
 
 		if i >= decoder_train_trial_nums[0]:
-			input_spks = np.zeros((decoding_len_test + decoder_lag, 2 * n_e_side + 1))
+			input_spks = np.zeros((decoding_len_test + decoder_lag, 2 * n_e_side))
 			t_for_iter = t_test
 		else:
-			input_spks = np.zeros((decoding_len_self_org + decoder_lag, 2 * n_e_side + 1))
+			input_spks = np.zeros((decoding_len_self_org + decoder_lag, 2 * n_e_side))
 			t_for_iter = t
 		
 		inputs = np.random.choice([0, -1, 1], size=n_input_blocks, p=[1-p_active, p_active/2, p_active/2])
@@ -606,7 +606,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 				running_input_sums[j] += running_input_sums[j-1]
 			running_input_sums[j] += filtered_input_to_sum[j]
 
-		r_in_spks = np.zeros((len(t_for_iter), n_e_pool + 2 * n_e_side + n_i))
+		r_in_spks = np.zeros((len(t_for_iter), n_e_pool + 2 * n_e_side + 1 + n_i))
 		if bool(args.bump_init):
 			# r_in_spks[:int(10e-3/dt), input_slice] = np.random.poisson(lam=INPUT_RATE_PER_CELL * dt, size=(int(10e-3/dt), input_size))
 			# replace poisson-driven input with something less stochastic
