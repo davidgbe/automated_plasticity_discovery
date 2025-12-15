@@ -329,7 +329,7 @@ def make_network():
 	w_initial[-n_i:, :n_e_pool] = gaussian_if_under_val(1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
 	w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, args.inh_het * np.abs(w_i_e))
 
-	if args.struct_prior != '2D' or not args.enable_diag:
+	if args.struct_prior != '2D' and not args.enable_diag:
 		np.fill_diagonal(w_initial, 0)
 	return w_initial
 
