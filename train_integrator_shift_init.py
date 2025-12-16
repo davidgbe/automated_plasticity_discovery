@@ -56,6 +56,7 @@ parser.add_argument('--HD_to_HR_width', type=int, default=2)
 parser.add_argument('--input_size', type=int, default=3)
 parser.add_argument('--pop_size', type=int, default=30)
 parser.add_argument('--p_active_floor', type=float, default=0.1)
+parser.add_argument('--enable_diag', action='store_true', help='Enable diagonal weights', default=False)
 
 
 
@@ -333,7 +334,7 @@ def make_network():
 	w_initial[-n_i:, :n_e_pool] = gaussian_if_under_val(1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
 	w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, args.inh_het * np.abs(w_i_e))
 
-	if args.struct_prior != '2D':
+	if args.struct_prior != '2D' and not args.enable_diag:
 		np.fill_diagonal(w_initial, 0)
 	return w_initial
 
