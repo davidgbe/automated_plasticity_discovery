@@ -156,13 +156,13 @@ rule_names = [
 
 rule_names_tripartite = [
 	r'$\tilde{y}, z \sim y$',
-	r'$\tilde{x}, z \sim y$',
 	r'$x \tilde{y}, z \sim y$',
+	r'$\tilde{x}, z \sim y$',
 	r'$\tilde{x} y, z \sim y$',
 
 	r'$w \tilde{y}, z \sim y$',
-	r'$w \tilde{x}, z \sim y$',
 	r'$w x \tilde{y}, z \sim y$',
+	r'$w \tilde{x}, z \sim y$',
 	r'$w \tilde{x} y, z \sim y$',
 ]
 
