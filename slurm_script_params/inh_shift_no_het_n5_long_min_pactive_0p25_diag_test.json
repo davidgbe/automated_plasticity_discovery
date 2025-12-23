@@ -1,0 +1,67 @@
+[
+  {
+    "partition": "ckpt-all",
+    "seed": 2000,
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "n5_long_min_pactive_0p25_diag_small_bump",
+    "std_expl": 0.001,
+    "bump_amp": 0.05,
+    "bump_init_onset": 0.01,
+    "p_active_floor": 0.25,
+    "root_file_name": "n5_long_min_pactive_0p25_diag_small_bump_1.0_inp_0.27_het_0_shift_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8002_2025-12-17_01:00:23.673712_run_001102"
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 2000,
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "n5_long_min_pactive_0p25_diag_small_bump",
+    "std_expl": 0.001,
+    "bump_amp": 0.05,
+    "bump_init_onset": 0.01,
+    "p_active_floor": 0.25,
+    "root_file_name": "n5_long_min_pactive_0p25_diag_small_bump_1.0_inp_0.27_het_0_shift_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8003_2025-12-17_01:00:23.673712_run_001103"
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 2000,
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "n5_long_min_pactive_0p25_diag_small_bump",
+    "std_expl": 0.001,
+    "bump_amp": 0.05,
+    "bump_init_onset": 0.01,
+    "p_active_floor": 0.25,
+    "root_file_name": "n5_long_min_pactive_0p25_diag_small_bump_1.0_inp_0.27_het_0_shift_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8012_2025-12-17_01:02:29.754142_run_001112"
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 2000,
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "n5_long_min_pactive_0p25_diag_small_bump",
+    "std_expl": 0.001,
+    "bump_amp": 0.05,
+    "bump_init_onset": 0.01,
+    "p_active_floor": 0.25,
+    "root_file_name": "n5_long_min_pactive_0p25_diag_small_bump_1.0_inp_0.27_het_0_shift_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8013_2025-12-17_01:02:29.754142_run_001113"
+  },
+  {
+    "partition": "ckpt-all",
+    "seed": 2000,
+    "inh_het": 0,
+    "time": 1.0,
+    "time_input": 0.27,
+    "title": "n5_long_min_pactive_0p25_diag_small_bump",
+    "std_expl": 0.001,
+    "bump_amp": 0.05,
+    "bump_init_onset": 0.01,
+    "p_active_floor": 0.25,
+    "root_file_name": "n5_long_min_pactive_0p25_diag_small_bump_1.0_inp_0.27_het_0_shift_10_TH_0_STD_EXPL_0.001__L1_PENALTY_5e-07_ACT_PEN_50.0_CHANGEP_0.0_SEED_8017_2025-12-17_01:02:29.754144_run_001117"
+  }
+]
