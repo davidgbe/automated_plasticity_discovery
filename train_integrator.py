@@ -185,8 +185,8 @@ if args.struct_prior == 'hard_coded':
 		w_e_e = args.w_e_e / dt
 	else:	
 		w_e_e = 1.02e-4 / dt
-	w_pool_side = -0.2e-4 / dt
-	w_side_pool = 0.45e-4 / dt
+	w_pool_side = -1e-4 / dt
+	w_side_pool = 0.6e-4 / dt
 
 	if args.instant_inhibition:
 		w_i_e = -4.5e-4 / dt / n_e_pool
@@ -229,10 +229,12 @@ def make_hardcoded_network():
 	shift_mats_pool_pool = []
 	shift_mats_pool_side = []
 
-	for i in range(1, n_e_pool):
-		w_shift = np.diag(np.ones(n_e_pool - np.abs(i)), k=i) * 0.7 * w_e_e * 0.5 * (1 + np.cos(2 * np.pi *  np.abs(i) / n_e_pool))
+	first_idx = 0 if args.enable_diag else 0
+	for i in range(first_idx, n_e_pool):
+		w_shift = np.diag(np.ones(n_e_pool - np.abs(i)), k=i) * w_e_e * 0.5 * (1 + np.cos(2 * np.pi *  np.abs(i) / n_e_pool))
 		shift_mats_pool_pool.append(w_shift)
-		shift_mats_pool_pool.append(np.transpose(w_shift))
+		if i != 0:
+			shift_mats_pool_pool.append(np.transpose(w_shift))
 
 		w_shift_side_pool = np.diag(np.ones(n_e_pool - np.abs(i)), k=i) * 0.5 * (1 - np.cos(2 * np.pi *  np.abs(i) / n_e_pool))
 		shift_mats_pool_side.append(w_shift_side_pool)
@@ -242,9 +244,9 @@ def make_hardcoded_network():
 
 	# w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.random.rand(n_e_pool, n_e_side)
 	# w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * np.random.rand(n_e_pool, n_e_side)
-
-	w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=3)
-	w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool * create_shift_matrix(n_e_side, k=-3)
+	
+	w_initial[:n_e_pool, n_e_pool:(n_e_pool + n_e_side)] = w_side_pool * np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=args.HR_to_HD_width), 0)
+	w_initial[:n_e_pool, (n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side)] = w_side_pool *  np.where(np.random.rand(n_e_pool, n_e_side) < args.hd_hr_sparsity, create_shift_matrix(n_e_side, k=-1 * args.HR_to_HD_width), 0)
 
 	# w_initial[n_e_pool:(n_e_pool + n_e_side), :n_e_pool] = w_pool_side * np.random.rand(n_e_side, n_e_pool)
 	# w_initial[(n_e_pool + n_e_side):(n_e_pool + 2 * n_e_side), :n_e_pool] = w_pool_side * np.random.rand(n_e_side, n_e_pool)
@@ -262,8 +264,8 @@ def make_hardcoded_network():
 		w_initial[-n_i:, :n_e_pool] = gaussian_if_under_val(1, (n_i, n_e_pool), w_e_i, 0 * w_e_i)
 		w_initial[:n_e_pool, -n_i:] = gaussian_if_under_val(1, (n_e_pool, n_i), w_i_e, args.inh_het * np.abs(w_i_e))
 		
-
-	np.fill_diagonal(w_initial, 0)
+	if not args.enable_diag:
+		np.fill_diagonal(w_initial, 0)
 	return w_initial
 
 
