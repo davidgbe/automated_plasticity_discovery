@@ -7,7 +7,7 @@
 #SBATCH -A stf
 
 #SBATCH --nodes=1
-#SBATCH --time=130:00:00
+#SBATCH --time=5:00:00
 #SBATCH --ntasks=30
 #SBATCH --mem=200G
 
@@ -48,7 +48,7 @@ python train_integrator.py \
     --enable_diag \
     --root_file_name {{ root_file_name }} \
     --rule_dropout 1 \
-    --test_repeats 25 \
+    --test_repeats 30 \
 
 deactivate
 

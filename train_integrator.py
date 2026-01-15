@@ -1013,15 +1013,14 @@ if __name__ == '__main__':
 		eval_all([x_test] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths)
 		
 		if RULE_DROPOUT:
-			3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE) + 2 * N_THREE_FACTOR_RULES_PER_TYPE
 			rules_to_dropout = np.concatenate([
 				np.arange(N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE),
 				np.arange(3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE), 3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE) + N_THREE_FACTOR_RULES_PER_TYPE),
 			])
 
-			for i in range(rules_to_dropout):
+			for i in rules_to_dropout:
 				x_test_copy = copy(x_test)
-				x_test[i] = 0
+				x_test_copy[i] = 0
 				eval_all([x_test_copy] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths)
 	else:
 
