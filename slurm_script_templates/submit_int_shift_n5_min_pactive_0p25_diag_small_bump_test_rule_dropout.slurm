@@ -46,9 +46,9 @@ python train_integrator.py \
     --bump_init_onset {{ bump_init_onset }} \
     --p_active_floor {{ p_active_floor }} \
     --enable_diag \
-    --root_file_name {{ root_file_name }}
-    --rule_dropout 1
-    --test_repeats 25
+    --root_file_name {{ root_file_name }} \
+    --rule_dropout 1 \
+    --test_repeats 25 \
 
 deactivate
 
