@@ -57,7 +57,8 @@ parser.add_argument('--input_size', type=int, default=3)
 parser.add_argument('--pop_size', type=int, default=30)
 parser.add_argument('--p_active_floor', type=float, default=0.1)
 parser.add_argument('--enable_diag', action='store_true', help='Enable diagonal weights', default=False)
-
+parser.add_argument('--rule_dropout', type=int, default=0)
+parser.add_argument('--test_repeats', type=int, default=10)
 
 
 args = parser.parse_args()
@@ -84,9 +85,10 @@ N_SUMMED_WEIGHT_RULES_PER_TYPE = 4
 N_THREE_FACTOR_RULES_PER_TYPE = 8
 N_RULES = 3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE) + 2 * N_THREE_FACTOR_RULES_PER_TYPE
 N_TIMECONSTS = 12 + 32
-TEST_REPEATS = 10
+TEST_REPEATS = args.test_repeats
 ROOT_FILE_NAME = args.root_file_name
 INPUT_AMP = 0.1 # if args.struct_prior != '2D' else 0.02
+RULE_DROPOUT = args.rule_dropout > 0
 
 T = args.time # Total duration of one network simulation
 T_TEST = args.time_test
@@ -570,7 +572,10 @@ def simulate_single_network(index, x, train, save_paths=None):
 	if args.train:
 		p_active = args.p_active_floor + (1.0 - args.p_active_floor) * index / BATCH_SIZE
 	else:
-		p_active = args.p_active_floor + (1.0 - args.p_active_floor) * index / TEST_REPEATS
+		if RULE_DROPOUT:
+			p_active = args.p_active_floor + (1.0 - args.p_active_floor) * np.random.rand()
+		else:
+			p_active = args.p_active_floor + (1.0 - args.p_active_floor) * index / TEST_REPEATS
 		
 	n_input_blocks = max_input_len // input_block_timesteps
 
@@ -699,7 +704,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 
 	rs_for_loss = np.stack(rs_for_loss)
 
-	if not args.train:
+	if not args.train and not RULE_DROPOUT:
 		normed_loss, y_test_pred, y_test = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
 
 		# save weights
@@ -1006,7 +1011,18 @@ if __name__ == '__main__':
 			print(x_test)
 
 		eval_all([x_test] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths)
+		
+		if RULE_DROPOUT:
+			3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE) + 2 * N_THREE_FACTOR_RULES_PER_TYPE
+			rules_to_dropout = np.concatenate([
+				np.arange(N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE),
+				np.arange(3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE), 3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE) + N_THREE_FACTOR_RULES_PER_TYPE),
+			])
 
+			for i in range(rules_to_dropout):
+				x_test_copy = copy(x_test)
+				x_test[i] = 0
+				eval_all([x_test_copy] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths)
 	else:
 
 		if args.train and len(existing_dirs_with_run_num) == 0:
