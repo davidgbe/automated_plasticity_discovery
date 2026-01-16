@@ -1042,6 +1042,7 @@ if __name__ == '__main__':
 			'inputs_path': inputs_path,
 			'targets_path': targets_path,
 			'predictions_path': predictions_path,
+			'weight_series_path': weight_series_path,
 		}
 
 		if args.struct_prior == 'hard_coded':
