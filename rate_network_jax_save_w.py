@@ -335,7 +335,7 @@ def learning_dynamics(
 # Simulate a full unroll of network dynamics for len_t timesteps
 
 @partial(jax.jit, static_argnames=['len_t', 'n_timeconsts', 'n_e', 'n_i', 'n_e_pool', 'n_e_side', 'n_rules', 'n_pairwise_rules', 'n_summed_weight_rules', 'n_triplet_rules'])
-def simulate(
+def simulate_save_w(
     len_t,
     n_timeconsts,
     dt,
