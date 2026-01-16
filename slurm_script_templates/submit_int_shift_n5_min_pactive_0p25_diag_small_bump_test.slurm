@@ -46,7 +46,8 @@ python train_integrator.py \
     --bump_init_onset {{ bump_init_onset }} \
     --p_active_floor {{ p_active_floor }} \
     --enable_diag \
-    --root_file_name {{ root_file_name }}
+    --root_file_name {{ root_file_name }} \
+    --save_all_w
 
 deactivate
 

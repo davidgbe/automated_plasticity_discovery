@@ -16,6 +16,7 @@ from sklearn.linear_model import LinearRegression, Lasso
 from csv_reader import read_csv
 from csv_writer import write_csv
 from rate_network_jax import simulate
+from rate_network_jax_save_w import simulate_save_w
 import pickle
 
 ### Parse arguments 
@@ -59,6 +60,8 @@ parser.add_argument('--p_active_floor', type=float, default=0.1)
 parser.add_argument('--enable_diag', action='store_true', help='Enable diagonal weights', default=False)
 parser.add_argument('--rule_dropout', type=int, default=0)
 parser.add_argument('--test_repeats', type=int, default=10)
+parser.add_argument('--save_all_w', action='store_true', default=False)
+
 
 
 args = parser.parse_args()
@@ -550,6 +553,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 		all_r = []
 		all_w = []
 		all_inputs = []
+		all_w_series = []
 
 
 	w = copy(w_initial)
@@ -638,30 +642,56 @@ def simulate_single_network(index, x, train, save_paths=None):
 			np.ones((n_e)) * 10e-3,
 			np.ones((n_i)) * 1e-3,
 		])
-
-		r, w_out, effects, syn_factors, r_exp_filtered = simulate(
-			len(t),
-			N_TIMECONSTS,
-			dt,
-			t_for_iter,
-			w,
-			r_in,
-			plasticity_coefs,
-			rule_time_constants,
-			g=1,
-			s_offsets=v_thresh,
-			w_u=1,
-			tau_s=cell_time_consts,
-			eta=5,
-			n_e=n_e,
-			n_i=n_i,
-			n_e_pool=n_e_pool,
-			n_e_side=n_e_side,
-			n_rules=N_RULES,
-			n_pairwise_rules=N_PAIRWISE_RULES_PER_TYPE,
-			n_summed_weight_rules=N_SUMMED_WEIGHT_RULES_PER_TYPE,
-			n_triplet_rules=N_THREE_FACTOR_RULES_PER_TYPE,
-		)
+		
+		if not args.save_all_w:
+			r, w_out, effects, syn_factors, r_exp_filtered = simulate(
+				len(t),
+				N_TIMECONSTS,
+				dt,
+				t_for_iter,
+				w,
+				r_in,
+				plasticity_coefs,
+				rule_time_constants,
+				g=1,
+				s_offsets=v_thresh,
+				w_u=1,
+				tau_s=cell_time_consts,
+				eta=5,
+				n_e=n_e,
+				n_i=n_i,
+				n_e_pool=n_e_pool,
+				n_e_side=n_e_side,
+				n_rules=N_RULES,
+				n_pairwise_rules=N_PAIRWISE_RULES_PER_TYPE,
+				n_summed_weight_rules=N_SUMMED_WEIGHT_RULES_PER_TYPE,
+				n_triplet_rules=N_THREE_FACTOR_RULES_PER_TYPE,
+			)
+		else:
+			r, w_out, effects, syn_factors, r_exp_filtered, w_series = simulate_save_w(
+				len(t),
+				N_TIMECONSTS,
+				dt,
+				t_for_iter,
+				w,
+				r_in,
+				plasticity_coefs,
+				rule_time_constants,
+				g=1,
+				s_offsets=v_thresh,
+				w_u=1,
+				tau_s=cell_time_consts,
+				eta=5,
+				n_e=n_e,
+				n_i=n_i,
+				n_e_pool=n_e_pool,
+				n_e_side=n_e_side,
+				n_rules=N_RULES,
+				n_pairwise_rules=N_PAIRWISE_RULES_PER_TYPE,
+				n_summed_weight_rules=N_SUMMED_WEIGHT_RULES_PER_TYPE,
+				n_triplet_rules=N_THREE_FACTOR_RULES_PER_TYPE,
+			)
+		
 
 		all_syn_factors.append(syn_factors)
 
@@ -669,6 +699,8 @@ def simulate_single_network(index, x, train, save_paths=None):
 			all_w.append(w)
 			all_r.append(r)
 			all_inputs.append(filtered_input_to_sum_per_neuron)
+			if args.save_all_w and i >= n_inner_loop_iters - 10:
+				all_w_series.append(w_series)
 
 		if (np.isnan(r).any()
 	  		or (np.abs(w_out) > 100).any()
@@ -725,6 +757,12 @@ def simulate_single_network(index, x, train, save_paths=None):
 		# save predictions at sampled times
 		predictions_file_name = os.path.join(save_paths['predictions_path'], f'net_{zero_pad(index, 3)}.npy')
 		np.save(predictions_file_name, np.asarray(y_test_pred))
+
+		if args.save_all_w:
+			# save all weight series
+			weight_file_name = os.path.join(save_paths['weight_series_path'], f'net_{zero_pad(index, 3)}.npy')
+			np.save(weight_file_name, np.asarray(all_w_series))
+
 	else:
 		normed_loss, _, _ = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
 
@@ -992,6 +1030,10 @@ if __name__ == '__main__':
 		os.mkdir(targets_path)
 		predictions_path = os.path.join(out_dir, 'predictions')
 		os.mkdir(predictions_path)
+		if args.save_all_w:
+			weight_series_path = os.path.join(out_dir, 'weights_series')
+			os.mkdir(weight_series_path)
+
 		
 		save_paths = {
 			'weight_path': weight_path,
