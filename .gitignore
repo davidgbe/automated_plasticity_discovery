@@ -15,4 +15,5 @@ data/**/*
 *.mp4
 preprocessing
 scripts/*
+*.pkl
 
