@@ -353,12 +353,12 @@ if __name__ == "__main__":
         peak_amp=0.5,
         seed=42,
     )
-    
-    # Plot results
-    fig_w, fig_w_traj = plot_results(results, t, n=10)
-    
+
     # Save results
     with open('network_training_results.pkl', 'wb') as f:
         pickle.dump({'results': results, 't': t}, f)
+    
+    # Plot results
+    # fig_w, fig_w_traj = plot_results(results, t, n=10)
     
     print("\nTraining complete! Results saved.")
