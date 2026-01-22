@@ -355,13 +355,13 @@ if __name__ == "__main__":
     # Train networks
     results, t = train_multiple_networks(
         n_networks=1,
-        n_epochs=50,
+        n_epochs=300,
         n=10,
         t_sim=(0, 1.2),
         dt=1e-4,
-        learning_rate=0,
-        homeo_rate=0,
-        alpha=10,
+        learning_rate=1000,
+        homeo_rate=0.1,
+        alpha=100 * 0.1,
         presyn_setpoint=3.5,
         w_e_scale=0.864,
         w_pool_to_shift=0.5,
