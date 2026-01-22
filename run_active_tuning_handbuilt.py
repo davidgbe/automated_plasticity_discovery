@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from time import time
 import pickle
-from dataclasses import dataclass
+from flax import struct
 
 # Enable 64-bit precision for better numerical stability
 jax.config.update("jax_enable_x64", True)
 
-@dataclass(frozen=True)
+@struct.dataclass
 class SimParams:
     """Simulation parameters as a static structure for JAX"""
     n: int
