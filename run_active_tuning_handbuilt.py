@@ -86,7 +86,8 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     new_x = x_in + dx_dt * dt
     new_z_filt = z_filt + dz_filt_dt * dt
     new_W = W + dw_dt * dt
-    new_W = new_W.at[:n, :n].set(jnp.where(new_W > 0, new_W, 0))
+    new_W_pool = new_W[:n, :n]
+    new_W = new_W.at[:n, :n].set(jnp.where(new_W_pool > 0,  new_W_pool, 0))
     
     # Pack new state
     new_state = jnp.concatenate([
