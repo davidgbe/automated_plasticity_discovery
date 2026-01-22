@@ -29,7 +29,7 @@ def gen_gaussian(x, mu, sigma):
     """Generate Gaussian function"""
     return jnp.exp(-((x - mu) ** 2) / (2 * sigma ** 2))
 
-@jit
+@partial(jit, static_argnames=['params'])
 def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     """
     Single step of system dynamics using Euler integration
