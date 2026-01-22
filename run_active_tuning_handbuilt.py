@@ -264,6 +264,9 @@ def train_multiple_networks(
             
             if (epoch + 1) % 10 == 0:
                 print(f"  Epoch {epoch + 1}/{n_epochs} - {time() - start_time:.2f}s")
+
+            state = state.at[:3*n].set(x_init)
+            state = state.at[3*n:3*n + n].set(z_filt0)
         
         all_results.append({
             'weight_trajectory': weight_trajectory,
