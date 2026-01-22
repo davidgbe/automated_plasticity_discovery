@@ -96,7 +96,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     
     return new_state, (new_x, new_W)
 
-@jit
+@partial(jit, static_argnames=['params'])
 def simulate_epoch(initial_state, u_trajectory, w_inh, params: SimParams):
     """Simulate one epoch with pre-computed input trajectory"""
     W0 = None  # Not used in step function
