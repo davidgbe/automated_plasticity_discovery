@@ -1,3 +1,4 @@
+
 import jax
 import jax.numpy as jnp
 from jax import jit, vmap
@@ -7,22 +8,35 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from time import time
 import pickle
+from dataclasses import dataclass
 
 # Enable 64-bit precision for better numerical stability
 jax.config.update("jax_enable_x64", True)
 
+@dataclass(frozen=True)
+class SimParams:
+    """Simulation parameters as a static structure for JAX"""
+    n: int
+    tau_m: float
+    tau_z: float
+    learning_rate: float
+    homeo_rate: float
+    alpha: float
+    presyn_setpoint: float
+    dt: float
+
 def gen_gaussian(x, mu, sigma):
     """Generate Gaussian function"""
-    return jnp.exp(-0.5 * ((x - mu)/sigma) ** 2) / (2 * jnp.pi * sigma ** 2)
+    return jnp.exp(-((x - mu) ** 2) / (2 * sigma ** 2))
 
 @jit
-def system_dynamics_step(state, u_t, W0, w_inh, params):
+def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     """
     Single step of system dynamics using Euler integration
     
     state: [x, z_filt, W_flat]
     """
-    n = params['n']
+    n = params.n
     W_dim = 3 * n
     
     # Unpack state
@@ -34,7 +48,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params):
     x = jnp.clip(x_in, 0, None)
     
     # State dynamics
-    dx_dt_raw = (1 / params['tau_m']) * ((W - w_inh) @ x - x + u_t)
+    dx_dt_raw = (1 / params.tau_m) * ((W - w_inh) @ x - x + u_t)
     dx_dt = jnp.where(
         jnp.logical_and(x <= 0, dx_dt_raw < 0),
         0,
@@ -48,18 +62,18 @@ def system_dynamics_step(state, u_t, W0, w_inh, params):
     z = W[:n, n:3 * n] @ x_ct_2
     
     # z low-pass filter
-    dz_filt_dt = (z - z_filt) / params['tau_z']
+    dz_filt_dt = (z - z_filt) / params.tau_z
     
     # Rectified high-pass signal
     z_hp = jnp.maximum(z - z_filt, 0.0)
     
-    comp_to_bound = params['presyn_setpoint'] - W[:n, :n].sum(axis=0)
+    comp_to_bound = params.presyn_setpoint - W[:n, :n].sum(axis=0)
     
     dw_dt_ct_1 = (
-        params['learning_rate']
+        params.learning_rate
         * z_hp
-        * jnp.outer(params['alpha'] * z - dx_dt[:n], x_ct_1)
-    ) + params['homeo_rate'] * jnp.where(comp_to_bound > 0, 0, comp_to_bound)[None, :]
+        * jnp.outer(params.alpha * z - dx_dt[:n], x_ct_1)
+    ) + params.homeo_rate * jnp.where(comp_to_bound > 0, 0, comp_to_bound)[None, :]
     
     # Zero diagonal
     dw_dt_ct_1 = dw_dt_ct_1.at[jnp.diag_indices(n)].set(0)
@@ -68,7 +82,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params):
     dw_dt = dw_dt.at[:n, :n].set(dw_dt_ct_1)
     
     # Euler integration
-    dt = params['dt']
+    dt = params.dt
     new_x = x_in + dx_dt * dt
     new_z_filt = z_filt + dz_filt_dt * dt
     new_W = W + dw_dt * dt
@@ -82,8 +96,8 @@ def system_dynamics_step(state, u_t, W0, w_inh, params):
     
     return new_state, (new_x, new_W)
 
-@partial(jit, static_argnums=(3,))
-def simulate_epoch(initial_state, u_trajectory, w_inh, params):
+@jit
+def simulate_epoch(initial_state, u_trajectory, w_inh, params: SimParams):
     """Simulate one epoch with pre-computed input trajectory"""
     W0 = None  # Not used in step function
     
@@ -181,18 +195,18 @@ def train_multiple_networks(
     np.random.seed(seed)
     key = jax.random.PRNGKey(seed)
     
-    # Setup parameters
+    # Setup parameters using NamedTuple
     t = np.arange(t_sim[0], t_sim[1], dt)
-    params = {
-        'n': n,
-        'tau_m': 1e-2,
-        'tau_z': 0.02,
-        'learning_rate': learning_rate,
-        'homeo_rate': homeo_rate,
-        'alpha': alpha,
-        'presyn_setpoint': presyn_setpoint,
-        'dt': dt,
-    }
+    params = SimParams(
+        n=n,
+        tau_m=1e-2,
+        tau_z=0.02,
+        learning_rate=learning_rate,
+        homeo_rate=homeo_rate,
+        alpha=alpha,
+        presyn_setpoint=presyn_setpoint,
+        dt=dt,
+    )
     
     # Initialize storage
     all_results = []
