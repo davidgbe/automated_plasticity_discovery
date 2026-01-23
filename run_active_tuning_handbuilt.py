@@ -71,7 +71,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     
     dw_dt_ct_1 = (
         params.learning_rate
-        * z_hp
+        * z_hp * x_ct_1
         * jnp.outer(params.alpha * z - dx_dt[:n], x_ct_1)
     ) + params.homeo_rate * jnp.where(comp_to_bound > 0, 0, comp_to_bound)[None, :]
     
@@ -117,7 +117,7 @@ def initialize_weights(n, weight_perturbation, w_e_scale, w_pool_to_shift, w_shi
     
     # Pool-to-pool connections
     shift_mats_pool_pool = []
-    for i in range(1, n):
+    for i in range(1, 5):
         w_shift = (
             jnp.diag(jnp.ones(n - jnp.abs(i)), k=i)
             * 0.5
@@ -151,7 +151,7 @@ def make_u_trajectory(n, t, dt, key):
     inp = np.zeros((3 + n, len(t)))
     
     for t_p in np.linspace(0, t.max(), int((t.max() + 1)/block_len)):
-        if t_p >= 0.05 and t_p < 1:
+        if t_p >= 0.05 and t_p < 0.4:
             u_block = 0.15 * np.random.rand(2) + 0.05
             if np.random.rand() > 0.5:
                 u_block[0] = 0
@@ -202,7 +202,7 @@ def train_multiple_networks(
     params = SimParams(
         n=n,
         tau_m=1e-2,
-        tau_z=0.02,
+        tau_z=5e-3,
         learning_rate=learning_rate,
         homeo_rate=homeo_rate,
         alpha=alpha,
@@ -357,18 +357,18 @@ if __name__ == "__main__":
     # Train networks
     results, t = train_multiple_networks(
         n_networks=1,
-        n_epochs=300,
+        n_epochs=1000,
         n=10,
-        t_sim=(0, 1.2),
+        t_sim=(0, 0.8),
         dt=1e-4,
-        learning_rate=1000,
-        homeo_rate=0.1,
+        learning_rate=1e4,
+        homeo_rate=1, #0.1,
         alpha=100 * 0.1,
         presyn_setpoint=3.5,
         w_e_scale=0.864,
         w_pool_to_shift=0.5,
         w_shift_to_pool=0.25,
-        weight_perturbation=0,
+        weight_perturbation=0.1,
         peak_amp=0.5,
         seed=42,
     )
