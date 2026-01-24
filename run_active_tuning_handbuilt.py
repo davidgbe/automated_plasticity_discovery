@@ -71,9 +71,8 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     
     dw_dt_ct_1 = (
         params.learning_rate
-        * z_hp * x_ct_1
-        * jnp.outer(params.alpha * z - dx_dt[:n], x_ct_1)
-    ) + params.homeo_rate * jnp.where(comp_to_bound > 0, 0, comp_to_bound)[None, :]
+        * jnp.outer(params.alpha * jnp.square(z) - dx_dt[:n] * z_filt, x_ct_1)
+        ) + params.homeo_rate * jnp.where(comp_to_bound > 0, 0, comp_to_bound)[None, :]
     
     # Zero diagonal
     dw_dt_ct_1 = dw_dt_ct_1.at[jnp.diag_indices(n)].set(0)
@@ -96,7 +95,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
         new_W.ravel(),
     ])
     
-    return new_state, (new_x, new_W)
+    return new_state, (new_x, new_W, params.alpha * jnp.square(z), z_filt * dx_dt[:n])
 
 @partial(jit, static_argnames=['params'])
 def simulate_epoch(initial_state, u_trajectory, w_inh, params: SimParams):
@@ -107,9 +106,9 @@ def simulate_epoch(initial_state, u_trajectory, w_inh, params: SimParams):
         new_state, outputs = system_dynamics_step(state, u_t, W0, w_inh, params)
         return new_state, outputs
     
-    final_state, (x_history, w_history) = jax.lax.scan(scan_fn, initial_state, u_trajectory)
+    final_state, (x_history, w_history, z_lead, dx_dt) = jax.lax.scan(scan_fn, initial_state, u_trajectory)
     
-    return final_state, x_history, w_history
+    return final_state, x_history, w_history, z_lead, dx_dt
 
 def initialize_weights(n, weight_perturbation, w_e_scale, w_pool_to_shift, w_shift_to_pool, key):
     """Initialize weight matrix"""
@@ -117,7 +116,7 @@ def initialize_weights(n, weight_perturbation, w_e_scale, w_pool_to_shift, w_shi
     
     # Pool-to-pool connections
     shift_mats_pool_pool = []
-    for i in range(1, 5):
+    for i in range(1, 2):
         w_shift = (
             jnp.diag(jnp.ones(n - jnp.abs(i)), k=i)
             * 0.5
@@ -132,8 +131,8 @@ def initialize_weights(n, weight_perturbation, w_e_scale, w_pool_to_shift, w_shi
     )
     
     # Shift connections
-    W0 = W0.at[:n, n:2*n].set(w_shift_to_pool * jnp.diag(jnp.ones(n-1), k=1))
-    W0 = W0.at[:n, 2*n:3*n].set(w_shift_to_pool * jnp.diag(jnp.ones(n-1), k=-1))
+    W0 = W0.at[:n, n:2*n].set(w_shift_to_pool * jnp.diag(jnp.ones(n-2), k=2))
+    W0 = W0.at[:n, 2*n:3*n].set(w_shift_to_pool * jnp.diag(jnp.ones(n-2), k=-2))
     
     # Pool-to-shift connections
     w_side_pool = (
@@ -151,7 +150,7 @@ def make_u_trajectory(n, t, dt, key):
     inp = np.zeros((3 + n, len(t)))
     
     for t_p in np.linspace(0, t.max(), int((t.max() + 1)/block_len)):
-        if t_p >= 0.05 and t_p < 0.4:
+        if t_p >= 0.05 and t_p < 1.2:
             u_block = 0.15 * np.random.rand(2) + 0.05
             if np.random.rand() > 0.5:
                 u_block[0] = 0
@@ -177,7 +176,7 @@ def train_multiple_networks(
     n=10,
     t_sim=(0, 1.2),
     dt=0.002,
-    learning_rate=1000,
+    learning_rate=0,
     homeo_rate=0,
     alpha=10,
     presyn_setpoint=3.5,
@@ -202,7 +201,7 @@ def train_multiple_networks(
     params = SimParams(
         n=n,
         tau_m=1e-2,
-        tau_z=5e-3,
+        tau_z=100e-3,
         learning_rate=learning_rate,
         homeo_rate=homeo_rate,
         alpha=alpha,
@@ -223,7 +222,7 @@ def train_multiple_networks(
         
         # Initialize inhibition
         w_inh = jnp.zeros((3*n, 3*n))
-        w_inh_vec = jnp.array(np.random.normal(size=(n,), loc=1, scale=0) * 2)
+        w_inh_vec = jnp.array(np.random.normal(size=(n,), loc=1, scale=0) * 7)
         w_inh = w_inh.at[:n, :n].set(w_inh_vec[:, None])
         
         # Initialize state
@@ -240,6 +239,8 @@ def train_multiple_networks(
         # Storage for this network
         weight_trajectory = [W0.copy()]  # Store initial weights
         last_20_epochs_data = []
+        z_lead = []
+        dx_dt = []
         
         start_time = time()
         
@@ -249,11 +250,14 @@ def train_multiple_networks(
             key, _ = jax.random.split(key)
             
             # Simulate epoch
-            state, x_history, w_history = simulate_epoch(state, u_trajectory, w_inh, params)
+            state, x_history, w_history, z_lead_history, dx_dt_history = simulate_epoch(state, u_trajectory, w_inh, params)
             
             # Store final weights
             final_W = state[3*n + n:].reshape((3*n, 3*n))
             weight_trajectory.append(np.array(final_W))
+            z_lead.append(z_lead_history)
+            dx_dt.append(dx_dt_history)
+
             
             # Store last 20 epochs' activity
             if epoch >= n_epochs - 20:
@@ -274,6 +278,8 @@ def train_multiple_networks(
             'weight_trajectory': weight_trajectory,
             'last_20_epochs': last_20_epochs_data,
             'final_weights': weight_trajectory[-1],
+            'dx_dt': dx_dt,
+            'z_lead': z_lead,
         })
     
     return all_results, t
@@ -357,20 +363,20 @@ if __name__ == "__main__":
     # Train networks
     results, t = train_multiple_networks(
         n_networks=1,
-        n_epochs=1000,
-        n=10,
-        t_sim=(0, 0.8),
+        n_epochs=20,
+        n=15,
+        t_sim=(0, 1.5),
         dt=1e-4,
-        learning_rate=1e4,
-        homeo_rate=1, #0.1,
-        alpha=100 * 0.1,
+        learning_rate=-400,
+        homeo_rate=0, #1, #0.1,
+        alpha=10, # 100 * 0.05,
         presyn_setpoint=3.5,
-        w_e_scale=0.864,
-        w_pool_to_shift=0.5,
-        w_shift_to_pool=0.25,
-        weight_perturbation=0.1,
+        w_e_scale=3, #0.864,
+        w_pool_to_shift=0.75,
+        w_shift_to_pool=0.5,
+        weight_perturbation=0,
         peak_amp=0.5,
-        seed=42,
+        seed=80,
     )
 
     # Save results
