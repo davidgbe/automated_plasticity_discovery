@@ -1,4 +1,3 @@
-
 import jax
 import jax.numpy as jnp
 from jax import jit, vmap
@@ -19,6 +18,7 @@ class SimParams:
     n: int
     tau_m: float
     tau_z: float
+    tau_x_filt: float  # Time constant for x_ct_1 filtering
     learning_rate: float
     homeo_rate: float
     alpha: float
@@ -34,7 +34,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     """
     Single step of system dynamics using Euler integration
     
-    state: [x, z_filt, W_flat]
+    state: [x, z_filt, x_ct_1_filt, W_flat]
     """
     n = params.n
     W_dim = 3 * n
@@ -42,7 +42,8 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     # Unpack state
     x_in = state[:W_dim]
     z_filt = state[W_dim:W_dim + n]
-    W = state[W_dim + n:].reshape((W_dim, W_dim))
+    x_ct_1_filt = state[W_dim + n:W_dim + 2*n]  # Low-pass filtered x_ct_1
+    W = state[W_dim + 2*n:].reshape((W_dim, W_dim))
     
     # Ensure non-negative activity
     x = jnp.clip(x_in, 0, None)
@@ -64,14 +65,18 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     # z low-pass filter
     dz_filt_dt = (z - z_filt) / params.tau_z
     
+    # x_ct_1 low-pass filter
+    dx_ct_1_filt_dt = (x_ct_1 - x_ct_1_filt) / params.tau_x_filt
+    
     # Rectified high-pass signal
     z_hp = jnp.maximum(z - z_filt, 0.0)
     
     comp_to_bound = params.presyn_setpoint - W[:n, :n].sum(axis=0)
     
+    # Use filtered x_ct_1 in plasticity rule
     dw_dt_ct_1 = (
         params.learning_rate
-        * jnp.outer(params.alpha * jnp.square(z) - dx_dt[:n] * z_filt, x_ct_1)
+        * jnp.outer(params.alpha * jnp.square(z) - dx_dt[:n] * z_filt, x_ct_1_filt)  # Changed to x_ct_1_filt
         ) + params.homeo_rate * jnp.where(comp_to_bound > 0, 0, comp_to_bound)[None, :]
     
     # Zero diagonal
@@ -84,6 +89,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     dt = params.dt
     new_x = x_in + dx_dt * dt
     new_z_filt = z_filt + dz_filt_dt * dt
+    new_x_ct_1_filt = x_ct_1_filt + dx_ct_1_filt_dt * dt
     new_W = W + dw_dt * dt
     new_W_pool = new_W[:n, :n]
     new_W = new_W.at[:n, :n].set(jnp.where(new_W_pool > 0,  new_W_pool, 0))
@@ -92,6 +98,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     new_state = jnp.concatenate([
         new_x,
         new_z_filt,
+        new_x_ct_1_filt,
         new_W.ravel(),
     ])
     
@@ -180,6 +187,7 @@ def train_multiple_networks(
     homeo_rate=0,
     alpha=10,
     presyn_setpoint=3.5,
+    tau_x_filt=0.02,  # Time constant for x_ct_1 filtering
     w_e_scale=0.864,
     w_pool_to_shift=0.5,
     w_shift_to_pool=0.25,
@@ -202,6 +210,7 @@ def train_multiple_networks(
         n=n,
         tau_m=1e-2,
         tau_z=100e-3,
+        tau_x_filt=tau_x_filt,
         learning_rate=learning_rate,
         homeo_rate=homeo_rate,
         alpha=alpha,
@@ -234,7 +243,8 @@ def train_multiple_networks(
             jnp.zeros(2*n),
         ])
         z_filt0 = jnp.zeros(n)
-        state = jnp.concatenate([x_init, z_filt0, W0.ravel()])
+        x_ct_1_filt0 = jnp.zeros(n)  # Initialize filtered x_ct_1
+        state = jnp.concatenate([x_init, z_filt0, x_ct_1_filt0, W0.ravel()])
         
         # Storage for this network
         weight_trajectory = [W0.copy()]  # Store initial weights
@@ -253,7 +263,7 @@ def train_multiple_networks(
             state, x_history, w_history, z_lead_history, dx_dt_history = simulate_epoch(state, u_trajectory, w_inh, params)
             
             # Store final weights
-            final_W = state[3*n + n:].reshape((3*n, 3*n))
+            final_W = state[3*n + 2*n:].reshape((3*n, 3*n))
             weight_trajectory.append(np.array(final_W))
             z_lead.append(z_lead_history)
             dx_dt.append(dx_dt_history)
@@ -273,6 +283,7 @@ def train_multiple_networks(
 
             state = state.at[:3*n].set(x_init)
             state = state.at[3*n:3*n + n].set(z_filt0)
+            state = state.at[3*n + n:3*n + 2*n].set(x_ct_1_filt0)
         
         all_results.append({
             'weight_trajectory': weight_trajectory,
@@ -371,6 +382,7 @@ if __name__ == "__main__":
         homeo_rate=0, #1, #0.1,
         alpha=10, # 100 * 0.05,
         presyn_setpoint=3.5,
+        tau_x_filt=0.02,  # Time constant for x_ct_1 filtering
         w_e_scale=3, #0.864,
         w_pool_to_shift=0.75,
         w_shift_to_pool=0.5,
