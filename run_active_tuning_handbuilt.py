@@ -122,21 +122,28 @@ def initialize_weights(n, weight_perturbation, w_e_scale, w_pool_to_shift, w_shi
     """Initialize weight matrix"""
     W0 = jnp.zeros((3 * n, 3 * n))
     
-    # Pool-to-pool connections
-    shift_mats_pool_pool = []
-    for i in range(0, n):
-        w_shift = (
-            jnp.diag(jnp.ones(n - jnp.abs(i)), k=i)
-            * 0.5
-            * (1 + jnp.cos(2 * jnp.pi * jnp.abs(i) / (n+1)))
-        )
-        shift_mats_pool_pool.append(w_shift)
-        shift_mats_pool_pool.append(w_shift.T)
+    # # Pool-to-pool connections
+    # shift_mats_pool_pool = []
+    # for i in range(0, n):
+    #     w_shift = (
+    #         jnp.diag(jnp.ones(n - jnp.abs(i)), k=i)
+    #         * 0.5
+    #         * (1 + jnp.cos(2 * jnp.pi * jnp.abs(i) / (n+1)))
+    #     )
+    #     shift_mats_pool_pool.append(w_shift)
+    #     shift_mats_pool_pool.append(w_shift.T)
     
+    # weight_pert = jax.random.normal(key, (n, n)) * weight_perturbation + 1
+    # W0 = W0.at[:n, :n].set(
+    #     w_e_scale * jnp.sum(jnp.stack(shift_mats_pool_pool), axis=0) * weight_pert
+    # )
+
     weight_pert = jax.random.normal(key, (n, n)) * weight_perturbation + 1
-    W0 = W0.at[:n, :n].set(
-        w_e_scale * jnp.sum(jnp.stack(shift_mats_pool_pool), axis=0) * weight_pert
-    )
+
+    W0 = W0.at[:n, :n].set(jnp.array([
+        [1.5, 0.5 + weight_pert[0, 1]],
+        [0.5 + weight_pert[1, 0], 1.5],
+    ]))
     
     # Shift connections
     W0 = W0.at[:n, n:2*n].set(w_shift_to_pool * jnp.diag(jnp.ones(n-1), k=1))
