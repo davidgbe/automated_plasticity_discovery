@@ -76,8 +76,9 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     # Use filtered x_ct_1 in plasticity rule
     dw_dt_ct_1 = (
         params.learning_rate
-        * jnp.outer(params.alpha * jnp.square(z) - dx_dt[:n] * z_filt, x_ct_1_filt)  # Changed to x_ct_1_filt
-        ) + params.homeo_rate * jnp.where(comp_to_bound > 0, 0, comp_to_bound)[None, :]
+        * (jnp.outer(z_hp * dx_dt[:n], x_ct_1) + 0  * jnp.outer(z_hp * x_ct_1, dx_dt[:n])  -  params.alpha * (z**2 * x_ct_1)[:, None] + 0.1 * params.alpha * jnp.outer(z**2, x_ct_1))  # Changed to x_ct_1_filt
+    ) + params.homeo_rate * jnp.where(comp_to_bound > 0, 0, comp_to_bound)[None, :]
+
     
     # Zero diagonal
     dw_dt_ct_1 = dw_dt_ct_1.at[jnp.diag_indices(n)].set(0)
@@ -87,7 +88,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     
     # Euler integration
     dt = params.dt
-    new_x = x_in + dx_dt * dt
+    new_x = jnp.clip(x_in + dx_dt * dt, 0, None) 
     new_z_filt = z_filt + dz_filt_dt * dt
     new_x_ct_1_filt = x_ct_1_filt + dx_ct_1_filt_dt * dt
     new_W = W + dw_dt * dt
@@ -102,7 +103,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
         new_W.ravel(),
     ])
     
-    return new_state, (new_x, new_W, params.alpha * jnp.square(z), z_filt * dx_dt[:n])
+    return new_state, (new_x, new_W, params.alpha * z**2 * x_ct_1, dx_dt[:n] * z_hp)
 
 @partial(jit, static_argnames=['params'])
 def simulate_epoch(initial_state, u_trajectory, w_inh, params: SimParams):
@@ -123,11 +124,11 @@ def initialize_weights(n, weight_perturbation, w_e_scale, w_pool_to_shift, w_shi
     
     # Pool-to-pool connections
     shift_mats_pool_pool = []
-    for i in range(1, 2):
+    for i in range(0, n):
         w_shift = (
             jnp.diag(jnp.ones(n - jnp.abs(i)), k=i)
             * 0.5
-            * (1 + jnp.cos(2 * jnp.pi * jnp.abs(i) / n))
+            * (1 + jnp.cos(2 * jnp.pi * jnp.abs(i) / (n+1)))
         )
         shift_mats_pool_pool.append(w_shift)
         shift_mats_pool_pool.append(w_shift.T)
@@ -138,8 +139,8 @@ def initialize_weights(n, weight_perturbation, w_e_scale, w_pool_to_shift, w_shi
     )
     
     # Shift connections
-    W0 = W0.at[:n, n:2*n].set(w_shift_to_pool * jnp.diag(jnp.ones(n-2), k=2))
-    W0 = W0.at[:n, 2*n:3*n].set(w_shift_to_pool * jnp.diag(jnp.ones(n-2), k=-2))
+    W0 = W0.at[:n, n:2*n].set(w_shift_to_pool * jnp.diag(jnp.ones(n-1), k=1))
+    W0 = W0.at[:n, 2*n:3*n].set(w_shift_to_pool * jnp.diag(jnp.ones(n-1), k=-1))
     
     # Pool-to-shift connections
     w_side_pool = (
@@ -148,6 +149,8 @@ def initialize_weights(n, weight_perturbation, w_e_scale, w_pool_to_shift, w_shi
     ) * w_pool_to_shift
     W0 = W0.at[n:2*n, :n].set(w_side_pool)
     W0 = W0.at[2*n:3*n, :n].set(w_side_pool)
+    W0 = W0.at[n:2*n, n:2*n].set(-1)
+    W0 = W0.at[2*n:3*n, 2*n:3*n].set(-1)
     
     return W0
 
@@ -209,7 +212,7 @@ def train_multiple_networks(
     params = SimParams(
         n=n,
         tau_m=1e-2,
-        tau_z=100e-3,
+        tau_z=5e-3,
         tau_x_filt=tau_x_filt,
         learning_rate=learning_rate,
         homeo_rate=homeo_rate,
@@ -375,18 +378,18 @@ if __name__ == "__main__":
     results, t = train_multiple_networks(
         n_networks=1,
         n_epochs=20,
-        n=15,
+        n=2,
         t_sim=(0, 1.5),
         dt=1e-4,
-        learning_rate=-400,
-        homeo_rate=0, #1, #0.1,
-        alpha=10, # 100 * 0.05,
-        presyn_setpoint=3.5,
-        tau_x_filt=0.02,  # Time constant for x_ct_1 filtering
-        w_e_scale=3, #0.864,
+        learning_rate=0,
+        homeo_rate=0,
+        alpha=5, #1,
+        presyn_setpoint=6,
+        tau_x_filt=0.005,  # Time constant for x_ct_1 filtering
+        w_e_scale=2, #0.864,
         w_pool_to_shift=0.75,
-        w_shift_to_pool=0.5,
-        weight_perturbation=0,
+        w_shift_to_pool=0.15,
+        weight_perturbation=0.1,
         peak_amp=0.5,
         seed=80,
     )
