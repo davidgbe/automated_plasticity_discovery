@@ -8,7 +8,7 @@
 
 #SBATCH --nodes=1
 #SBATCH --time=10:00:00
-#SBATCH --ntasks=30
+#SBATCH --ntasks=10
 #SBATCH --mem=50G
 
 #SBATCH --chdir=.

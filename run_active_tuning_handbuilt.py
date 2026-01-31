@@ -316,7 +316,7 @@ if __name__ == "__main__":
         n=2,
         t_sim=(0, 1.5),
         dt=1e-4,
-        learning_rate=800,
+        learning_rate=2000,
         homeo_rate=0,
         alpha=35, #1,
         presyn_setpoint=6,

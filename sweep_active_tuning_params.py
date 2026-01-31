@@ -6,8 +6,8 @@ import pickle
 # Hyperparameter sweep for alpha and tau_z
 if __name__ == "__main__":
     # Define parameter grids
-    alpha_values = np.linspace(25, 50, 25)  # 1 to 100
-    tau_z_values = np.linspace(2.5e-3, 2.5e-3, 1)  # 0.001 to 0.01
+    alpha_values = np.linspace(0, 100, 50)  # 1 to 100
+    tau_z_values = np.linspace(1e-3, 5e-3, 3)  # 0.001 to 0.01
     
     # Fixed parameters
     fixed_params = {
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     }
     
     # Storage for results
-    correlation_matrix = np.zeros((len(alpha_values), len(tau_z_values)))
+    correlation_matrix = np.zeros((len(alpha_values), len(tau_z_values), fixed_params['n_networks']))
     
     total_runs = len(alpha_values) * len(tau_z_values)
     current_run = 0
@@ -90,7 +90,7 @@ if __name__ == "__main__":
             
             # Store mean correlation across networks
             mean_corr = np.mean(network_correlations)
-            correlation_matrix[i, j] = mean_corr
+            correlation_matrix[i, j, :] = network_correlations
             
             run_time = time() - run_start
             elapsed_total = time() - start_time_total
@@ -108,5 +108,5 @@ if __name__ == "__main__":
         'fixed_params': fixed_params,
     }
     
-    with open('hyperparam_sweep_results.pkl', 'wb') as f:
+    with open('hyperparam_sweep_results_3.pkl', 'wb') as f:
         pickle.dump(sweep_results, f)
