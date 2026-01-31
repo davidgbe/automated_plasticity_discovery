@@ -59,7 +59,7 @@ if __name__ == "__main__":
             # Compute correlations for each network
             dt = fixed_params['dt']
             n = fixed_params['n']
-            input_start_int = int(0.05 / dt)  # Skip initial transient
+            input_start_int = int(0.5 / dt)  # Skip initial transient
             
             network_correlations = []
             

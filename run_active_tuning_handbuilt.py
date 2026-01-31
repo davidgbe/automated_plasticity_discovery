@@ -167,7 +167,7 @@ def make_u_trajectory(n, t, dt, key):
     inp = np.zeros((3 + n, len(t)))
     
     for t_p in np.linspace(0, t.max(), int((t.max() + 1)/block_len)):
-        if t_p >= 0.05 and t_p < 1.2:
+        if t_p >= 0.1 and t_p < 0.5:
             u_block = 0.15 * np.random.rand(2) + 0.05
             if np.random.rand() > 0.5:
                 u_block[0] = 0
