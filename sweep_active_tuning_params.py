@@ -6,7 +6,7 @@ import pickle
 # Hyperparameter sweep for alpha and tau_z
 if __name__ == "__main__":
     # Define parameter grids
-    alpha_values = np.linspace(33, 38, 10)  # 1 to 100
+    alpha_values = np.linspace(25, 50, 25)  # 1 to 100
     tau_z_values = np.linspace(2.5e-3, 2.5e-3, 1)  # 0.001 to 0.01
     
     # Fixed parameters
