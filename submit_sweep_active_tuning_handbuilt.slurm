@@ -3,11 +3,11 @@
 ## Presets
 #SBATCH --job-name=active_coding
 
-#SBATCH -p ckpt-all
-#SBATCH -A stf
+#SBATCH -p compute
+#SBATCH -A labfairhall
 
 #SBATCH --nodes=1
-#SBATCH --time=2:00:00
+#SBATCH --time=10:00:00
 #SBATCH --ntasks=30
 #SBATCH --mem=50G
 
@@ -20,7 +20,7 @@ echo $CURRDIR
 ## Commands to run
 source python-env/bin/activate
 
-python run_active_tuning_handbuilt.py
+python sweep_active_tuning_params.py
 
 deactivate
 
