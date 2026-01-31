@@ -198,6 +198,7 @@ def train_multiple_networks(
     alpha=10,
     presyn_setpoint=3.5,
     tau_x_filt=0.02,  # Time constant for x_ct_1 filtering
+    tau_z=5e-3,
     w_e_scale=0.864,
     w_pool_to_shift=0.5,
     w_shift_to_pool=0.25,
@@ -219,7 +220,7 @@ def train_multiple_networks(
     params = SimParams(
         n=n,
         tau_m=1e-2,
-        tau_z=5e-3,
+        tau_z=tau_z,
         tau_x_filt=tau_x_filt,
         learning_rate=learning_rate,
         homeo_rate=homeo_rate,
@@ -393,6 +394,7 @@ if __name__ == "__main__":
         alpha=5, #1,
         presyn_setpoint=6,
         tau_x_filt=0.005,  # Time constant for x_ct_1 filtering
+        tau_z=5e-3,
         w_e_scale=2, #0.864,
         w_pool_to_shift=0.75,
         w_shift_to_pool=0.15,
