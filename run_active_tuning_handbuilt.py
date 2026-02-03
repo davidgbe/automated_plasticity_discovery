@@ -138,11 +138,11 @@ def initialize_weights(n, weight_perturbation, w_e_scale, w_pool_to_shift, w_shi
     #     w_e_scale * jnp.sum(jnp.stack(shift_mats_pool_pool), axis=0) * weight_pert
     # )
 
-    weight_pert = jax.random.normal(key, (n, n)) * weight_perturbation + 1
+    weight_pert = jax.random.uniform(key, (n, n)) * weight_perturbation
 
     W0 = W0.at[:n, :n].set(jnp.array([
-        [1.5, 0.5 * weight_pert[0, 1]],
-        [0.5 * weight_pert[1, 0], 1.5],
+        [1.5, weight_pert[0, 1]],
+        [weight_pert[1, 0], 1.5],
     ]))
     
     # Shift connections
@@ -300,8 +300,6 @@ def train_multiple_networks(
             'weight_trajectory': weight_trajectory,
             'last_20_epochs': last_20_epochs_data,
             'final_weights': weight_trajectory[-1],
-            'dx_dt': dx_dt,
-            'z_lead': z_lead,
         })
     
     return all_results, t
@@ -312,22 +310,22 @@ if __name__ == "__main__":
     # Train networks
     results, t = train_multiple_networks(
         n_networks=5,
-        n_epochs=3000,
+        n_epochs=5000,
         n=2,
         t_sim=(0, 1.5),
         dt=1e-4,
-        learning_rate=2000,
+        learning_rate=2e4,
         homeo_rate=0,
-        alpha=35, #1,
+        alpha=36.5, #1,
         presyn_setpoint=6,
         tau_x_filt=0.005,  # Time constant for x_ct_1 filtering
         tau_z=2.5e-3,
         w_e_scale=2, #0.864,
         w_pool_to_shift=0.5,
         w_shift_to_pool=0.05,
-        weight_perturbation=0.1,
+        weight_perturbation=1.0,
         peak_amp=0.5,
-        seed=81,
+        seed=100,
     )
 
     # Save results

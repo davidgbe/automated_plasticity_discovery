@@ -20,7 +20,7 @@ echo $CURRDIR
 ## Commands to run
 source python-env/bin/activate
 
-python sweep_active_tuning_params.py
+python sweep_active_tuning_params_2.py
 
 deactivate
 
