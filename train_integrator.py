@@ -369,13 +369,14 @@ def calc_loss(r : np.ndarray, train_diff_drives : np.ndarray, test_diff_drives :
 	y_test = np.array(y_test)
 
 	reg = Lasso(alpha=0.05).fit(X_train, y_train)
-	loss = 1000 * (1 - reg.score(X_test, y_test))
+	score = reg.score(X_test, y_test)
+	loss = 1000 * (1 - score)
 	
 	if not args.train:
 		y_test_pred = reg.predict(X_test)
-		return loss, y_test_pred, y_test
+		return loss, y_test_pred, y_test, score
 	else:
-		return loss, None, None
+		return loss, None, None, score
 
 
 def plot_results(results, eval_tracker, out_dir, plasticity_coefs, true_losses, syn_effect_penalties, total_activity_penalties, train=True):
@@ -735,28 +736,33 @@ def simulate_single_network(index, x, train, save_paths=None):
 	test_diffs = np.asarray(input_signal_totals[decoder_test_trial_nums[0]:decoder_test_trial_nums[1]])
 
 	rs_for_loss = np.stack(rs_for_loss)
+	
 
-	if not args.train and not RULE_DROPOUT:
-		normed_loss, y_test_pred, y_test = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
+	if not args.train:
+		normed_loss, y_test_pred, y_test, score = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
 
-		# save weights
-		weight_file_name = os.path.join(save_paths['weight_path'], f'net_{zero_pad(index, 3)}.npy')
-		np.save(weight_file_name, np.asarray(all_w))
-		# save activity
-		activity_file_name = os.path.join(save_paths['activity_path'], f'net_{zero_pad(index, 3)}.npy')
-		np.save(activity_file_name, np.asarray(all_r))
-		# save integrated_values
-		integrated_value_file_name = os.path.join(save_paths['integrated_value_path'], f'net_{zero_pad(index, 3)}.npy')
-		np.save(integrated_value_file_name, np.asarray(input_signal_totals))
-		# save inputs
-		inputs_file_name = os.path.join(save_paths['inputs_path'], f'net_{zero_pad(index, 3)}.npy')
-		np.save(inputs_file_name, np.asarray(all_inputs))
-		# save sampled target values
-		targets_file_name = os.path.join(save_paths['targets_path'], f'net_{zero_pad(index, 3)}.npy')
-		np.save(targets_file_name, np.asarray(y_test))
-		# save predictions at sampled times
-		predictions_file_name = os.path.join(save_paths['predictions_path'], f'net_{zero_pad(index, 3)}.npy')
-		np.save(predictions_file_name, np.asarray(y_test_pred))
+		if not RULE_DROPOUT:
+			# save weights
+			weight_file_name = os.path.join(save_paths['weight_path'], f'net_{zero_pad(index, 3)}.npy')
+			np.save(weight_file_name, np.asarray(all_w))
+			# save activity
+			activity_file_name = os.path.join(save_paths['activity_path'], f'net_{zero_pad(index, 3)}.npy')
+			np.save(activity_file_name, np.asarray(all_r))
+			# save integrated_values
+			integrated_value_file_name = os.path.join(save_paths['integrated_value_path'], f'net_{zero_pad(index, 3)}.npy')
+			np.save(integrated_value_file_name, np.asarray(input_signal_totals))
+			# save inputs
+			inputs_file_name = os.path.join(save_paths['inputs_path'], f'net_{zero_pad(index, 3)}.npy')
+			np.save(inputs_file_name, np.asarray(all_inputs))
+			# save sampled target values
+			targets_file_name = os.path.join(save_paths['targets_path'], f'net_{zero_pad(index, 3)}.npy')
+			np.save(targets_file_name, np.asarray(y_test))
+			# save predictions at sampled times
+			predictions_file_name = os.path.join(save_paths['predictions_path'], f'net_{zero_pad(index, 3)}.npy')
+			np.save(predictions_file_name, np.asarray(y_test_pred))
+		
+		scores_file_name = os.path.join(save_paths['scores_path'], f'net_{zero_pad(index, 3)}.npy')
+		np.save(scores_file_name, np.asarray(score))
 
 		if args.save_all_w:
 			# save all weight series
@@ -764,7 +770,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 			np.save(weight_file_name, np.asarray(all_w_series))
 
 	else:
-		normed_loss, _, _ = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
+		normed_loss, _, _, score = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
 
 	print('single sim time: ', time.time() - start)
 	sys.stdout.flush()
@@ -1030,6 +1036,8 @@ if __name__ == '__main__':
 		os.mkdir(targets_path)
 		predictions_path = os.path.join(out_dir, 'predictions')
 		os.mkdir(predictions_path)
+		scores_path = os.path.join(out_dir, 'scores')
+		os.mkdir(scores_path)
 		if args.save_all_w:
 			weight_series_path = os.path.join(out_dir, 'weights_series')
 			os.mkdir(weight_series_path)
@@ -1043,6 +1051,7 @@ if __name__ == '__main__':
 			'targets_path': targets_path,
 			'predictions_path': predictions_path,
 			'weight_series_path': weight_series_path,
+			'scores_path': scores_path,
 		}
 
 		if args.struct_prior == 'hard_coded':
