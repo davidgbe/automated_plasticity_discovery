@@ -1038,10 +1038,6 @@ if __name__ == '__main__':
 		os.mkdir(predictions_path)
 		scores_path = os.path.join(out_dir, 'scores')
 		os.mkdir(scores_path)
-		if args.save_all_w:
-			weight_series_path = os.path.join(out_dir, 'weights_series')
-			os.mkdir(weight_series_path)
-
 		
 		save_paths = {
 			'weight_path': weight_path,
@@ -1050,9 +1046,13 @@ if __name__ == '__main__':
 			'inputs_path': inputs_path,
 			'targets_path': targets_path,
 			'predictions_path': predictions_path,
-			'weight_series_path': weight_series_path,
 			'scores_path': scores_path,
 		}
+
+		if args.save_all_w:
+			weight_series_path = os.path.join(out_dir, 'weights_series')
+			os.mkdir(weight_series_path)
+			save_paths['weight_series_path'] = weight_series_path
 
 		if args.struct_prior == 'hard_coded':
 			x_test = np.concatenate([np.zeros(N_RULES), 5e-3 * np.ones(N_TIMECONSTS)])
