@@ -7,7 +7,7 @@ import pickle
 if __name__ == "__main__":
     # Define parameter grids
     alpha_values = np.linspace(50, 100, 50)  # 1 to 100
-    tau_z_values = np.linspace(2.5e-3, 2.5e-3, 1)  # 0.001 to 0.01
+    tau_z_values = np.linspace(1e-3, 5e-3, 3)  # 0.001 to 0.01
     
     # Fixed parameters
     fixed_params = {
@@ -108,5 +108,5 @@ if __name__ == "__main__":
         'fixed_params': fixed_params,
     }
     
-    with open('hyperparam_sweep_results_part_2.pkl', 'wb') as f:
+    with open('hyperparam_sweep_results_w_part_2.pkl', 'wb') as f:
         pickle.dump(sweep_results, f)

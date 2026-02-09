@@ -142,7 +142,7 @@ def initialize_weights(n, weight_perturbation, w_e_scale, w_pool_to_shift, w_shi
 
     W0 = W0.at[:n, :n].set(jnp.array([
         [1.5, weight_pert[0, 1]],
-        [weight_pert[1, 0], 1.5],
+        [weight_pert[1, 0], 1.8],
     ]))
     
     # Shift connections
@@ -316,7 +316,7 @@ if __name__ == "__main__":
         dt=1e-4,
         learning_rate=2e4,
         homeo_rate=0,
-        alpha=36.5, #1,
+        alpha=37, #1,
         presyn_setpoint=6,
         tau_x_filt=0.005,  # Time constant for x_ct_1 filtering
         tau_z=2.5e-3,
@@ -329,7 +329,7 @@ if __name__ == "__main__":
     )
 
     # Save results
-    with open('network_training_results.pkl', 'wb') as f:
+    with open('network_training_results_w_change_w_ii.pkl', 'wb') as f:
         pickle.dump({'results': results, 't': t}, f)
     
     # Plot results

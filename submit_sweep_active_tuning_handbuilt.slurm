@@ -7,7 +7,7 @@
 #SBATCH -A stf
 
 #SBATCH --nodes=1
-#SBATCH --time=10:00:00
+#SBATCH --time=20:00:00
 #SBATCH --ntasks=20
 #SBATCH --mem=50G
 
