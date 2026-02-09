@@ -760,14 +760,14 @@ def simulate_single_network(index, x, train, save_paths=None):
 			# save predictions at sampled times
 			predictions_file_name = os.path.join(save_paths['predictions_path'], f'net_{zero_pad(index, 3)}.npy')
 			np.save(predictions_file_name, np.asarray(y_test_pred))
+
+			if args.save_all_w:
+				# save all weight series
+				weight_file_name = os.path.join(save_paths['weight_series_path'], f'net_{zero_pad(index, 3)}.npy')
+				np.save(weight_file_name, np.asarray(all_w_series))
 		
 		scores_file_name = os.path.join(save_paths['scores_path'], f'net_{zero_pad(index, 3)}.npy')
 		np.save(scores_file_name, np.asarray(score))
-
-		if args.save_all_w:
-			# save all weight series
-			weight_file_name = os.path.join(save_paths['weight_series_path'], f'net_{zero_pad(index, 3)}.npy')
-			np.save(weight_file_name, np.asarray(all_w_series))
 
 	else:
 		normed_loss, _, _, score = calc_loss(rs_for_loss, train_diffs, test_diffs, readout_times)
