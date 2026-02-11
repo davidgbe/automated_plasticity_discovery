@@ -76,7 +76,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     # Use filtered x_ct_1 in plasticity rule
     dw_dt_ct_1 = (
         params.learning_rate
-        * ((0 * jnp.outer(z * dx_dt[:n], x_ct_1) + 0 * jnp.outer(z_hp * x_ct_1, dx_dt[:n]) - 0.99 * params.alpha * (z * x_ct_1)[:, None]) + 1 * params.alpha * jnp.outer(z, x_ct_1))  # Changed to x_ct_1_filt
+        * ((0.5 * jnp.outer(z * dx_dt[:n], x_ct_1) + 0 * jnp.outer(z_hp * x_ct_1, dx_dt[:n]) - 0.95 * params.alpha * (z * x_ct_1)[:, None]) + 1 * params.alpha * jnp.outer(z, x_ct_1))  # Changed to x_ct_1_filt
     ) + params.homeo_rate * jnp.where(comp_to_bound > 0, 0, comp_to_bound)[None, :]
 
     
@@ -141,8 +141,8 @@ def initialize_weights(n, weight_perturbation, w_e_scale, w_pool_to_shift, w_shi
     weight_pert = jax.random.uniform(key, (n, n)) * weight_perturbation
 
     W0 = W0.at[:n, :n].set(jnp.array([
-        [1.5, weight_pert[0, 1]],
-        [weight_pert[1, 0], 1.8],
+        [weight_pert[0, 0] + 1, weight_pert[0, 1]],
+        [weight_pert[1, 0], weight_pert[1, 1] + 1],
     ]))
     
     # Shift connections
@@ -290,7 +290,7 @@ def train_multiple_networks(
                 })
             
             if (epoch + 1) % 10 == 0:
-                print(f"  Epoch {epoch + 1}/{n_epochs} - {time() - start_time:.2f}s")
+                print(f"  Epoch {epoch + 1}/{n_epochs} - {time() - start_time:.2f}")
 
             state = state.at[:3*n].set(x_init)
             state = state.at[3*n:3*n + n].set(z_filt0)
@@ -309,14 +309,14 @@ def train_multiple_networks(
 if __name__ == "__main__":
     # Train networks
     results, t = train_multiple_networks(
-        n_networks=3,
-        n_epochs=8000,
+        n_networks=5,
+        n_epochs=3000,
         n=2,
         t_sim=(0, 1.5),
         dt=1e-4,
-        learning_rate=1,
+        learning_rate=50,
         homeo_rate=0,
-        alpha=90, #1,
+        alpha=1.8, #1,
         presyn_setpoint=6,
         tau_x_filt=0.005,  # Time constant for x_ct_1 filtering
         tau_z=2.5e-3,
@@ -329,7 +329,7 @@ if __name__ == "__main__":
     )
 
     # Save results
-    with open('network_training_results_w_change_new_no_3.pkl', 'wb') as f:
+    with open('network_training_results_v2_rule.pkl', 'wb') as f:
         pickle.dump({'results': results, 't': t}, f)
     
     # Plot results

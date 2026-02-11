@@ -1,4 +1,4 @@
-from run_active_tuning_handbuilt import train_multiple_networks
+from run_active_tuning_handbuilt_v2 import train_multiple_networks
 import numpy as np
 from time import time
 import pickle
@@ -6,17 +6,17 @@ import pickle
 # Hyperparameter sweep for alpha and tau_z
 if __name__ == "__main__":
     # Define parameter grids
-    alpha_values = np.linspace(50, 100, 50)  # 1 to 100
-    tau_z_values = np.linspace(1e-3, 5e-3, 3)  # 0.001 to 0.01
+    alpha_values = np.linspace(5, 10, 50)  # 1 to 100
+    tau_z_values = np.linspace(5e-3, 5e-3, 1)  # 0.001 to 0.01
     
     # Fixed parameters
     fixed_params = {
-        'n_networks': 5,
-        'n_epochs': 8000,
+        'n_networks': 15,
+        'n_epochs': 3000,
         'n': 2,
         't_sim': (0, 1.5),
         'dt': 1e-4,
-        'learning_rate': 2e4,
+        'learning_rate': 50,
         'homeo_rate': 0,
         'presyn_setpoint': 6,
         'tau_x_filt': 0.005,
@@ -108,5 +108,5 @@ if __name__ == "__main__":
         'fixed_params': fixed_params,
     }
     
-    with open('hyperparam_sweep_results_w_part_2.pkl', 'wb') as f:
+    with open('hyperparam_sweep_results_v3_part_2.pkl', 'wb') as f:
         pickle.dump(sweep_results, f)
