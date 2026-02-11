@@ -14,16 +14,17 @@ jax.config.update("jax_enable_x64", True)
 
 @struct.dataclass
 class SimParams:
-    """Simulation parameters as a static structure for JAX"""
     n: int
     tau_m: float
-    tau_z: float
-    tau_x_filt: float  # Time constant for x_ct_1 filtering
     learning_rate: float
     homeo_rate: float
     alpha: float
     presyn_setpoint: float
     dt: float
+
+    # New plasticity coefficients
+    hebbian_dx_scale: float = 200.0
+    alpha_outer_scale: float = 1.5
 
 def gen_gaussian(x, mu, sigma):
     """Generate Gaussian function"""
@@ -41,9 +42,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     
     # Unpack state
     x_in = state[:W_dim]
-    z_filt = state[W_dim:W_dim + n]
-    x_ct_1_filt = state[W_dim + n:W_dim + 2*n]  # Low-pass filtered x_ct_1
-    W = state[W_dim + 2*n:].reshape((W_dim, W_dim))
+    W = state[W_dim:].reshape((W_dim, W_dim))
     
     # Ensure non-negative activity
     x = jnp.clip(x_in, 0, None)
@@ -59,24 +58,19 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     # Weight dynamics
     x_ct_1 = x[:n]
     x_ct_2 = x[n:3 * n]
-    
     z = W[:n, n:3 * n] @ x_ct_2
-    
-    # z low-pass filter
-    dz_filt_dt = (z - z_filt) / params.tau_z
-    
-    # x_ct_1 low-pass filter
-    dx_ct_1_filt_dt = (x_ct_1 - x_ct_1_filt) / params.tau_x_filt
-    
-    # Rectified high-pass signal
-    z_hp = jnp.maximum(z - z_filt, 0.0)
     
     comp_to_bound = params.presyn_setpoint - W[:n, :n].sum(axis=0)
     
     # Use filtered x_ct_1 in plasticity rule
     dw_dt_ct_1 = (
         params.learning_rate # had at 30
-        * ((0 * jnp.outer(z * dx_dt[:n], x_ct_1) + 200 * jnp.outer(z * x_ct_1, dx_dt[:n]) - 1 * params.alpha * (z * x_ct_1)[:, None]) + 1.5 * params.alpha * jnp.outer(z, x_ct_1))  # Changed to x_ct_1_filt
+        * (
+            (0 * jnp.outer(z * dx_dt[:n], x_ct_1)
+            + params.hebbian_dx_scale * jnp.outer(z * x_ct_1, dx_dt[:n])
+            - params.alpha * (z * x_ct_1)[:, None])
+            + params.alpha_outer_scale * params.alpha * jnp.outer(z, x_ct_1)
+        )  # Changed to x_ct_1_filt
     ) + params.homeo_rate * jnp.where(comp_to_bound > 0, 0, comp_to_bound)[None, :]
 
     
@@ -89,8 +83,6 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     # Euler integration
     dt = params.dt
     new_x = jnp.clip(x_in + dx_dt * dt, 0, None) 
-    new_z_filt = z_filt + dz_filt_dt * dt
-    new_x_ct_1_filt = x_ct_1_filt + dx_ct_1_filt_dt * dt
     new_W = W + dw_dt * dt
     new_W_pool = new_W[:n, :n]
     new_W = new_W.at[:n, :n].set(jnp.where(new_W_pool > 0,  new_W_pool, 0))
@@ -98,8 +90,6 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     # Pack new state
     new_state = jnp.concatenate([
         new_x,
-        new_z_filt,
-        new_x_ct_1_filt,
         new_W.ravel(),
     ])
     
