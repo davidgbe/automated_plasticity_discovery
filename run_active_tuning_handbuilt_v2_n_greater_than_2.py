@@ -39,7 +39,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     """
     n = params.n
     W_dim = 3 * n
-    
+
     # Unpack state
     x_in = state[:W_dim]
     W = state[W_dim:].reshape((W_dim, W_dim))
@@ -93,7 +93,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
         new_W.ravel(),
     ])
     
-    return new_state, (new_x, new_W, params.alpha * z**2 * x_ct_1, dx_dt[:n] * z_hp)
+    return new_state, (new_x, new_W)
 
 @partial(jit, static_argnames=['params'])
 def simulate_epoch(initial_state, u_trajectory, w_inh, params: SimParams):
@@ -104,9 +104,9 @@ def simulate_epoch(initial_state, u_trajectory, w_inh, params: SimParams):
         new_state, outputs = system_dynamics_step(state, u_t, W0, w_inh, params)
         return new_state, outputs
     
-    final_state, (x_history, w_history, z_lead, dx_dt) = jax.lax.scan(scan_fn, initial_state, u_trajectory)
+    final_state, (x_history, w_history) = jax.lax.scan(scan_fn, initial_state, u_trajectory)
     
-    return final_state, x_history, w_history, z_lead, dx_dt
+    return final_state, x_history, w_history
 
 def initialize_weights(n, weight_perturbation, w_e_scale, w_pool_to_shift, w_shift_to_pool, key):
     """Initialize weight matrix"""
@@ -186,6 +186,8 @@ def train_multiple_networks(
     learning_rate=0,
     homeo_rate=0,
     alpha=10,
+    alpha_outer_scale=1.5,
+    hebbian_dx_scale=200,
     presyn_setpoint=3.5,
     tau_x_filt=0.02,  # Time constant for x_ct_1 filtering
     tau_z=2.5e-3,
@@ -210,11 +212,11 @@ def train_multiple_networks(
     params = SimParams(
         n=n,
         tau_m=1e-2,
-        tau_z=tau_z,
-        tau_x_filt=tau_x_filt,
         learning_rate=learning_rate,
         homeo_rate=homeo_rate,
         alpha=alpha,
+        alpha_outer_scale=alpha_outer_scale,
+        hebbian_dx_scale=hebbian_dx_scale,
         presyn_setpoint=presyn_setpoint,
         dt=dt,
     )
@@ -243,15 +245,11 @@ def train_multiple_networks(
             jnp.clip(peak_amp * gen_gaussian(x, x_init_peak_loc * (n-1), s), 0, None),
             jnp.zeros(2*n),
         ])
-        z_filt0 = jnp.zeros(n)
-        x_ct_1_filt0 = jnp.zeros(n)  # Initialize filtered x_ct_1
-        state = jnp.concatenate([x_init, z_filt0, x_ct_1_filt0, W0.ravel()])
+        state = jnp.concatenate([x_init, W0.ravel()])
         
         # Storage for this network
         weight_trajectory = [W0.copy()]  # Store initial weights
         last_20_epochs_data = []
-        z_lead = []
-        dx_dt = []
         
         start_time = time()
         
@@ -261,13 +259,11 @@ def train_multiple_networks(
             key, _ = jax.random.split(key)
             
             # Simulate epoch
-            state, x_history, w_history, z_lead_history, dx_dt_history = simulate_epoch(state, u_trajectory, w_inh, params)
+            state, x_history, w_history= simulate_epoch(state, u_trajectory, w_inh, params)
             
             # Store final weights
-            final_W = state[3*n + 2*n:].reshape((3*n, 3*n))
+            final_W = state[3*n:].reshape((3*n, 3*n))
             weight_trajectory.append(np.array(final_W))
-            z_lead.append(z_lead_history)
-            dx_dt.append(dx_dt_history)
 
             
             # Store last 20 epochs' activity
@@ -283,8 +279,6 @@ def train_multiple_networks(
                 print(f"  Epoch {epoch + 1}/{n_epochs} - {time() - start_time:.2f}")
 
             state = state.at[:3*n].set(x_init)
-            state = state.at[3*n:3*n + n].set(z_filt0)
-            state = state.at[3*n + n:3*n + 2*n].set(x_ct_1_filt0)
         
         all_results.append({
             'weight_trajectory': weight_trajectory,
@@ -300,16 +294,16 @@ if __name__ == "__main__":
     # Train networks
     results, t = train_multiple_networks(
         n_networks=1,
-        n_epochs=15000,
+        n_epochs=4000,
         n=5,
         t_sim=(0, 2.0),
         dt=1e-4,
-        learning_rate=0.05, #50,
+        learning_rate=0.25, #50,
+        alpha_outer_scale=1,
+        hebbian_dx_scale=200,
+        alpha=25,
         homeo_rate=0,
-        alpha=25, #1,
         presyn_setpoint=6,
-        tau_x_filt=0.005,  # Time constant for x_ct_1 filtering
-        tau_z=2.5e-3,
         w_e_scale=2, #0.864,
         w_pool_to_shift=0.5,
         w_shift_to_pool=0.3,
