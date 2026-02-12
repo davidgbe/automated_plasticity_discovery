@@ -276,7 +276,8 @@ def train_multiple_networks(
                 })
             
             if (epoch + 1) % 10 == 0:
-                print(f"  Epoch {epoch + 1}/{n_epochs} - {time() - start_time:.2f}")
+                pass
+                # print(f"  Epoch {epoch + 1}/{n_epochs} - {time() - start_time:.2f}")
 
             state = state.at[:3*n].set(x_init)
         

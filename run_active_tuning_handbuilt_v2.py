@@ -325,7 +325,7 @@ if __name__ == "__main__":
         w_shift_to_pool=0.05,
         weight_perturbation=1.0,
         peak_amp=0.5,
-        seed=100,
+        seed=200,
     )
 
     # Save results

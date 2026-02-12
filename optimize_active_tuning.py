@@ -1,6 +1,7 @@
 import numpy as np
 import cma
 import pickle
+import sys
 
 from run_active_tuning_handbuilt_v2_n_greater_than_2 import train_multiple_networks
 
@@ -61,7 +62,7 @@ def objective(theta):
     try:
         results, _ = train_multiple_networks(
             n_networks=1,
-            n_epochs=1200,      # keep moderate during search
+            n_epochs=2000,      # keep moderate during search
             n=5,
             t_sim=(0, 2.0),
             dt=1e-4,
@@ -99,16 +100,16 @@ if __name__ == "__main__":
 
     # Initial guess (linear space)
     x0 = [
-        0.2,    # learning_rate
+        10,    # learning_rate
         20.0,   # alpha
         1.0,    # alpha_outer_scale
         10.0,  # hebbian_dx_scale
     ]
 
-    sigma0 = 0.1  # smaller than log-space case
+    sigma0 = 1.0  # smaller than log-space case
 
     lower_bounds = [0.001, 0.1, 0.0, 1.0]
-    upper_bounds = [2.0, 100.0, 3.0, 1000.0]
+    upper_bounds = [50.0, 100.0, 3.0, 1000.0]
 
     es = cma.CMAEvolutionStrategy(
         x0,
@@ -125,10 +126,11 @@ if __name__ == "__main__":
         values = [objective(s) for s in solutions]
         for val in values:
             if val < best_val:
-                print(best_val)
+                print('new_best_val', val)
                 best_val = val
         es.tell(solutions, values)
         es.disp()
+        sys.stdout.flush()
 
     result = es.result
 
