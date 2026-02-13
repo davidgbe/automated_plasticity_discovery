@@ -24,6 +24,7 @@ class SimParams:
 
     # New plasticity coefficients
     hebbian_dx_scale: float = 200.0
+    hebbian_dx_scale_conj: float = 200.0
     alpha_outer_scale: float = 1.5
 
 def gen_gaussian(x, mu, sigma):
@@ -66,7 +67,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     dw_dt_ct_1 = (
         params.learning_rate # had at 30
         * (
-            (0 * jnp.outer(z * dx_dt[:n], x_ct_1)
+            params.hebbian_dx_scale_conj * jnp.outer(z * dx_dt[:n], x_ct_1
             + params.hebbian_dx_scale * jnp.outer(z * x_ct_1, dx_dt[:n])
             - params.alpha * (z * x_ct_1)[:, None])
             + params.alpha_outer_scale * params.alpha * jnp.outer(z, x_ct_1)
@@ -188,6 +189,7 @@ def train_multiple_networks(
     alpha=10,
     alpha_outer_scale=1.5,
     hebbian_dx_scale=200,
+    hebbian_dx_scale_conj=0,
     presyn_setpoint=3.5,
     tau_x_filt=0.02,  # Time constant for x_ct_1 filtering
     tau_z=2.5e-3,
@@ -217,6 +219,7 @@ def train_multiple_networks(
         alpha=alpha,
         alpha_outer_scale=alpha_outer_scale,
         hebbian_dx_scale=hebbian_dx_scale,
+        hebbian_dx_scale_conj=hebbian_dx_scale_conj,
         presyn_setpoint=presyn_setpoint,
         dt=dt,
     )
@@ -302,6 +305,7 @@ if __name__ == "__main__":
         learning_rate=0.25, #50,
         alpha_outer_scale=1,
         hebbian_dx_scale=200,
+        hebbian_dx_scale_conj=0,
         alpha=25,
         homeo_rate=0,
         presyn_setpoint=6,

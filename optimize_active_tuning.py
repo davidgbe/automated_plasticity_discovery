@@ -53,7 +53,7 @@ def objective(theta):
     ]
     """
 
-    learning_rate, alpha, alpha_outer_scale, hebbian_dx_scale = theta
+    learning_rate, alpha, alpha_outer_scale, hebbian_dx_scale, hebbian_dx_scale_conj, homeo_rate, presyn_setpoint = theta
 
     # Hard safety clamp (extra guard against blowups)
     if learning_rate <= 0 or alpha <= 0 or hebbian_dx_scale <= 0:
@@ -70,8 +70,9 @@ def objective(theta):
             alpha=alpha,
             alpha_outer_scale=alpha_outer_scale,
             hebbian_dx_scale=hebbian_dx_scale,
-            homeo_rate=0,
-            presyn_setpoint=6,
+            hebbian_dx_scale_conj=hebbian_dx_scale_conj,
+            homeo_rate=homeo_rate,
+            presyn_setpoint=presyn_setpoint,
             w_e_scale=2,
             w_pool_to_shift=0.5,
             w_shift_to_pool=0.3,
@@ -104,12 +105,15 @@ if __name__ == "__main__":
         20.0,   # alpha
         1.0,    # alpha_outer_scale
         10.0,  # hebbian_dx_scale
+        10.0,  # hebbian_dx_scale_conj
+        0.1,   # homeo_rate
+        11,    # presyn_setpoint
     ]
 
     sigma0 = 1.0  # smaller than log-space case
 
-    lower_bounds = [0.001, 0.1, 0.0, 1.0]
-    upper_bounds = [50.0, 100.0, 3.0, 1000.0]
+    lower_bounds = [0.001, 0.1, 0.0, 0.1, 0.1, 0, 0.5]
+    upper_bounds = [100.0, 100.0, 5.0, 1000, 1000, 10, 100]
 
     es = cma.CMAEvolutionStrategy(
         x0,
@@ -139,6 +143,9 @@ if __name__ == "__main__":
         "alpha": result.xbest[1],
         "alpha_outer_scale": result.xbest[2],
         "hebbian_dx_scale": result.xbest[3],
+        "hebbian_dx_scale_conj": result.xbest[4],
+        "homeo_rate": result.xbest[5],
+        "presyn_setpoint": result.xbest[6],
         "r2": -result.fbest,
     }
 

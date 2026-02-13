@@ -3,8 +3,8 @@
 ## Presets
 #SBATCH --job-name=active_coding
 
-#SBATCH -p compute
-#SBATCH -A labfairhall
+#SBATCH -p cpu-g2-mem2x
+#SBATCH -A stf
 
 #SBATCH --nodes=1
 #SBATCH --time=10:00:00
@@ -20,7 +20,7 @@ echo $CURRDIR
 ## Commands to run
 source python-env/bin/activate
 
-python -u optimize_active_tuning.py
+python optimize_active_tuning.py
 
 deactivate
 
