@@ -57,12 +57,13 @@ def objective(theta):
 
     # Hard safety clamp (extra guard against blowups)
     if learning_rate <= 0 or alpha <= 0 or hebbian_dx_scale <= 0:
+        print('happens')
         return 1e6
 
     try:
         results, _ = train_multiple_networks(
             n_networks=1,
-            n_epochs=2000,      # keep moderate during search
+            n_epochs=5000,      # keep moderate during search
             n=5,
             t_sim=(0, 2.0),
             dt=1e-4,
@@ -105,15 +106,15 @@ if __name__ == "__main__":
         20.0,   # alpha
         1.0,    # alpha_outer_scale
         10.0,  # hebbian_dx_scale
-        10.0,  # hebbian_dx_scale_conj
+        1.0,  # hebbian_dx_scale_conj
         0.1,   # homeo_rate
-        11,    # presyn_setpoint
+        12,    # presyn_setpoint
     ]
 
     sigma0 = 1.0  # smaller than log-space case
 
-    lower_bounds = [0.001, 0.1, 0.0, 0.1, 0.1, 0, 0.5]
-    upper_bounds = [100.0, 100.0, 5.0, 1000, 1000, 10, 100]
+    lower_bounds = [0.001, 0.1, 0.0, 0.1, 0.1, 0, 8]
+    upper_bounds = [25.0, 100.0, 5.0, 1000, 1000, 10, 100]
 
     es = cma.CMAEvolutionStrategy(
         x0,
@@ -128,8 +129,9 @@ if __name__ == "__main__":
     while not es.stop():
         solutions = es.ask()
         values = [objective(s) for s in solutions]
-        for val in values:
+        for i_val, val in enumerate(values):
             if val < best_val:
+                print(solutions[i_val])
                 print('new_best_val', val)
                 best_val = val
         es.tell(solutions, values)
@@ -152,5 +154,5 @@ if __name__ == "__main__":
     print("\nBest parameters found:")
     print(best_params)
 
-    with open("cmaes_plasticity_results_linear.pkl", "wb") as f:
+    with open("cmaes_plasticity_results_linear_v2.pkl", "wb") as f:
         pickle.dump(best_params, f)

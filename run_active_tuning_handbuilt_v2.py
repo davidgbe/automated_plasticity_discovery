@@ -76,7 +76,7 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     # Use filtered x_ct_1 in plasticity rule
     dw_dt_ct_1 = (
         params.learning_rate
-        * ((0.5 * jnp.outer(z * dx_dt[:n], x_ct_1) + 0 * jnp.outer(z_hp * x_ct_1, dx_dt[:n]) - 0.95 * params.alpha * (z * x_ct_1)[:, None]) + 1 * params.alpha * jnp.outer(z, x_ct_1))  # Changed to x_ct_1_filt
+        * ((0.4 * jnp.outer(z * dx_dt[:n], x_ct_1) + 0 * jnp.outer(z_hp * x_ct_1, dx_dt[:n]) - 0.95 * params.alpha * (z * x_ct_1)[:, None]) + 1 * params.alpha * jnp.outer(z, x_ct_1))  # Changed to x_ct_1_filt
     ) + params.homeo_rate * jnp.where(comp_to_bound > 0, 0, comp_to_bound)[None, :]
 
     
@@ -310,26 +310,26 @@ if __name__ == "__main__":
     # Train networks
     results, t = train_multiple_networks(
         n_networks=5,
-        n_epochs=3000,
+        n_epochs=40000,
         n=2,
         t_sim=(0, 1.5),
         dt=1e-4,
-        learning_rate=50,
+        learning_rate=0, #typically 50
         homeo_rate=0,
-        alpha=1.8, #1,
+        alpha=2, #1,
         presyn_setpoint=6,
         tau_x_filt=0.005,  # Time constant for x_ct_1 filtering
         tau_z=2.5e-3,
         w_e_scale=2, #0.864,
         w_pool_to_shift=0.5,
         w_shift_to_pool=0.05,
-        weight_perturbation=1.0,
+        weight_perturbation=0.5,
         peak_amp=0.5,
         seed=200,
     )
 
     # Save results
-    with open('network_training_results_v2_rule.pkl', 'wb') as f:
+    with open('network_training_results_v2_rule_ctrl.pkl', 'wb') as f:
         pickle.dump({'results': results, 't': t}, f)
     
     # Plot results

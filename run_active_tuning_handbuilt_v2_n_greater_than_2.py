@@ -67,9 +67,9 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     dw_dt_ct_1 = (
         params.learning_rate # had at 30
         * (
-            params.hebbian_dx_scale_conj * jnp.outer(z * dx_dt[:n], x_ct_1
+            params.hebbian_dx_scale_conj * jnp.outer(z * dx_dt[:n], x_ct_1)
             + params.hebbian_dx_scale * jnp.outer(z * x_ct_1, dx_dt[:n])
-            - params.alpha * (z * x_ct_1)[:, None])
+            - params.alpha * (z * x_ct_1)[:, None]
             + params.alpha_outer_scale * params.alpha * jnp.outer(z, x_ct_1)
         )  # Changed to x_ct_1_filt
     ) + params.homeo_rate * jnp.where(comp_to_bound > 0, 0, comp_to_bound)[None, :]
@@ -292,23 +292,25 @@ def train_multiple_networks(
     
     return all_results, t
 
+# learning_rate, alpha, alpha_outer_scale, hebbian_dx_scale, hebbian_dx_scale_conj, homeo_rate, presyn_setpoint 
+# [ 54.02776393  68.87148053   2.97085521 275.00858256 234.8829664, 1.69629479   1.97417697]
 
 # Example usage
 if __name__ == "__main__":
     # Train networks
     results, t = train_multiple_networks(
         n_networks=1,
-        n_epochs=4000,
+        n_epochs=2000,
         n=5,
         t_sim=(0, 2.0),
         dt=1e-4,
-        learning_rate=0.25, #50,
-        alpha_outer_scale=1,
-        hebbian_dx_scale=200,
-        hebbian_dx_scale_conj=0,
-        alpha=25,
-        homeo_rate=0,
-        presyn_setpoint=6,
+        learning_rate=54.03, #50,
+        alpha_outer_scale=2.97,
+        hebbian_dx_scale=275,
+        hebbian_dx_scale_conj=234,
+        alpha=68.87,
+        homeo_rate=1.70,
+        presyn_setpoint=1.97,
         w_e_scale=2, #0.864,
         w_pool_to_shift=0.5,
         w_shift_to_pool=0.3,
