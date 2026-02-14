@@ -53,7 +53,20 @@ def objective(theta):
     ]
     """
 
-    learning_rate, alpha, alpha_outer_scale, hebbian_dx_scale, hebbian_dx_scale_conj, homeo_rate, presyn_setpoint = theta
+    (
+        learning_rate,
+        alpha,
+        alpha_outer_scale,
+        hebbian_dx_scale,
+        hebbian_dx_scale_conj,
+        homeo_rate,
+        presyn_setpoint,
+        tau_x_trace_1,
+        tau_z_trace_1,
+        tau_x_trace_2,
+        tau_z_trace_2,
+    ) = theta
+    
 
     # Hard safety clamp (extra guard against blowups)
     if learning_rate <= 0 or alpha <= 0 or hebbian_dx_scale <= 0:
@@ -74,6 +87,10 @@ def objective(theta):
             hebbian_dx_scale_conj=hebbian_dx_scale_conj,
             homeo_rate=homeo_rate,
             presyn_setpoint=presyn_setpoint,
+            tau_x_trace_1=tau_x_trace_1,
+            tau_z_trace_1=tau_z_trace_1,
+            tau_x_trace_2=tau_x_trace_2,
+            tau_z_trace_2=tau_z_trace_2,
             w_e_scale=2,
             w_pool_to_shift=0.5,
             w_shift_to_pool=0.3,
@@ -109,12 +126,16 @@ if __name__ == "__main__":
         1.0,  # hebbian_dx_scale_conj
         0.1,   # homeo_rate
         12,    # presyn_setpoint
+        0.02,   # tau_x_trace_1
+        0.02,   # tau_z_trace_1
+        0.02,   # tau_x_trace_2
+        0.02,   # tau_z_trace_2
     ]
 
     sigma0 = 1.0  # smaller than log-space case
 
-    lower_bounds = [0.001, 0.1, 0.0, 0.1, 0.1, 0, 8]
-    upper_bounds = [25.0, 100.0, 5.0, 1000, 1000, 10, 100]
+    lower_bounds = [0.001, 0.1, 0.0, 0.1, 0.1, 0, 8, 1e-3, 1e-3, 1e-3, 1e-3]
+    upper_bounds = [25.0, 100.0, 5.0, 1000, 1000, 10, 100, 30e-3, 30e-3, 30e-3, 30e-3]
 
     es = cma.CMAEvolutionStrategy(
         x0,
@@ -148,6 +169,10 @@ if __name__ == "__main__":
         "hebbian_dx_scale_conj": result.xbest[4],
         "homeo_rate": result.xbest[5],
         "presyn_setpoint": result.xbest[6],
+        "tau_x_trace_1": result.xbest[7],
+        "tau_z_trace_1": result.xbest[8],
+        "tau_x_trace_2": result.xbest[9],
+        "tau_z_trace_2": result.xbest[10],
         "r2": -result.fbest,
     }
 

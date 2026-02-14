@@ -22,10 +22,16 @@ class SimParams:
     presyn_setpoint: float
     dt: float
 
-    # New plasticity coefficients
-    hebbian_dx_scale: float = 200.0
-    hebbian_dx_scale_conj: float = 200.0
+    # Plasticity coefficients
+    hebbian_scale_1: float = 200.0
+    hebbian_scale_2: float = 200.0
     alpha_outer_scale: float = 1.5
+
+    # NEW: time constants for traces
+    tau_x_trace_1: float = 0.02
+    tau_z_trace_1: float = 0.02
+    tau_x_trace_2: float = 0.02
+    tau_z_trace_2: float = 0.02
 
 def gen_gaussian(x, mu, sigma):
     """Generate Gaussian function"""
@@ -42,8 +48,15 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     W_dim = 3 * n
 
     # Unpack state
+    trace_dim = 4 * n
     x_in = state[:W_dim]
-    W = state[W_dim:].reshape((W_dim, W_dim))
+    trace_state = state[W_dim:W_dim + trace_dim]
+    W = state[W_dim + trace_dim:].reshape((W_dim, W_dim))
+
+    x_tilde_1 = trace_state[:n]
+    z_tilde_1 = trace_state[n:2*n]
+    x_tilde_2 = trace_state[2*n:3*n]
+    z_tilde_2 = trace_state[3*n:4*n]
     
     # Ensure non-negative activity
     x = jnp.clip(x_in, 0, None)
@@ -60,15 +73,21 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     x_ct_1 = x[:n]
     x_ct_2 = x[n:3 * n]
     z = W[:n, n:3 * n] @ x_ct_2
-    
+
+    dx_tilde_1_dt = (-x_tilde_1 + x_ct_1) / params.tau_x_trace_1
+    dz_tilde_1_dt = (-z_tilde_1 + z) / params.tau_z_trace_1
+
+    dx_tilde_2_dt = (-x_tilde_2 + x_ct_1) / params.tau_x_trace_2
+    dz_tilde_2_dt = (-z_tilde_2 + z) / params.tau_z_trace_2
+        
     comp_to_bound = params.presyn_setpoint - W[:n, :n].sum(axis=0)
     
     # Use filtered x_ct_1 in plasticity rule
     dw_dt_ct_1 = (
         params.learning_rate # had at 30
         * (
-            params.hebbian_dx_scale_conj * jnp.outer(z * dx_dt[:n], x_ct_1)
-            + params.hebbian_dx_scale * jnp.outer(z * x_ct_1, dx_dt[:n])
+            params.hebbian_dx_scale * jnp.outer(z_tilde_1 * x_ct_1, x_tilde_1)
+            + params.hebbian_dx_scale_conj * jnp.outer(z_tilde_2 * x_tilde_2, x_ct_1)
             - params.alpha * (z * x_ct_1)[:, None]
             + params.alpha_outer_scale * params.alpha * jnp.outer(z, x_ct_1)
         )  # Changed to x_ct_1_filt
@@ -83,14 +102,27 @@ def system_dynamics_step(state, u_t, W0, w_inh, params: SimParams):
     
     # Euler integration
     dt = params.dt
-    new_x = jnp.clip(x_in + dx_dt * dt, 0, None) 
+    new_x = jnp.clip(x_in + dx_dt * dt, 0, None)
+
+    new_x_tilde_1 = x_tilde_1 + dx_tilde_1_dt * dt
+    new_z_tilde_1 = z_tilde_1 + dz_tilde_1_dt * dt
+    new_x_tilde_2 = x_tilde_2 + dx_tilde_2_dt * dt
+    new_z_tilde_2 = z_tilde_2 + dz_tilde_2_dt * dt
+
     new_W = W + dw_dt * dt
     new_W_pool = new_W[:n, :n]
     new_W = new_W.at[:n, :n].set(jnp.where(new_W_pool > 0,  new_W_pool, 0))
     
-    # Pack new state
+    new_trace_state = jnp.concatenate([
+        new_x_tilde_1,
+        new_z_tilde_1,
+        new_x_tilde_2,
+        new_z_tilde_2,
+    ])
+
     new_state = jnp.concatenate([
         new_x,
+        new_trace_state,
         new_W.ravel(),
     ])
     
@@ -190,9 +222,11 @@ def train_multiple_networks(
     alpha_outer_scale=1.5,
     hebbian_dx_scale=200,
     hebbian_dx_scale_conj=0,
+    tau_x_trace_1=0.02,
+    tau_z_trace_1=0.02,
+    tau_x_trace_2=0.02,
+    tau_z_trace_2=0.02,
     presyn_setpoint=3.5,
-    tau_x_filt=0.02,  # Time constant for x_ct_1 filtering
-    tau_z=2.5e-3,
     w_e_scale=0.864,
     w_pool_to_shift=0.5,
     w_shift_to_pool=0.25,
@@ -220,6 +254,10 @@ def train_multiple_networks(
         alpha_outer_scale=alpha_outer_scale,
         hebbian_dx_scale=hebbian_dx_scale,
         hebbian_dx_scale_conj=hebbian_dx_scale_conj,
+        tau_x_trace_1=tau_x_trace_1,
+        tau_z_trace_1=tau_z_trace_1,
+        tau_x_trace_2=tau_x_trace_2,
+        tau_z_trace_2=tau_z_trace_2,
         presyn_setpoint=presyn_setpoint,
         dt=dt,
     )
@@ -248,7 +286,12 @@ def train_multiple_networks(
             jnp.clip(peak_amp * gen_gaussian(x, x_init_peak_loc * (n-1), s), 0, None),
             jnp.zeros(2*n),
         ])
-        state = jnp.concatenate([x_init, W0.ravel()])
+        trace_init = jnp.zeros(4 * n)
+        state = jnp.concatenate([
+            x_init,
+            trace_init,
+            W0.ravel()
+        ])
         
         # Storage for this network
         weight_trajectory = [W0.copy()]  # Store initial weights
@@ -265,7 +308,8 @@ def train_multiple_networks(
             state, x_history, w_history= simulate_epoch(state, u_trajectory, w_inh, params)
             
             # Store final weights
-            final_W = state[3*n:].reshape((3*n, 3*n))
+            trace_dim = 4 * n
+            final_W = state[3*n + trace_dim:].reshape((3*n, 3*n))
             weight_trajectory.append(np.array(final_W))
 
             
@@ -282,7 +326,13 @@ def train_multiple_networks(
                 pass
                 # print(f"  Epoch {epoch + 1}/{n_epochs} - {time() - start_time:.2f}")
 
-            state = state.at[:3*n].set(x_init)
+            trace_dim = 4 * n
+            state = state.at[:3*n + trace_dim].set(
+                jnp.concatenate([
+                    x_init,
+                    jnp.zeros(trace_dim)
+                ])
+            )
         
         all_results.append({
             'weight_trajectory': weight_trajectory,
