@@ -1071,7 +1071,7 @@ if __name__ == '__main__':
 		else:
 			save_paths_ctrl = {}
 			for key in save_paths.keys():
-				save_paths_ctrl[key] = os.path.join(save_paths[key], zero_pad(str(i), 3))
+				save_paths_ctrl[key] = os.path.join(save_paths[key], 'ctrl')
 				os.mkdir(save_paths_ctrl[key])
 			eval_all([x_test] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths_ctrl)
 		
