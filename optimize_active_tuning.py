@@ -21,7 +21,7 @@ def compute_r2(result, n, dt, input_start=1.5):
         color_val = epoch_data['color_val']
 
         x_pool = x_history[:, :n]
-        loc_trace = np.sum(x_pool * positions, axis=1) / (
+        loc_trace = np.sum((x_pool + np.random.normal(size=n, scale=0.05)) * positions, axis=1) / (
             x_pool.sum(axis=1) + 1e-6
         )
 
@@ -36,6 +36,7 @@ def compute_r2(result, n, dt, input_start=1.5):
         return 0.0
 
     r = np.corrcoef(ending_locs, int_values)[0, 1]
+    r = np.where(np.isnan(r), 0, r)
     return r ** 2
 
 
@@ -76,7 +77,7 @@ def objective(theta):
     try:
         results, _ = train_multiple_networks(
             n_networks=1,
-            n_epochs=5000,      # keep moderate during search
+            n_epochs=10000,      # keep moderate during search
             n=5,
             t_sim=(0, 2.0),
             dt=1e-4,
@@ -107,7 +108,7 @@ def objective(theta):
         # CMA-ES minimizes
         return -r2
 
-    except Exception:
+    except Exception as e:
         return 1e6
 
 
@@ -132,9 +133,9 @@ if __name__ == "__main__":
         20,   # tau_z_trace_2
     ]
 
-    sigma0 = 1.0  # smaller than log-space case
+    sigma0 = 10.0  # smaller than log-space case
 
-    lower_bounds = [0.001, 0.1, 0.0, 0.1, 0.1, 0, 8, 1, 1, 1, 1]
+    lower_bounds = [0.001, 0.1, -5.0, -1000, -1000, 0, 8, 1, 1, 1, 1]
     upper_bounds = [25.0, 100.0, 5.0, 1000, 1000, 10, 100, 30, 30, 30, 30]
 
     es = cma.CMAEvolutionStrategy(

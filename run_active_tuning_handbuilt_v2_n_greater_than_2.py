@@ -23,8 +23,8 @@ class SimParams:
     dt: float
 
     # Plasticity coefficients
-    hebbian_scale_1: float = 200.0
-    hebbian_scale_2: float = 200.0
+    hebbian_dx_scale: float = 200.0
+    hebbian_dx_scale_conj: float = 200.0
     alpha_outer_scale: float = 1.5
 
     # NEW: time constants for traces
@@ -343,30 +343,34 @@ def train_multiple_networks(
     return all_results, t
 
 # learning_rate, alpha, alpha_outer_scale, hebbian_dx_scale, hebbian_dx_scale_conj, homeo_rate, presyn_setpoint 
-# [ 54.02776393  68.87148053   2.97085521 275.00858256 234.8829664, 1.69629479   1.97417697]
+# [10.64554374 20.21275625  2.10671512  9.48862155  4.66500963  1.32642798 10.62922897 22.13221828 19.26595331 19.20294174 18.40207312]
 
 # Example usage
 if __name__ == "__main__":
     # Train networks
     results, t = train_multiple_networks(
         n_networks=1,
-        n_epochs=2000,
+        n_epochs=10000,
         n=5,
         t_sim=(0, 2.0),
         dt=1e-4,
-        learning_rate=54.03, #50,
-        alpha_outer_scale=2.97,
-        hebbian_dx_scale=275,
-        hebbian_dx_scale_conj=234,
-        alpha=68.87,
-        homeo_rate=1.70,
-        presyn_setpoint=1.97,
+        learning_rate=10.65, #50,
+        alpha=20.21,
+        alpha_outer_scale=2.11,
+        hebbian_dx_scale=9.49,
+        hebbian_dx_scale_conj=4.67,
+        homeo_rate=1.33,
+        presyn_setpoint=10.62,
+        tau_x_trace_1=22.1 * 1e-3,
+        tau_z_trace_1=19.3 * 1e-3,
+        tau_x_trace_2=19.2 * 1e-3,
+        tau_z_trace_2=18.4 * 1e-3,
         w_e_scale=2, #0.864,
         w_pool_to_shift=0.5,
         w_shift_to_pool=0.3,
         weight_perturbation=1.0,
         peak_amp=0.5,
-        seed=100,
+        seed=0,
     )
 
     # Save results

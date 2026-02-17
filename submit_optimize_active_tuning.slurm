@@ -20,7 +20,7 @@ echo $CURRDIR
 ## Commands to run
 source python-env/bin/activate
 
-python optimize_active_tuning.py
+python -u optimize_active_tuning.py
 
 deactivate
 
