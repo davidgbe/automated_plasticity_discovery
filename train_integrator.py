@@ -766,7 +766,11 @@ def simulate_single_network(index, x, train, save_paths=None):
 				weight_file_name = os.path.join(save_paths['weight_series_path'], f'net_{zero_pad(index, 3)}.npy')
 				np.save(weight_file_name, np.asarray(all_w_series))
 		
-		scores_file_name = os.path.join(save_paths['scores_path'], f'net_{zero_pad(index, 3)}.npy')
+		if not RULE_DROPOUT:
+			scores_file_name = os.path.join(save_paths['scores_path'], f'net_{zero_pad(index, 3)}.npy')
+		else:
+			scores_file_name = os.path.join(save_paths['scores_path'], f'net_{zero_pad(index, 3)}.npy')
+		
 		np.save(scores_file_name, np.asarray(score))
 
 	else:
@@ -1062,7 +1066,14 @@ if __name__ == '__main__':
 			syn_effects_test, x_test = load_best_avg_params(file_names, N_RULES, N_TIMECONSTS, 10)
 			print(x_test)
 
-		eval_all([x_test] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths)
+		if not RULE_DROPOUT:
+			eval_all([x_test] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths)
+		else:
+			save_paths_ctrl = {}
+			for key in save_paths.keys():
+				save_paths_ctrl[key] = os.path.join(save_paths[key], zero_pad(str(i), 3))
+				os.mkdir(save_paths_ctrl[key])
+			eval_all([x_test] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths_ctrl)
 		
 		if RULE_DROPOUT:
 			rules_to_dropout = np.concatenate([
@@ -1071,9 +1082,13 @@ if __name__ == '__main__':
 			])
 
 			for i in rules_to_dropout:
+				save_paths_for_dropout = {}
+				for key in save_paths.keys():
+					save_paths_for_dropout[key] = os.path.join(save_paths[key], zero_pad(str(i), 3))
+					os.mkdir(save_paths_for_dropout[key])
 				x_test_copy = copy(x_test)
 				x_test_copy[i] = 0
-				eval_all([x_test_copy] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths)
+				eval_all([x_test_copy] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths_for_dropout)
 	else:
 
 		if args.train and len(existing_dirs_with_run_num) == 0:
