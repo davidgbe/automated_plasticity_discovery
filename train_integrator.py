@@ -1076,19 +1076,31 @@ if __name__ == '__main__':
 			eval_all([x_test] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths_ctrl)
 		
 		if RULE_DROPOUT:
+			# rules_to_dropout = np.concatenate([
+			# 	np.arange(N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE),
+			# 	np.arange(3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE), 3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE) + N_THREE_FACTOR_RULES_PER_TYPE),
+			# ])
+			
 			rules_to_dropout = np.concatenate([
-				np.arange(N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE),
 				np.arange(3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE), 3 * (N_PAIRWISE_RULES_PER_TYPE + N_SUMMED_WEIGHT_RULES_PER_TYPE) + N_THREE_FACTOR_RULES_PER_TYPE),
 			])
 
-			for i in rules_to_dropout:
-				save_paths_for_dropout = {}
-				for key in save_paths.keys():
-					save_paths_for_dropout[key] = os.path.join(save_paths[key], zero_pad(str(i), 3))
-					os.mkdir(save_paths_for_dropout[key])
-				x_test_copy = copy(x_test)
-				x_test_copy[i] = 0
-				eval_all([x_test_copy] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths_for_dropout)
+			# for i in rules_to_dropout:
+			# 	save_paths_for_dropout = {}
+			# 	for key in save_paths.keys():
+			# 		save_paths_for_dropout[key] = os.path.join(save_paths[key], zero_pad(str(i), 3))
+			# 		os.mkdir(save_paths_for_dropout[key])
+			# 	x_test_copy = copy(x_test)
+			# 	x_test_copy[i] = 0
+			# 	eval_all([x_test_copy] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths_for_dropout)
+
+			save_paths_for_dropout = {}
+			for key in save_paths.keys():
+				save_paths_for_dropout[key] = os.path.join(save_paths[key], 'z')
+				os.mkdir(save_paths_for_dropout[key])
+			x_test_copy = copy(x_test)
+			x_test_copy[rules_to_dropout] = 0
+			eval_all([x_test_copy] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths_for_dropout)
 	else:
 
 		if args.train and len(existing_dirs_with_run_num) == 0:
