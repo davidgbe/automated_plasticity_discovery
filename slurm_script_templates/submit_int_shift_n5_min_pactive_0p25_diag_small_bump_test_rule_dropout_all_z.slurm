@@ -32,7 +32,7 @@ python train_integrator.py \
     --struct_prior shift \
     --bump_init 1 \
     --train 0 \
-    --exp_title "rule_dropout_{{ title }}_{{ time }}_inp_{{ time_input }}_het_{{ inh_het }}" \
+    --exp_title "rule_dropout_z_{{ title }}_{{ time }}_inp_{{ time_input }}_het_{{ inh_het }}" \
     --dc_input 0.2 \
     --inh_het {{ inh_het }} \
     --cell_type_1_size 5 \
