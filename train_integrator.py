@@ -1094,12 +1094,20 @@ if __name__ == '__main__':
 			# 	x_test_copy[i] = 0
 			# 	eval_all([x_test_copy] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths_for_dropout)
 
+			# save_paths_for_dropout = {}
+			# for key in save_paths.keys():
+			# 	save_paths_for_dropout[key] = os.path.join(save_paths[key], 'z')
+			# 	os.mkdir(save_paths_for_dropout[key])
+			# x_test_copy = copy(x_test)
+			# x_test_copy[rules_to_dropout] = 0
+			# eval_all([x_test_copy] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths_for_dropout)
+
 			save_paths_for_dropout = {}
 			for key in save_paths.keys():
-				save_paths_for_dropout[key] = os.path.join(save_paths[key], 'z')
+				save_paths_for_dropout[key] = os.path.join(save_paths[key], 'no_plasticity')
 				os.mkdir(save_paths_for_dropout[key])
 			x_test_copy = copy(x_test)
-			x_test_copy[rules_to_dropout] = 0
+			x_test_copy[:N_RULES] = 0
 			eval_all([x_test_copy] * TEST_REPEATS, eval_tracker=eval_tracker, save_paths=save_paths_for_dropout)
 	else:
 
