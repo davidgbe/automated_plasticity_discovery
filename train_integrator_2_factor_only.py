@@ -1120,6 +1120,7 @@ if __name__ == '__main__':
 			x_full[end_pairwise + N_THREE_FACTOR_RULES_PER_TYPE:end_pairwise + 2 * N_THREE_FACTOR_RULES_PER_TYPE] = x[end_pairwise:end_pairwise +  N_THREE_FACTOR_RULES_PER_TYPE]
 			x_full[N_RULES:N_RULES + 3 * N_TIMECONSTS_PAIR] = x[end_pairwise +  N_THREE_FACTOR_RULES_PER_TYPE:end_pairwise +  N_THREE_FACTOR_RULES_PER_TYPE + 3 * N_TIMECONSTS_PAIR]
 			x_full[N_RULES + 3 * N_TIMECONSTS_PAIR + N_TIMECONSTS_TRIPLET:] = x[-N_TIMECONSTS_TRIPLET:]
+			return x_full
 
 		if args.train and len(existing_dirs_with_run_num) == 0:
 			eval_all([to_full_rule(x0)], eval_tracker=eval_tracker)
