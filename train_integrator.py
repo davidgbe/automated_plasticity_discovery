@@ -17,6 +17,7 @@ from csv_reader import read_csv
 from csv_writer import write_csv
 from rate_network_jax import simulate
 from rate_network_jax_save_w import simulate_save_w
+from rate_network_jax_syn import simulate_save_syn
 import pickle
 
 ### Parse arguments 
@@ -645,7 +646,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 		])
 		
 		if not args.save_all_w:
-			r, w_out, effects, syn_factors, r_exp_filtered = simulate(
+			r, w_out, effects, syn_factors, r_exp_filtered = simulate_save_syn(
 				len(t),
 				N_TIMECONSTS,
 				dt,
