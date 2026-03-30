@@ -560,7 +560,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
-
+	
 	all_effects = np.zeros(plasticity_coefs.shape)
 	normed_loss = 10000	
 	rs_for_loss = []
@@ -761,6 +761,9 @@ def simulate_single_network(index, x, train, save_paths=None):
 			# save predictions at sampled times
 			predictions_file_name = os.path.join(save_paths['predictions_path'], f'net_{zero_pad(index, 3)}.npy')
 			np.save(predictions_file_name, np.asarray(y_test_pred))
+			# save synaptic changes to designated file
+			syn_changes_file_name = os.path.join(save_paths['syn_changes_path'], f'net_{zero_pad(index, 3)}.npy')
+			np.save(syn_changes_file_name, np.asarray(all_syn_factors))
 
 			if args.save_all_w:
 				# save all weight series
@@ -1043,6 +1046,8 @@ if __name__ == '__main__':
 		os.mkdir(predictions_path)
 		scores_path = os.path.join(out_dir, 'scores')
 		os.mkdir(scores_path)
+		syn_changes_path = os.path.join(out_dir, 'syn_changes')
+		os.mkdir(syn_changes_path)
 		
 		save_paths = {
 			'weight_path': weight_path,
@@ -1052,6 +1057,7 @@ if __name__ == '__main__':
 			'targets_path': targets_path,
 			'predictions_path': predictions_path,
 			'scores_path': scores_path,
+			'syn_changes_path': syn_changes_path,
 		}
 
 		if args.save_all_w:
