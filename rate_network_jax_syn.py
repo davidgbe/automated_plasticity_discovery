@@ -293,7 +293,7 @@ def learning_dynamics(
 
     # Assemble delta_syn_terms: flat vector of 100 signed per-term contributions.
     # Layout matches the comment block at the top of the file.
-    delta_syn_terms = eta * dt * jnp.concatenate([
+    delta_syn_factors = eta * dt * jnp.concatenate([
         delta_terms_11_pairwise,   # [0:24]   pairwise, group 11
         delta_terms_21_pairwise,   # [24:48]  pairwise, group 21
         delta_terms_12_pairwise,   # [48:72]  pairwise, group 12
@@ -323,20 +323,9 @@ def learning_dynamics(
         row3,
     ], axis=0)  # Final shape: (n_e + n_i, n_e + n_i)
 
-    delta_syn = delta_syn_terms.sum()
-
-    delta_syn_factors = eta * dt * jnp.array([
-        delta_terms_11_pairwise.sum(),
-        delta_terms_11_summed.sum(),
-        delta_terms_21_pairwise.sum(),
-        delta_terms_21_summed.sum(),
-        delta_terms_12_pairwise.sum(),
-        delta_terms_12_summed.sum(),
-        delta_terms_11_triplet.sum(),
-        delta_terms_12_triplet.sum(),
-    ])
+    delta_syn = delta_syn_factors.sum()
     
-    return r, delta_s, delta_r_exp, delta_w, delta_syn, delta_syn_factors, delta_syn_terms, unstable
+    return r, delta_s, delta_r_exp, delta_w, delta_syn, delta_syn_factors, unstable
 
 # Simulate a full unroll of network dynamics for len_t timesteps
 
@@ -370,16 +359,15 @@ def simulate_save_syn(
     s0 = jnp.zeros((n_e + n_i))
     r_exp0 = jnp.zeros((n_e + n_i, n_timeconsts))
     syn0 = jnp.zeros((n_rules,))
-    syn_factors0 = jnp.zeros((8,))
-    syn_terms0 = jnp.zeros((N_SYN_TERMS,))
+    syn_factors0 = jnp.zeros((n_rules,))
     unstable0 = False
 
     w_polarity = (-1 + 2 * (w0 >= 0).astype(int)).astype(int)
 
     def scan(carry, r_in):
-        s, r_exp, w, syn, syn_factors, syn_terms, unstable = carry
+        s, r_exp, w, syn, syn_factors, unstable = carry
 
-        r, ds, dr_exp, dw, dsyn, dsyn_factors, dsyn_terms, unstable = learning_dynamics(
+        r, ds, dr_exp, dw, dsyn, dsyn_factors, unstable = learning_dynamics(
             s=s,
             r_exp=r_exp,
             w=w,
@@ -396,7 +384,7 @@ def simulate_save_syn(
             n_triplet_rules=n_triplet_rules,
         )
 
-        s_prime, r_exp_prime, w_prime, syn_prime, syn_factors_prime, syn_terms_prime = jax.lax.cond(
+        s_prime, r_exp_prime, w_prime, syn_prime, syn_factors_prime = jax.lax.cond(
             unstable,
             lambda _: (
                 jnp.zeros_like(s),
@@ -404,7 +392,6 @@ def simulate_save_syn(
                 jnp.zeros_like(w),
                 jnp.zeros_like(syn),
                 jnp.zeros_like(syn_factors),
-                jnp.zeros_like(syn_terms),
             ),
             lambda _: (
                 s + ds,
@@ -412,18 +399,17 @@ def simulate_save_syn(
                 enforce_polarity_and_structure(w + dw, w_polarity, w0),
                 syn + dsyn,
                 syn_factors + dsyn_factors,
-                syn_terms + dsyn_terms,
             ),
             None,
         )
 
-        return (s_prime, r_exp_prime, w_prime, syn_prime, syn_factors_prime, syn_terms_prime, unstable), r
+        return (s_prime, r_exp_prime, w_prime, syn_prime, syn_factors_prime, unstable), r
 
 
-    (s, r_exp, w, syn, syn_factors, syn_terms, unstable), r = jax.lax.scan(
+    (s, r_exp, w, syn, syn_factors, unstable), r = jax.lax.scan(
         scan,
-        (s0, r_exp0, w0, syn0, syn_factors0, syn_terms0, unstable0),
+        (s0, r_exp0, w0, syn0, syn_factors0, unstable0),
         r_in,
     )
 
-    return r, w, syn, syn_factors, syn_terms, r_exp
+    return r, w, syn, syn_factors, r_exp
