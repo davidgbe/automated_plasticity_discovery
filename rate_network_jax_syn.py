@@ -82,13 +82,10 @@ def delta_W_ij_summed_weight_rules(W, c, W_shape_1, W_shape_2):
         delta_w_outgoing * W,
     ])
 
-    # per-term weighted contributions; shape (n_summed_weight_terms, W_shape_1, W_shape_2)
     delta_w_per_term = c.reshape(c.shape[0], 1, 1) * stacked_deltas
-
-    # per-term signed sum over all synapses; shape (n_summed_weight_terms,)
     delta_w_terms = delta_w_per_term.sum(axis=(1, 2))
 
-    return delta_w_per_term.sum(axis=0), delta_w_terms
+    return delta_w_per_term.sum(axis=0), delta_w_terms, delta_w_per_term
 
 # THREE FACTOR RULE LOGIC
 
@@ -172,8 +169,7 @@ def learning_dynamics(
 
     pool_weights_zero = jnp.all(abs_w[:n_e_pool, :n_e_pool] < 1e-6)
     pool_side_weights_zero = jnp.all(abs_w[:n_e_pool, n_e_pool:n_e_pool + 2 * n_e_side] < 1e-6)
-    # SHOULD CHANGE FOR NON 2D!
-    side_pool_weights_zero = False # jnp.all(abs_w[n_e_pool:n_e_pool + 2 * n_e_side, :n_e_pool] < 1e-6)
+    side_pool_weights_zero = False
     weights_blew_up = jnp.any(abs_w > 20)
     activity_blew_up = jnp.any(s > 20)
 
@@ -184,6 +180,10 @@ def learning_dynamics(
     delta_s = (v - s) * dt / tau_s
     delta_r_exp = (r[:, None] - r_exp) * dt / tau_rules
 
+    # Masks based on current w
+    mask_11 = abs_w[:n_1, :n_1] > 1e-6                    # (n_1, n_1)
+    mask_21 = abs_w[n_1:n_plastic, :n_1] > 1e-6           # (n_2, n_1)
+    mask_12 = abs_w[:n_1, n_1:n_plastic] > 1e-6           # (n_1, n_2)
 
     # Weight change from (1) -> (1)
 
@@ -195,29 +195,26 @@ def learning_dynamics(
         r_exp[:n_1, :4] * R_EXP_RESCALING,
         c[:n_pairwise_rules],
     )
-    # delta_terms_11_pairwise: (n_1, n_1, n_pairwise_terms) -> sum to (n_pairwise_terms,)
-    delta_terms_11_pairwise = delta_terms_11_pairwise.sum(axis=(0, 1))
+    delta_terms_11_pairwise = (delta_terms_11_pairwise * mask_11[..., None]).sum(axis=(0, 1))
 
-    delta_W_11_summed_weight, delta_terms_11_summed = delta_W_ij_summed_weight_rules(
+    delta_W_11_summed_weight, _, delta_w_per_term_11 = delta_W_ij_summed_weight_rules(
         w[:n_1, :n_1] * SUMMED_WEIGHT_RESCALING,
         c[n_pairwise_rules:n_pairwise_rules + n_summed_weight_rules],
         W_shape_1=n_1,
         W_shape_2=n_1,
     )
-    # delta_terms_11_summed: (n_summed_weight_terms,) — already reduced inside the function
-    
+    delta_terms_11_summed = (delta_w_per_term_11 * mask_11[None, ...]).sum(axis=(1, 2))
+
     delta_W_11_three_factor, delta_terms_11_triplet = delta_W_ij_three_factor(
         w[:n_1, :n_1] * W_RESCALING,
         r[:n_1] * R_RESCALING,
         r[:n_1] * R_RESCALING,
         r_exp[:n_1, 12:20] * R_EXP_RESCALING,
         r_exp[:n_1, 12:20] * R_EXP_RESCALING,
-        # (2) -> (1)
         w[:n_1, n_1:n_plastic] @ r_exp[n_1:n_plastic, 20:28] * R_EXP_RESCALING * THREE_FACTOR_RESCALING,
         c[triplet_rule_start:triplet_rule_start + n_triplet_rules],
     )
-    # delta_terms_11_triplet: (n_1, n_1, n_triplet_terms) -> sum to (n_triplet_terms,)
-    delta_terms_11_triplet = delta_terms_11_triplet.sum(axis=(0, 1))
+    delta_terms_11_triplet = (delta_terms_11_triplet * mask_11[..., None]).sum(axis=(0, 1))
 
     delta_W_11 = (
         delta_W_11_two_factor
@@ -235,16 +232,15 @@ def learning_dynamics(
         r_exp[:n_1, 4:8] * R_EXP_RESCALING,
         c[coef_offset:coef_offset + n_pairwise_rules],
     )
-    # delta_terms_21_pairwise: (n_2, n_1, n_pairwise_terms) -> sum to (n_pairwise_terms,)
-    delta_terms_21_pairwise = delta_terms_21_pairwise.sum(axis=(0, 1))
+    delta_terms_21_pairwise = (delta_terms_21_pairwise * mask_21[..., None]).sum(axis=(0, 1))
 
-    delta_W_21_summed_weight, delta_terms_21_summed = delta_W_ij_summed_weight_rules(
+    delta_W_21_summed_weight, _, delta_w_per_term_21 = delta_W_ij_summed_weight_rules(
         w[n_1:n_plastic, :n_1] * SUMMED_WEIGHT_RESCALING,
         c[coef_offset + n_pairwise_rules:coef_offset + n_pairwise_rules + n_summed_weight_rules],
         W_shape_1=n_2,
         W_shape_2=n_1,
     )
-    # delta_terms_21_summed: (n_summed_weight_terms,) — already reduced
+    delta_terms_21_summed = (delta_w_per_term_21 * mask_21[None, ...]).sum(axis=(1, 2))
 
     delta_W_21 = (
         delta_W_21_two_factor
@@ -261,16 +257,15 @@ def learning_dynamics(
         r_exp[n_1:n_plastic, 8:12] * R_EXP_RESCALING,
         c[2 * coef_offset : 2 * coef_offset + n_pairwise_rules],
     )
-    # delta_terms_12_pairwise: (n_1, n_2, n_pairwise_terms) -> sum to (n_pairwise_terms,)
-    delta_terms_12_pairwise = delta_terms_12_pairwise.sum(axis=(0, 1))
+    delta_terms_12_pairwise = (delta_terms_12_pairwise * mask_12[..., None]).sum(axis=(0, 1))
 
-    delta_W_12_summed_weight, delta_terms_12_summed = delta_W_ij_summed_weight_rules(
+    delta_W_12_summed_weight, _, delta_w_per_term_12 = delta_W_ij_summed_weight_rules(
         w[:n_1, n_1:n_plastic] * SUMMED_WEIGHT_RESCALING,
         c[2 * coef_offset + n_pairwise_rules:2 * coef_offset + n_pairwise_rules + n_summed_weight_rules],
         W_shape_1=n_1,
         W_shape_2=n_2,
     )
-    # delta_terms_12_summed: (n_summed_weight_terms,) — already reduced
+    delta_terms_12_summed = (delta_w_per_term_12 * mask_12[None, ...]).sum(axis=(1, 2))
 
     delta_W_12_three_factor, delta_terms_12_triplet = delta_W_ij_three_factor(
         w[:n_1, n_1:n_plastic] * W_RESCALING,
@@ -278,12 +273,10 @@ def learning_dynamics(
         r[n_1:n_plastic] * R_RESCALING,
         r_exp[:n_1, 28:36] * R_EXP_RESCALING,
         r_exp[n_1:n_plastic, 28:36] * R_EXP_RESCALING,
-        # (1) -> (1)
         w[:n_1, :n_1] @ r_exp[:n_1, 36:44] * R_EXP_RESCALING * THREE_FACTOR_RESCALING,
         c[triplet_rule_start + n_triplet_rules:triplet_rule_start + 2 * n_triplet_rules],
     )
-    # delta_terms_12_triplet: (n_1, n_2, n_triplet_terms) -> sum to (n_triplet_terms,)
-    delta_terms_12_triplet = delta_terms_12_triplet.sum(axis=(0, 1))
+    delta_terms_12_triplet = (delta_terms_12_triplet * mask_12[..., None]).sum(axis=(0, 1))
 
     delta_W_12 = (
         delta_W_12_two_factor
@@ -291,40 +284,39 @@ def learning_dynamics(
         + delta_W_12_three_factor
     )
 
-    # Assemble delta_syn_terms: flat vector of 100 signed per-term contributions.
-    # Layout matches the comment block at the top of the file.
+    # Assemble delta_syn_terms
     delta_syn_factors = eta * dt * jnp.concatenate([
-        delta_terms_11_pairwise,   # [0:24]   pairwise, group 11
-        delta_terms_21_pairwise,   # [24:48]  pairwise, group 21
-        delta_terms_12_pairwise,   # [48:72]  pairwise, group 12
-        delta_terms_11_summed,     # [72:76]  summed-weight, group 11
-        delta_terms_21_summed,     # [76:80]  summed-weight, group 21
-        delta_terms_12_summed,     # [80:84]  summed-weight, group 12
-        delta_terms_11_triplet,    # [84:92]  triplet, group 11
-        delta_terms_12_triplet,    # [92:100] triplet, group 12
+        delta_terms_11_pairwise,
+        delta_terms_21_pairwise,
+        delta_terms_12_pairwise,
+        delta_terms_11_summed,
+        delta_terms_21_summed,
+        delta_terms_12_summed,
+        delta_terms_11_triplet,
+        delta_terms_12_triplet,
     ])
 
     row1 = jnp.concatenate([
-        delta_W_11,                          # (n_1, n_1)
-        delta_W_12,                          # (n_1, n_2)
-        jnp.zeros((n_1, n_i))                # (n_1, n_i)
+        delta_W_11,
+        delta_W_12,
+        jnp.zeros((n_1, n_i))
     ], axis=1)
 
     row2 = jnp.concatenate([
-        delta_W_21,                          # (n_2, n_1)
-        jnp.zeros((n_2, n_2 + n_i))          # (n_2, n_2 + n_i)
+        delta_W_21,
+        jnp.zeros((n_2, n_2 + n_i))
     ], axis=1)
 
-    row3 = jnp.zeros((n_i, n_e + n_i))       # (n_i, n_e + n_i)
+    row3 = jnp.zeros((n_i, n_e + n_i))
 
     delta_w = eta * dt * jnp.concatenate([
         row1,
         row2,
         row3,
-    ], axis=0)  # Final shape: (n_e + n_i, n_e + n_i)
+    ], axis=0)
 
     delta_syn = delta_syn_factors.sum()
-    
+
     return r, delta_s, delta_r_exp, delta_w, delta_syn, delta_syn_factors, unstable
 
 # Simulate a full unroll of network dynamics for len_t timesteps
