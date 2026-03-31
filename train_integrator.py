@@ -62,8 +62,7 @@ parser.add_argument('--enable_diag', action='store_true', help='Enable diagonal 
 parser.add_argument('--rule_dropout', type=int, default=0)
 parser.add_argument('--test_repeats', type=int, default=10)
 parser.add_argument('--save_all_w', action='store_true', default=False)
-
-
+parser.add_argument('--discard_activity_and_input', dest='save_activity_and_input', action='store_false')
 
 args = parser.parse_args()
 
@@ -647,7 +646,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 		])
 		
 		if not args.save_all_w:
-			r, w_out, effects, syn_factors, r_exp_filtered = simulate_save_syn(
+			r, w_out, effects, syn_factors, r_exp_filtered = simulate(
 				len(t),
 				N_TIMECONSTS,
 				dt,
@@ -747,15 +746,18 @@ def simulate_single_network(index, x, train, save_paths=None):
 			# save weights
 			weight_file_name = os.path.join(save_paths['weight_path'], f'net_{zero_pad(index, 3)}.npy')
 			np.save(weight_file_name, np.asarray(all_w))
-			# save activity
-			activity_file_name = os.path.join(save_paths['activity_path'], f'net_{zero_pad(index, 3)}.npy')
-			np.save(activity_file_name, np.asarray(all_r))
 			# save integrated_values
 			integrated_value_file_name = os.path.join(save_paths['integrated_value_path'], f'net_{zero_pad(index, 3)}.npy')
 			np.save(integrated_value_file_name, np.asarray(input_signal_totals))
-			# save inputs
-			inputs_file_name = os.path.join(save_paths['inputs_path'], f'net_{zero_pad(index, 3)}.npy')
-			np.save(inputs_file_name, np.asarray(all_inputs))
+			
+			if args.save_activity_and_input:
+				# save inputs
+				inputs_file_name = os.path.join(save_paths['inputs_path'], f'net_{zero_pad(index, 3)}.npy')
+				np.save(inputs_file_name, np.asarray(all_inputs))
+				# save activity
+				activity_file_name = os.path.join(save_paths['activity_path'], f'net_{zero_pad(index, 3)}.npy')
+				np.save(activity_file_name, np.asarray(all_r))
+			
 			# save sampled target values
 			targets_file_name = os.path.join(save_paths['targets_path'], f'net_{zero_pad(index, 3)}.npy')
 			np.save(targets_file_name, np.asarray(y_test))
