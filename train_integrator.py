@@ -560,7 +560,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
-	
+
 	all_effects = np.zeros(plasticity_coefs.shape)
 	normed_loss = 10000	
 	rs_for_loss = []
@@ -574,6 +574,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 	start = time.time()
 
 	all_syn_factors = []
+	all_syn_terms = []
 
 	if args.train:
 		p_active = args.p_active_floor + (1.0 - args.p_active_floor) * index / BATCH_SIZE
