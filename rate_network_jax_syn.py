@@ -287,11 +287,14 @@ def learning_dynamics(
     # Assemble delta_syn_terms
     delta_syn_factors = eta * dt * jnp.concatenate([
         delta_terms_11_pairwise,
-        delta_terms_21_pairwise,
-        delta_terms_12_pairwise,
         delta_terms_11_summed,
+
+        delta_terms_21_pairwise,
         delta_terms_21_summed,
+
+        delta_terms_12_pairwise,
         delta_terms_12_summed,
+        
         delta_terms_11_triplet,
         delta_terms_12_triplet,
     ])

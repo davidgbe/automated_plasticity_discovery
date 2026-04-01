@@ -646,7 +646,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 		])
 		
 		if not args.save_all_w:
-			r, w_out, effects, syn_factors, r_exp_filtered = simulate(
+			r, w_out, effects, syn_factors, r_exp_filtered = simulate_save_syn(
 				len(t),
 				N_TIMECONSTS,
 				dt,
