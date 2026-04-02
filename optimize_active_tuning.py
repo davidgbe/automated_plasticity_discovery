@@ -50,7 +50,19 @@ def objective(theta):
         learning_rate,
         alpha,
         alpha_outer_scale,
-        hebbian_dx_scale
+        hebbian_dx_scale,
+        hebbian_dx_scale_conj,
+        homeo_rate,
+        presyn_setpoint,
+        tau_x_trace_1,
+        tau_z_trace_1,
+        tau_x_trace_2,
+        tau_z_trace_2,
+        tau_x_trace_3,
+        tau_x_trace_4,
+        outer_zx_x_scale,
+        outer_xtilde_x_scale,
+        outer_x_xtilde_scale,
     ]
     """
 
@@ -66,10 +78,14 @@ def objective(theta):
         tau_z_trace_1,
         tau_x_trace_2,
         tau_z_trace_2,
+        tau_x_trace_3,
+        tau_x_trace_4,
+        outer_zx_x_scale,
+        outer_xtilde_x_scale,
+        outer_x_xtilde_scale,
     ) = theta
-    
 
-    # Hard safety clamp (extra guard against blowups)
+    # Hard safety clamp
     if learning_rate <= 0 or alpha <= 0 or hebbian_dx_scale <= 0:
         print('happens')
         return 1e6
@@ -77,7 +93,7 @@ def objective(theta):
     try:
         results, _ = train_multiple_networks(
             n_networks=1,
-            n_epochs=10000,      # keep moderate during search
+            n_epochs=10000,
             n=5,
             t_sim=(0, 2.0),
             dt=1e-4,
@@ -92,6 +108,11 @@ def objective(theta):
             tau_z_trace_1=tau_z_trace_1 * 1e-3,
             tau_x_trace_2=tau_x_trace_2 * 1e-3,
             tau_z_trace_2=tau_z_trace_2 * 1e-3,
+            tau_x_trace_3=tau_x_trace_3 * 1e-3,
+            tau_x_trace_4=tau_x_trace_4 * 1e-3,
+            outer_zx_x_scale=outer_zx_x_scale,
+            outer_xtilde_x_scale=outer_xtilde_x_scale,
+            outer_x_xtilde_scale=outer_x_xtilde_scale,
             w_e_scale=2,
             w_pool_to_shift=0.5,
             w_shift_to_pool=0.3,
@@ -105,7 +126,6 @@ def objective(theta):
         if not np.isfinite(r2):
             return 1e6
 
-        # CMA-ES minimizes
         return -r2
 
     except Exception as e:
@@ -118,25 +138,29 @@ def objective(theta):
 
 if __name__ == "__main__":
 
-    # Initial guess (linear space)
     x0 = [
         10,    # learning_rate
-        20.0,   # alpha
-        1.0,    # alpha_outer_scale
+        20.0,  # alpha
+        1.0,   # alpha_outer_scale
         10.0,  # hebbian_dx_scale
-        1.0,  # hebbian_dx_scale_conj
+        1.0,   # hebbian_dx_scale_conj
         0.1,   # homeo_rate
         12,    # presyn_setpoint
-        20,   # tau_x_trace_1
-        20,   # tau_z_trace_1
-        20,   # tau_x_trace_2
-        20,   # tau_z_trace_2
+        20,    # tau_x_trace_1
+        20,    # tau_z_trace_1
+        20,    # tau_x_trace_2
+        20,    # tau_z_trace_2
+        20,    # tau_x_trace_3
+        20,    # tau_x_trace_4
+        0.0,   # outer_zx_x_scale
+        0.0,   # outer_xtilde_x_scale
+        0.0,   # outer_x_xtilde_scale
     ]
 
-    sigma0 = 10.0  # smaller than log-space case
+    sigma0 = 10.0
 
-    lower_bounds = [0.001, 0.1, -5.0, -1000, -1000, 0, 8, 1, 1, 1, 1]
-    upper_bounds = [25.0, 100.0, 5.0, 1000, 1000, 10, 100, 30, 30, 30, 30]
+    lower_bounds = [0.001, 0.1, -5.0, -1000, -1000, 0,    8,   1,  1,  1,  1,  1,  1, -1000, -1000, -1000]
+    upper_bounds = [25.0,  100.0, 5.0,  1000,  1000, 10, 100,  30, 30, 30, 30, 30, 30,  1000,  1000,  1000]
 
     es = cma.CMAEvolutionStrategy(
         x0,
@@ -163,17 +187,22 @@ if __name__ == "__main__":
     result = es.result
 
     best_params = {
-        "learning_rate": result.xbest[0],
-        "alpha": result.xbest[1],
-        "alpha_outer_scale": result.xbest[2],
-        "hebbian_dx_scale": result.xbest[3],
-        "hebbian_dx_scale_conj": result.xbest[4],
-        "homeo_rate": result.xbest[5],
-        "presyn_setpoint": result.xbest[6],
-        "tau_x_trace_1": result.xbest[7],
-        "tau_z_trace_1": result.xbest[8],
-        "tau_x_trace_2": result.xbest[9],
-        "tau_z_trace_2": result.xbest[10],
+        "learning_rate":        result.xbest[0],
+        "alpha":                result.xbest[1],
+        "alpha_outer_scale":    result.xbest[2],
+        "hebbian_dx_scale":     result.xbest[3],
+        "hebbian_dx_scale_conj":result.xbest[4],
+        "homeo_rate":           result.xbest[5],
+        "presyn_setpoint":      result.xbest[6],
+        "tau_x_trace_1":        result.xbest[7],
+        "tau_z_trace_1":        result.xbest[8],
+        "tau_x_trace_2":        result.xbest[9],
+        "tau_z_trace_2":        result.xbest[10],
+        "tau_x_trace_3":        result.xbest[11],
+        "tau_x_trace_4":        result.xbest[12],
+        "outer_zx_x_scale":     result.xbest[13],
+        "outer_xtilde_x_scale": result.xbest[14],
+        "outer_x_xtilde_scale": result.xbest[15],
         "r2": -result.fbest,
     }
 
