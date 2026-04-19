@@ -7,7 +7,7 @@
 #SBATCH -A stf
 
 #SBATCH --nodes=1
-#SBATCH --time=130:00:00
+#SBATCH --time=1:00:00
 #SBATCH --ntasks=30
 #SBATCH --mem=200G
 
@@ -47,7 +47,7 @@ python train_integrator.py \
     --p_active_floor {{ p_active_floor }} \
     --enable_diag \
     --root_file_name {{ root_file_name }} \
-    --save_all_w
+#    --save_all_w
 
 deactivate
 

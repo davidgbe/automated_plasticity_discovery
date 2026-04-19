@@ -3,8 +3,8 @@
 ## Presets
 #SBATCH --job-name=active_coding
 
-#SBATCH -p cpu-g2
-#SBATCH -A stf
+#SBATCH -p compute
+#SBATCH -A labfairhall
 
 #SBATCH --nodes=1
 #SBATCH --time=30:00:00

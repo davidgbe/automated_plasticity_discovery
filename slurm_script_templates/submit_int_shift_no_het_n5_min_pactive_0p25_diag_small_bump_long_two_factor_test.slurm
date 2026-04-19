@@ -7,7 +7,7 @@
 #SBATCH -A stf
 
 #SBATCH --nodes=1
-#SBATCH --time=130:00:00
+#SBATCH --time=1:00:00
 #SBATCH --ntasks=30
 #SBATCH --mem=200G
 
@@ -34,7 +34,6 @@ python train_integrator_2_factor_only.py \
     --train 0 \
     --exp_title "{{ title }}_{{ time }}_inp_{{ time_input }}_het_{{ inh_het }}" \
     --dc_input 0.2 \
-    --run_num {{ run_num }} \
     --inh_het {{ inh_het }} \
     --cell_type_1_size 5 \
     --HR_to_HD_width 1 \
