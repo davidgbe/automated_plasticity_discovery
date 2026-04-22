@@ -63,6 +63,7 @@ parser.add_argument('--rule_dropout', type=int, default=0)
 parser.add_argument('--test_repeats', type=int, default=10)
 parser.add_argument('--save_all_w', action='store_true', default=False)
 parser.add_argument('--discard_activity_and_input', dest='save_activity_and_input', action='store_false')
+parser.add_argument('--freeze_plasticity_epoch', type=int, default=None, help='CMA-ES iteration at which plasticity coefs are forced to zero during evaluation')
 
 args = parser.parse_args()
 
@@ -1127,7 +1128,12 @@ if __name__ == '__main__':
 		while not es.stop():
 			X = es.ask()
 			print(X)
-			es.tell(X, eval_all(X, eval_tracker=eval_tracker))
+			freeze_epoch = args.freeze_plasticity_epoch
+			if freeze_epoch is not None and es.countiter >= freeze_epoch:
+				X_eval = [np.concatenate([np.zeros(N_RULES), x[N_RULES:]]) for x in X]
+			else:
+				X_eval = X
+			es.tell(X, eval_all(X_eval, eval_tracker=eval_tracker))
 
 			# save optimizer state
 			with open(os.path.join(out_dir, 'es_checkpoint.pkl'), 'wb') as f:
