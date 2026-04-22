@@ -640,6 +640,8 @@ def simulate_single_network(index, x, train, save_paths=None):
 		r_in[int(args.dc_input_onset/dt):, :n_e_pool] += args.dc_input
 
 		# below, simulate one activation of the network for the period T
+		freeze_epoch = args.freeze_plasticity_epoch
+		effective_plasticity_coefs = np.zeros_like(plasticity_coefs) if (freeze_epoch is not None and i >= freeze_epoch) else plasticity_coefs
 
 		cell_time_consts = np.concatenate([
 			np.ones((n_e)) * 10e-3,
@@ -654,7 +656,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 				t_for_iter,
 				w,
 				r_in,
-				plasticity_coefs,
+				effective_plasticity_coefs,
 				rule_time_constants,
 				g=1,
 				s_offsets=v_thresh,
@@ -678,7 +680,7 @@ def simulate_single_network(index, x, train, save_paths=None):
 				t_for_iter,
 				w,
 				r_in,
-				plasticity_coefs,
+				effective_plasticity_coefs,
 				rule_time_constants,
 				g=1,
 				s_offsets=v_thresh,
@@ -1128,12 +1130,7 @@ if __name__ == '__main__':
 		while not es.stop():
 			X = es.ask()
 			print(X)
-			freeze_epoch = args.freeze_plasticity_epoch
-			if freeze_epoch is not None and es.countiter >= freeze_epoch:
-				X_eval = [np.concatenate([np.zeros(N_RULES), x[N_RULES:]]) for x in X]
-			else:
-				X_eval = X
-			es.tell(X, eval_all(X_eval, eval_tracker=eval_tracker))
+			es.tell(X, eval_all(X, eval_tracker=eval_tracker))
 
 			# save optimizer state
 			with open(os.path.join(out_dir, 'es_checkpoint.pkl'), 'wb') as f:
